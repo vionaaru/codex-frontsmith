@@ -2,8 +2,8 @@ import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { businessPath, businessRoot } from "./lib/paths.mjs";
 
-const projectType = readArg("--project") ?? "Remodeling Project";
-const scope = readArg("--scope") ?? "Project scope needs owner review before pricing.";
+const projectType = readArg("--project") ?? "Техническое обслуживание";
+const scope = readArg("--scope") ?? "Объём работ нужно согласовать с владельцем до расчёта стоимости.";
 const root = businessRoot();
 const business = await readBusinessProfile();
 const outputDir = path.join(root, "estimates");
@@ -23,7 +23,7 @@ await writeFile(
   })
 );
 
-console.log(`Prepared estimate draft: ${file}`);
+console.log(`Подготовлен черновик сметы: ${file}`);
 
 function readArg(name) {
   const index = process.argv.indexOf(name);
@@ -35,7 +35,7 @@ function slugify(value) {
   return value
     .toLowerCase()
     .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 64);
 }
@@ -46,7 +46,7 @@ async function readBusinessProfile() {
     return JSON.parse(await readFile(profilePath, "utf8"));
   } catch (error) {
     if (error && error.code === "ENOENT") {
-      throw new Error(`No business workspace found at ${profilePath}. Run npm run bootstrap first.`);
+      throw new Error(`Рабочие данные бизнеса не найдены: ${profilePath}. Сначала выполните npm run bootstrap.`);
     }
     throw error;
   }
@@ -62,85 +62,94 @@ async function exists(file) {
 }
 
 function estimateDraft({ business, projectType, scope, file, relatedReplyFile }) {
-  return `# Estimate Preparation Draft
+  const automotive = business.blueprint === "auto-service" || /автосервис/i.test(business.businessType);
+  const missing = automotive
+    ? ["Марка, модель, год, пробег и двигатель", "Симптомы и результаты диагностики", "Нужные запчасти и расходные материалы", "Согласованный объём работ", "Доступное время в Booking Flow"]
+    : ["Фотографии объекта или заметки выезда", "Примерные размеры", "Ожидания по материалам и отделке", "Требования к срокам", "Приемлемый бюджет"];
+  const catalogService = business.services.find(service => service.name.toLowerCase() === projectType.toLowerCase());
+  const referencePrice = catalogService?.priceFrom;
+  const priceLabel = Number.isFinite(referencePrice)
+    ? (referencePrice === 0 ? "бесплатно" : `от ${new Intl.NumberFormat("ru-RU").format(referencePrice)} ₽ за работу`)
+    : "по согласованию";
+  const pricing = automotive
+    ? `${business.pricingPolicy?.note ?? "Стоимость согласуется до начала работ."}\n\nУслуга: ${catalogService?.name ?? "точное совпадение в каталоге не найдено"}. Ориентир: ${priceLabel}. Это ${business.demoMode ? "учебная цена, не согласованная для отправки реальному клиенту" : "справочное значение, не итоговая смета"}. Запчасти и дополнительные работы считать отдельно. Не отправлять без согласия владельца.`
+    : "Пока не заданы. Не указывайте итоговую цену, диапазон, предоплату или обязательства по срокам до получения правил владельца или согласования сметы.";
+  return `# Заготовка сметы
 
-Business: ${business.businessName}
-Project: ${projectType}
-Status: Preparation draft, needs owner review, not sent
-Generated: ${new Date().toISOString()}
+Бизнес: ${business.businessName}
+Проект: ${projectType}
+Статус: заготовка, нужна проверка владельцем, не отправлена
+Режим данных: ${business.demoMode ? "учебный пример, не реальный заказ" : "рабочий профиль"}
+Создано: ${new Date().toISOString()}
 
-## Executive Summary
+## Краткая сводка
 
-An estimate preparation draft is ready for owner review. It organizes the known ${projectType.toLowerCase()} scope, names what is still missing before pricing, and prepares proposal language without creating a final price. Nothing has been sent.
+Заготовка сметы готова к проверке владельцем. Она описывает известный объём проекта «${projectType.toLowerCase()}», недостающие данные и структуру предложения без итоговой цены. Ничего не отправлено.
 
-## Scope Captured
+## Известный объём работ
 
 ${markdownList(scopeItems(scope))}
 
-## Working Assumptions
+## Рабочие допущения
 
-- Final scope must be confirmed before pricing
-- Existing conditions may affect cost, timing, and materials
-- Pricing rules or owner-approved ranges are required before proposal delivery
-- Owner approval is required before any estimate or proposal is sent
+- Итоговый объём работ нужно подтвердить до расчёта цены
+- Текущее состояние объекта может влиять на стоимость, сроки и материалы
+- До отправки предложения нужны правила расчёта или согласованные диапазоны цен
+- Отправка сметы или предложения требует согласия владельца
 
-## Missing Before Pricing
+## Что нужно до расчёта цены
 
-- Site photos or site visit notes
-- Approximate dimensions
-- Material and finish expectations
-- Timing requirements
-- Budget comfort range
+${markdownList(missing)}
 
-## Owner Questions
+## Вопросы владельцу
 
-- Is this scope accurate enough to prepare a customer-facing confirmation?
-- Should the next step be a phone consultation, site visit, or more intake questions?
-- Are there approved pricing rules, ranges, exclusions, or minimum project thresholds?
-- Should any services, materials, or timeline promises be excluded from the proposal?
+- Достаточно ли точен объём работ для подтверждения клиенту?
+- Следующий шаг: звонок, выезд или дополнительные вопросы?
+- Есть ли согласованные правила расчёта, диапазоны цен, исключения или минимальный объём заказа?
+- Какие услуги, материалы или обещания сроков нужно исключить из предложения?
 
-## Proposal Outline
+## Структура предложения
 
-1. Project summary
-2. Confirmed scope
-3. Assumptions and exclusions
-4. Materials and finish decisions still needed
-5. Timeline and scheduling notes
-6. Price or range only after owner-approved pricing rules
-7. Next step for customer approval
+1. Краткое описание проекта
+2. Подтверждённый объём работ
+3. Допущения и исключения
+4. Нерешённые вопросы материалов и отделки
+5. Сроки и условия записи
+6. Цена или диапазон только по согласованным правилам расчёта
+7. Следующий шаг для согласования клиентом
 
-## Pricing Rules
+## Правила расчёта
 
-Not provided yet. Do not add a final price, range, deposit, or schedule commitment until the owner provides pricing rules or approves the estimate material.
+${pricing}
 
-## Recommended Next Step
+## Рекомендуемый следующий шаг
 
-Send a scope confirmation message or schedule a consultation before issuing a priced proposal.
+Перед предложением с ценой согласуйте объём работ с клиентом или назначьте консультацию.
 
-## Needs Owner Review
+## Проверка владельцем
 
-- Confirm the scope is accurate
-- Add pricing rules or ranges only when approved
-- Confirm exclusions and assumptions
-- Confirm the next customer-facing step
-- Approve the final estimate or proposal before sending
+- Проверьте точность объёма работ
+- Добавляйте правила расчёта или диапазоны только после согласования
+- Проверьте исключения и допущения
+- Согласуйте следующий шаг с клиентом
+- Согласуйте итоговую смету или предложение до отправки
 
-## Connector Handoff
+## Передача коннектору
 
-- Google Drive: collect photos, measurements, inspiration, and project files when approved
-- Google Calendar: schedule a consultation or site visit when approved
-- Gmail: send estimate or proposal material only after owner approval
-- Future pricing skill: apply local pricing rules only after the owner provides them
+- Google Drive: сбор фотографий, замеров, примеров и файлов после согласования
+- Google Calendar: запись на консультацию или выезд после согласования
+- Gmail: отправка сметы или предложения только после согласия владельца
+- Будущий навык расчёта: применять правила только после получения от владельца
 
-## Artifacts
+## Материалы
 
-- Estimate draft: \`${displayPath(file)}\`
-- Related reply draft: ${relatedReplyFile ? `\`${displayPath(relatedReplyFile)}\`` : "not available yet"}
-- Business profile: \`${displayPath(businessPath("business.json"))}\`
+- Черновик сметы: \`${displayPath(file)}\`
+- Связанный ответ: ${relatedReplyFile ? `\`${displayPath(relatedReplyFile)}\`` : "пока нет"}
+- Профиль бизнеса: \`${displayPath(businessPath("business.json"))}\`
 
-## Safety Boundary
+## Границы безопасности
 
-This estimate preparation draft is local-only. It does not send a proposal, quote a price, schedule a visit, upload files, or execute connected actions.
+Этот черновик сметы хранится локально. Он не отправляет предложение, не устанавливает цену, не назначает выезд, не загружает файлы и не выполняет внешние действия.
 `;
 }
 

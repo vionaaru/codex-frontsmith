@@ -1,16 +1,16 @@
-# Frontsmith Activation Sprint
+# Спринт первых пользователей Frontsmith
 
-Frontsmith v1.0 is public. The next goal is not more private polish. The next goal is real use, feedback, and contribution signal from developers, agencies, and local-service operators.
+Frontsmith v1.0 опубликован. Следующая цель — реальное использование, обратная связь и готовность разработчиков, агентств и операторов местного сервисного бизнеса участвовать в проекте. Сейчас важнее проверить продукт на практике, чем продолжать доработку без пользователей.
 
-## Who This Is For
+## Для кого
 
-- Developers who want to test a Codex-native business workflow repo.
-- Agencies that build or maintain websites and front-office workflows for local service businesses.
-- Operators who want a practical AI-assisted front-office workspace before connecting live accounts.
+- Разработчики, которые хотят испытать репозиторий бизнес-процессов с управлением через Codex.
+- Агентства, создающие и поддерживающие сайты и процессы цифрового офиса для местного сервисного бизнеса.
+- Операторы, которым нужна практичная рабочая область цифрового офиса с помощью ИИ до подключения реальных аккаунтов.
 
-## The 10 Minute Test
+## Проверка за 10 минут
 
-Run the public repo locally:
+Запустите публичный репозиторий локально:
 
 ```bash
 git clone https://github.com/neurarelay/frontsmith.git
@@ -22,53 +22,53 @@ npm run first-run:status
 npm run owner:brief
 ```
 
-Then test the approval boundary:
+Затем проверьте границу одобрения:
 
 ```bash
-npm run prepare:connected-action -- --action-type "email" --title "Send consultation follow-up" --target "Customer follow-up" --evidence "Owner-provided customer notes"
+npm run prepare:connected-action -- --action-type "email" --title "Отправить письмо после консультации" --target "Повторный контакт с клиентом" --evidence "Заметки о клиенте, предоставленные владельцем"
 ```
 
-Frontsmith should prepare reviewable files. It should not send an email, publish a site, change DNS, contact a customer, or run a live provider action.
+Frontsmith должен подготовить файлы для проверки. Он не должен отправлять письмо, публиковать сайт, менять DNS, связываться с клиентом или выполнять реальное действие провайдера.
 
-## What Feedback Helps Most
+## Какая обратная связь полезнее всего
 
-Open a GitHub issue and include:
+Создайте задачу в GitHub и укажите:
 
-- what you tried;
-- which commands passed or failed;
-- what was confusing;
-- whether the Owner Brief, Customer Desk, estimates, website update, or connected-action receipt would help a real local-service business;
-- the one improvement that would make you more likely to use or contribute to Frontsmith.
+- что вы попробовали;
+- какие команды выполнились успешно, а какие завершились ошибкой;
+- что было непонятно;
+- помогут ли реальному местному сервисному бизнесу Сводка владельца, Работа с клиентами, сметы, обновление сайта или запись действия через подключённый сервис;
+- какое одно улучшение повысит вашу готовность пользоваться Frontsmith или участвовать в его развитии.
 
-Do not include live credentials, private customer data, API keys, provider account details, or real business records.
+Не включайте действующие учётные данные, приватные данные клиентов, ключи API, сведения об аккаунтах провайдеров или реальные записи бизнеса.
 
-Current feedback targets:
+Текущие задачи для обратной связи:
 
-- [Try Frontsmith and post your first-run result](https://github.com/neurarelay/frontsmith/issues/5)
-- [Agency feedback: would Frontsmith fit a client front-office setup?](https://github.com/neurarelay/frontsmith/issues/6)
-- [Good first issue: improve one workflow or docs path](https://github.com/neurarelay/frontsmith/issues/7)
+- [Попробуйте Frontsmith и опубликуйте результат первого запуска](https://github.com/neurarelay/frontsmith/issues/5)
+- [Обратная связь агентств: подходит ли Frontsmith для цифрового офиса клиента?](https://github.com/neurarelay/frontsmith/issues/6)
+- [Задача для первого вклада: улучшите один рабочий процесс или путь по документации](https://github.com/neurarelay/frontsmith/issues/7)
 
-## Contribution Lanes
+## Направления участия
 
-Good first contributions:
+Подходящие первые улучшения:
 
-- clarify the first-run path;
-- improve an operator-facing workflow doc;
-- improve a generated Markdown artifact;
-- make the approval-before-action boundary easier to understand;
-- add focused tests for a workflow command;
-- improve the agency handoff path without adding live integrations by default.
+- уточнить порядок первого запуска;
+- улучшить инструкцию рабочего процесса для оператора;
+- улучшить создаваемый Markdown-материал;
+- понятнее объяснить правило одобрения перед действием;
+- добавить целевые тесты команды рабочего процесса;
+- улучшить передачу проекта от агентства, не добавляя реальные интеграции по умолчанию.
 
-Avoid broad platform work for now. Frontsmith v1.0 is intentionally narrow: one repo, one local service business, one launchable website, front-office workflows, and explicit approval before live action.
+Пока избегайте масштабного развития платформы. Frontsmith v1.0 намеренно ограничен: один репозиторий, один местный сервисный бизнес, один готовый к запуску сайт, процессы цифрового офиса и явное одобрение перед реальным действием.
 
-## Sprint Targets
+## Цели спринта
 
-The activation sprint is successful when it creates:
+Спринт первых пользователей успешен, если даёт:
 
-- first-run feedback from real users;
-- public GitHub issues or comments;
-- forks or contribution interest;
-- agency/operator objections we can turn into product requirements;
-- clear evidence of where the first-run path loses people.
+- обратную связь о первом запуске от реальных пользователей;
+- публичные задачи или комментарии GitHub;
+- форки или интерес к участию в проекте;
+- возражения агентств и операторов, которые можно превратить в требования к продукту;
+- ясные свидетельства того, на каких этапах первого запуска пользователи останавливаются.
 
-The point is learning from use, not announcing for its own sake.
+Смысл — учиться на реальном использовании продукта, а не публиковать анонсы ради самих анонсов.

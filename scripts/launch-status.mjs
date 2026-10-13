@@ -5,15 +5,15 @@ import { businessPath, businessRoot } from "./lib/paths.mjs";
 const root = businessRoot();
 const business = await readBusinessProfile();
 const checks = [
-  ["Business profile", path.join(root, "business.json")],
-  ["Single-page website", path.join("website", "index.html")],
-  ["Website styles", path.join("website", "styles.css")],
-  ["Website interactions", path.join("website", "script.js")],
-  ["Contact form function", path.join("api", "contact.js")],
-  ["Integration settings", path.join(root, "settings", "integrations.md")],
-  ["Customer desk", path.join(root, "customer-inquiries", "README.md")],
-  ["Estimates folder", path.join(root, "estimates", "README.md")],
-  ["Extensions folder", path.join(root, "extensions", "README.md")]
+  ["Профиль бизнеса", path.join(root, "business.json")],
+  ["Одностраничный сайт", path.join("website", "index.html")],
+  ["Стили сайта", path.join("website", "styles.css")],
+  ["Интерактивные элементы сайта", path.join("website", "script.js")],
+  ["Обработчик формы заявки", path.join("api", "contact.js")],
+  ["Настройки интеграций", path.join(root, "settings", "integrations.md")],
+  ["Работа с клиентами", path.join(root, "customer-inquiries", "README.md")],
+  ["Каталог смет", path.join(root, "estimates", "README.md")],
+  ["Каталог расширений", path.join(root, "extensions", "README.md")]
 ];
 
 const results = [];
@@ -26,11 +26,11 @@ const defaultEmails = new Set(["hello@example.com", "projects@acme.com"]);
 const defaultWebsiteUrls = new Set(["https://acme.com"]);
 
 const placeholders = [
-  defaultPhones.has(business.contact.phone) ? "phone number" : null,
-  defaultEmails.has(business.contact.email) ? "email address" : null,
-  !business.websiteUrl || defaultWebsiteUrls.has(business.websiteUrl) ? "website URL" : null,
-  business.contact.city === "Local" ? "city" : null,
-  business.contact.state === "ST" ? "state" : null
+  defaultPhones.has(business.contact.phone) ? "номер телефона" : null,
+  defaultEmails.has(business.contact.email) ? "адрес email" : null,
+  !business.websiteUrl || defaultWebsiteUrls.has(business.websiteUrl) ? "URL сайта" : null,
+  ["Ваш город", "Local"].includes(business.contact.city) ? "город" : null,
+  ["Регион", "ST"].includes(business.contact.state) ? "регион" : null
 ].filter(Boolean);
 
 const readyCount = results.filter((item) => item.ready).length;
@@ -39,13 +39,13 @@ const status = launchStatus({ business, results, readyCount, placeholders, conta
 const output = path.join(root, "launch", "launch-status.md");
 await writeFile(output, status);
 
-console.log(`Launch status written: ${output}`);
-console.log(`Ready checks: ${readyCount}/${results.length}`);
+console.log(`Статус запуска сохранён: ${output}`);
+console.log(`Пройдено проверок: ${readyCount}/${results.length}`);
 if (placeholders.length > 0) {
-  console.log(`Needs owner update: ${placeholders.join(", ")}`);
+  console.log(`Владельцу нужно обновить: ${placeholders.join(", ")}`);
 }
 if (!contactDelivery.ready) {
-  console.log(`Needs contact delivery setup: ${contactDelivery.message}`);
+  console.log(`Нужно настроить доставку заявок: ${contactDelivery.message}`);
 }
 
 async function exists(file) {
@@ -63,7 +63,7 @@ async function readBusinessProfile() {
     return JSON.parse(await readFile(profilePath, "utf8"));
   } catch (error) {
     if (error && error.code === "ENOENT") {
-      throw new Error(`No business workspace found at ${profilePath}. Run npm run bootstrap first.`);
+      throw new Error(`Рабочие данные бизнеса не найдены: ${profilePath}. Сначала выполните npm run bootstrap.`);
     }
     throw error;
   }
@@ -79,42 +79,47 @@ function contactDeliveryStatus() {
   ].filter(Boolean);
 
   if (missing.length === 0) {
-    return { ready: true, message: "Contact form email delivery is configured" };
+    return { ready: true, message: "Доставка заявок формы по email настроена" };
   }
 
   return {
     ready: false,
-    message: `Configure ${missing.join(", ")} before relying on form email`
+    message: `Настройте ${missing.join(", ")} перед использованием доставки заявок`
   };
 }
 
 function launchStatus({ business, results, readyCount, placeholders, contactDelivery }) {
-  const lines = results.map((item) => `- ${item.ready ? "Ready" : "Needs review"}: ${item.label}`);
+  const lines = results.map((item) => `- ${item.ready ? "Готово" : "Нужна проверка"}: ${item.label}`);
   const contactLines =
     placeholders.length === 0
-      ? ["- Contact details look customized"]
-      : placeholders.map((item) => `- Replace default ${item}`);
+      ? ["- Контактные данные заполнены"]
+      : placeholders.map((item) => `- Замените пример: ${item}`);
 
-  return `# Launch Status
+  return `# Статус запуска
 
-Business: ${business.businessName}
+Бизнес: ${business.businessName}
+Режим: ${business.demoMode ? "локальная учебная демонстрация, не рабочая публикация" : "проверка рабочего запуска"}
 
-## Readiness
+${business.demoMode ? "Заменить демонстрационные контакты и адрес, согласовать цены и сведения о бизнесе до рабочего запуска." : ""}
 
-${readyCount}/${results.length} checks are ready.
+${business.bookingUrl ? `Внешняя запись: ${business.bookingUrl}. Локальная синхронизация обращений не подключена.` : ""}
+
+## Готовность
+
+Пройдено проверок: ${readyCount}/${results.length}.
 
 ${lines.join("\n")}
 
-## Owner Updates
+## Что обновить владельцу
 
 ${contactLines.join("\n")}
 
-## Contact Delivery
+## Доставка заявок
 
-- ${contactDelivery.ready ? "Ready" : "Needs review"}: ${contactDelivery.message}
+- ${contactDelivery.ready ? "Готово" : "Нужна проверка"}: ${contactDelivery.message}
 
-## Live Action Boundary
+## Границы внешних действий
 
-The website can be reviewed locally. Deployment, domain connection, customer sends, calendar setup, and connected-mode enrollment require explicit owner approval.
+Сайт можно проверить локально. Публикация, подключение домена, отправка клиентам, настройка календаря и подключённый режим требуют явного согласия владельца.
 `;
 }

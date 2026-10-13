@@ -16,7 +16,7 @@ class FrontsmithWebsitePreview extends HTMLElement {
 
     root.innerHTML = `
       <style>${previewShellCss()}</style>
-      <div class="preview-state">Loading website preview</div>
+      <div class="preview-state">Загрузка предпросмотра сайта</div>
     `;
 
     try {
@@ -28,7 +28,7 @@ class FrontsmithWebsitePreview extends HTMLElement {
       ]);
 
       if (!htmlResponse.ok || !cssResponse.ok) {
-        throw new Error("Preview source failed to load");
+        throw new Error("Не удалось загрузить исходники предпросмотра");
       }
 
       const [html, css] = await Promise.all([
@@ -65,8 +65,8 @@ class FrontsmithWebsitePreview extends HTMLElement {
       root.innerHTML = `
         <style>${previewShellCss()}</style>
         <div class="preview-state">
-          Website preview is unavailable.
-          <a href="${source}" target="_blank" rel="noopener noreferrer">Open website</a>
+          Предпросмотр сайта недоступен.
+          <a href="${source}" target="_blank" rel="noopener noreferrer">Открыть сайт</a>
         </div>
       `;
     }
@@ -588,7 +588,7 @@ function setupWebsitePreview(root, viewport, documentMount) {
     header?.classList.remove("nav-active");
     nav?.classList.remove("open");
     navToggle?.setAttribute("aria-expanded", "false");
-    navToggle?.setAttribute("aria-label", "Open navigation");
+    navToggle?.setAttribute("aria-label", "Открыть меню");
   }
 
   function previewTargetFromHash(hash) {
@@ -656,7 +656,7 @@ function setupWebsitePreview(root, viewport, documentMount) {
     documentMount.classList.toggle("nav-active", open);
     header?.classList.toggle("nav-active", open);
     navToggle.setAttribute("aria-expanded", String(open));
-    navToggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+    navToggle.setAttribute("aria-label", open ? "Закрыть меню" : "Открыть меню");
   });
 
   navClose?.addEventListener("click", closePreviewNav);
@@ -703,7 +703,7 @@ function setupWebsitePreview(root, viewport, documentMount) {
 
     if (!intakeStatus) return;
 
-    intakeStatus.textContent = "Open the full website to send this request";
+    intakeStatus.textContent = "Откройте полный сайт для отправки заявки";
     intakeStatus.hidden = false;
     intakeStatus.dataset.status = "notice";
   });
@@ -819,7 +819,7 @@ function closeNav() {
   header.classList.remove("nav-active");
   nav.classList.remove("open");
   toggle.setAttribute("aria-expanded", "false");
-  toggle.setAttribute("aria-label", "Open navigation");
+  toggle.setAttribute("aria-label", "Открыть меню");
 }
 
 function targetFromHash(hash) {
@@ -864,7 +864,7 @@ toggle.addEventListener("click", () => {
   document.body.classList.toggle("nav-open", open);
   header.classList.toggle("nav-active", open);
   toggle.setAttribute("aria-expanded", String(open));
-  toggle.setAttribute("aria-label", open ? "Close navigation" : "Open navigation");
+  toggle.setAttribute("aria-label", open ? "Закрыть меню" : "Открыть меню");
 });
 
 document.addEventListener("click", (event) => {

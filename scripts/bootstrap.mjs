@@ -1,9 +1,9 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { renderWebsite } from "./lib/render-website.mjs";
+import { renderWebsite, validatedBookingUrl } from "./lib/render-website.mjs";
 import { businessRoot } from "./lib/paths.mjs";
 
-const businessName = readArg("--business-name") ?? "Acme";
+const profileFile = readArg("--profile") ?? "blueprints/auto-service/business.example.json";
 const reset = process.argv.includes("--reset");
 const skipWebsite = process.argv.includes("--skip-website");
 const target = businessRoot();
@@ -23,103 +23,76 @@ function readList(name, fallback = []) {
     .filter(Boolean);
 }
 
-function serviceFromName(name) {
-  const defaultDescriptions = new Map([
-    [
-      "Kitchen Remodeling",
-      "Layouts, cabinets, counters, lighting, fixtures, storage, and finishes planned around how the kitchen is used every day."
-    ],
-    [
-      "Bathroom Remodeling",
-      "Showers, vanities, tile, fixtures, lighting, ventilation, storage, and finish choices planned around comfort and durability."
-    ],
-    [
-      "Living Spaces",
-      "Family rooms, dining areas, entryways, built-ins, flooring, lighting, trim, and updates that make the home feel more connected."
-    ]
-  ]);
+async function createBusinessProfile() {
+  const profile = JSON.parse(await readFile(profileFile, "utf8"));
+  if (!profile.businessName || !Array.isArray(profile.services) || !profile.contact) {
+    throw new Error("Профиль должен содержать businessName, services и contact");
+  }
 
-  return {
-    name,
-    description:
-      defaultDescriptions.get(name) ??
-      `Planning support for ${name.toLowerCase()} with scope guidance, practical options, and a clear path before work begins.`
+  const overrides = {
+    "--business-name": "businessName", "--business-type": "businessType",
+    "--brand-tagline": "brandTagline", "--tagline": "tagline",
+    "--summary": "summary", "--brand-voice": "brandVoice"
   };
+  for (const [flag, key] of Object.entries(overrides)) {
+    const value = readArg(flag);
+    if (value !== null) profile[key] = value;
+  }
+  if (readArg("--website-url") !== null) profile.websiteUrl = normalizeWebsiteUrl(readArg("--website-url"));
+  if (readArg("--service-areas") !== null) profile.serviceAreas = readList("--service-areas");
+  if (readArg("--services") !== null) {
+    const known = new Map(profile.services.map((service) => [service.name.toLowerCase(), service]));
+    profile.services = readList("--services").map((name) => ({
+      ...(known.get(name.toLowerCase()) ?? {
+        category: "general", priceFrom: null, durationMinutes: null,
+        description: `Услуга «${name}»: объём работ и стоимость согласуются до начала выполнения.`
+      }),
+      name
+    }));
+  }
+  profile.media = { ...profile.media };
+  for (const key of ["hero", "kitchen", "bathroom", "living", "craft", "faq", "contact"]) {
+    const value = readArg(`--${key}-image`);
+    if (value !== null) profile.media[`${key}Image`] = value;
+  }
+  profile.contact = { ...profile.contact };
+  for (const key of ["phone", "email", "city", "state"]) {
+    const value = readArg(`--${key}`);
+    if (value !== null) profile.contact[key] = value;
+  }
+  profile.approvalPolicy = {
+    ...profile.approvalPolicy,
+    ownerApprovalRequiredForLiveActions: true,
+    liveActionsDefault: "disabled"
+  };
+  validatedBookingUrl(profile.bookingUrl);
+  return profile;
 }
 
-function createBusinessProfile() {
-  const services = readList("--services", [
-    "Kitchen Remodeling",
-    "Bathroom Remodeling",
-    "Living Spaces"
-  ]).map(serviceFromName);
-
-  return {
-    businessName,
-    businessType: readArg("--business-type") ?? "Local Service Business",
-    brandTagline:
-      readArg("--brand-tagline") ??
-      "Crafted Home Remodeling",
-    tagline:
-      readArg("--tagline") ??
-      "Remodeling made clear",
-    summary:
-      readArg("--summary") ??
-      "Kitchens, baths, and living spaces",
-    websiteUrl: normalizeWebsiteUrl(readArg("--website-url") ?? "https://acme.com"),
-    serviceAreas: readList("--service-areas", ["Your City", "Nearby Communities", "Surrounding Service Area"]),
-    services,
-    media: {
-      heroImage:
-        readArg("--hero-image") ??
-        "/assets/acme-hero-remodel.jpg",
-      kitchenImage:
-        readArg("--kitchen-image") ??
-        "/assets/acme-kitchen-remodel.jpg",
-      bathroomImage:
-        readArg("--bathroom-image") ??
-        "/assets/acme-bathroom-remodel.jpg",
-      livingImage:
-        readArg("--living-image") ??
-        "/assets/acme-living-remodel.jpg",
-      craftImage:
-        readArg("--craft-image") ??
-        "/assets/acme-craft-detail.jpg",
-      faqImage:
-        readArg("--faq-image") ??
-        "/assets/acme-planning-faq.jpg",
-      contactImage:
-        readArg("--contact-image") ??
-        "/assets/acme-contact-planning.jpg"
-    },
-    contact: {
-      phone: readArg("--phone") ?? "1-800-123-ACME",
-      email: readArg("--email") ?? "projects@acme.com",
-      city: readArg("--city") ?? "Local",
-      state: readArg("--state") ?? "ST"
-    },
-    brandVoice:
-      readArg("--brand-voice") ??
-      "Clear, practical, respectful, detail-oriented, and homeowner-friendly.",
-    approvalPolicy: {
-      ownerApprovalRequiredForLiveActions: true,
-      liveActionsDefault: "disabled"
-    }
-  };
+async function exists(file) {
+  try { await access(file); return true; }
+  catch (error) { if (error.code === "ENOENT") return false; throw error; }
 }
 
 function normalizeWebsiteUrl(value) {
   const raw = String(value ?? "").trim();
-  if (!raw) return "https://acme.com";
+  if (!raw) return "http://localhost:4173";
   const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
   return withProtocol.replace(/\/+$/, "");
 }
 
-if (reset) {
-  await rm(target, { recursive: true, force: true });
+const business = await createBusinessProfile();
+if (await exists(path.join(target, "business.json")) && !reset && readArg("--profile") === null) {
+  throw new Error("Профиль бизнеса уже существует. Для обновления сайта используйте npm run update:website. Для явной замены профиля передайте --profile FILE; --reset удаляет локальные рабочие данные.");
 }
-
-const business = createBusinessProfile();
+if (reset) {
+  const resolvedTarget = path.resolve(target);
+  if (resolvedTarget === path.parse(resolvedTarget).root || resolvedTarget === path.resolve(".") ||
+      [process.env.USERPROFILE, process.env.HOME].filter(Boolean).some((value) => path.resolve(value) === resolvedTarget)) {
+    throw new Error("Нельзя очищать корень диска, проекта или домашний каталог");
+  }
+  await rm(resolvedTarget, { recursive: true, force: true });
+}
 
 await mkdir(path.join(target, "activity"), { recursive: true });
 await mkdir(path.join(target, "customer-inquiries"), { recursive: true });
@@ -134,7 +107,7 @@ await writeFile(
 );
 await writeFile(
   path.join(target, "settings", "integrations.md"),
-  integrationSettings()
+  integrationSettings(business)
 );
 await writeFile(
   path.join(target, "activity", "activity-log.md"),
@@ -161,113 +134,125 @@ if (!skipWebsite) {
   await renderWebsite();
 }
 
-console.log(`Bootstrapped Frontsmith business workspace for ${business.businessName}`);
-console.log(`Workspace root: ${target}`);
+console.log(`Созданы рабочие данные Frontsmith для ${business.businessName}`);
+console.log(`Каталог рабочих данных: ${target}`);
 console.log(
   skipWebsite
-    ? "Next: npm run update:website"
-    : "Website ready: website/"
+    ? "Далее: npm run update:website"
+    : "Сайт готов: website/"
 );
 
-function integrationSettings() {
-  return `# Integration Settings
+function integrationSettings(profile) {
+  return `# Настройки интеграций
 
-Status: draft only
+Статус: ${profile.demoMode ? "локальная демонстрация" : "только черновик"}
 
-## Default v1.0 Integrations
+- Внешняя запись: ${profile.bookingUrl || "не задана"} — обычная ссылка; импорт заявок и API-синхронизация не включены
+- Почта: отключена
+- Календарь: не подключён
+- Neura: не подключена
 
-- Vercel: deploy website after approval
-- Resend: deliver contact form email after domain and environment setup
-- Gmail: prepare customer replies and send only after approval
-- Google Drive: store business assets and proposal files
-- Google Calendar: schedule consultations
-- Neura: govern consequential actions in connected client mode
+## Базовые интеграции v1.0
 
-No integration is live by default.
+- Vercel: публикация сайта после согласования
+- Resend: доставка заявок после настройки домена и окружения
+- Gmail: подготовка ответов и отправка только после согласования
+- Google Drive: хранение материалов бизнеса и предложений
+- Google Calendar: возможное расширение после отдельной настройки и согласования
+- Neura: контроль значимых внешних действий в подключённом режиме
+
+Внешняя ссылка записи не является подключённой интеграцией. Внешние действия отключены по умолчанию.
 `;
 }
 
 function activityLog(profile) {
-  return `# Activity Log
+  return `# Журнал действий
 
-Business: ${profile.businessName}
+Бизнес: ${profile.businessName}
 
-## Created
+## Создано
 
-- Bootstrapped local Frontsmith business workspace
-- Created business profile
-- Created integration settings
-- Created launch checklist
-- Updated website from business profile
+- Созданы локальные рабочие данные Frontsmith
+- Создан профиль бизнеса
+- Созданы настройки интеграций
+- Создан чек-лист запуска
+- Сайт обновлён из профиля бизнеса
 
-## Safety
+## Безопасность
 
-Live actions are disabled by default. Owner approval is required before deployment, outbound customer communication, provider updates, or public changes.
+Внешние действия по умолчанию отключены. Публикация, исходящие сообщения клиентам, изменения сервисов и публичных материалов требуют согласия владельца.
 `;
 }
 
 function launchChecklist(profile) {
-  return `# Launch Checklist
+  return `# Чек-лист запуска
 
-Business: ${profile.businessName}
+Бизнес: ${profile.businessName}
 
-## Ready
+## Готово
 
-- Business profile created
-- Default service list created
-- Service area notes created
-- Website folder updated
-- Customer desk folder created
-- Estimate and proposal folder created
+- Профиль бизнеса создан
+- Список услуг создан: ${profile.services.length}
+- Режим: ${profile.demoMode ? "локальная демонстрация" : "локальная рабочая область"}
+- Внешняя запись: ${profile.bookingUrl || "не задана"}, без импорта и API-синхронизации
+- Почта отключена, календарь не подключён
+- Заметки о территории обслуживания созданы
+- Каталог сайта обновлён
+- Каталог работы с клиентами создан
+- Каталог смет и предложений создан
 
-## Needs Owner Review
+## Проверка владельцем
 
-- Confirm business name, website URL, phone, email, city, and state
-- Confirm service names and descriptions
-- Confirm service area notes for launch planning
-- Replace placeholder content with approved business facts where needed
-- Review website before deployment
-- Confirm integration settings before any live connection
+- Проверьте название бизнеса, URL сайта, телефон, email, город и регион
+- Проверьте названия и описания услуг
+- Проверьте территорию обслуживания для планирования запуска
+- Замените примеры согласованными сведениями о бизнесе
+- Проверьте сайт перед публикацией
+- Проверьте настройки интеграций до подключения
 
-## Blocked Until Approval
+## Заблокировано до согласования
 
-- Vercel deployment
-- Domain connection
-- Gmail sends
-- Calendar booking links
-- Neura connected-mode enrollment
+- Публикация через Vercel
+- Подключение домена
+- Отправка через Gmail
+- Ссылки записи в календарь
+- Включение подключённого режима Neura
 `;
 }
 
 function customerDeskReadme(profile) {
-  return `# Customer Desk
+  return `# Работа с клиентами
 
-Business: ${profile.businessName}
+Бизнес: ${profile.businessName}
 
-Use this folder for incoming inquiry notes, reply drafts, follow-up notes, and owner-approved customer communication records.
+Храните здесь заметки по входящим обращениям, черновики ответов, повторные контакты и согласованные владельцем записи общения с клиентами.
 
-Frontsmith can help prepare replies, but it should not send customer messages without explicit owner approval.
+Внешняя запись: ${profile.bookingUrl || "не задана"}. Это ссылка на сторонний сервис; заявки не импортируются в Frontsmith. Почта отключена, календарь не подключён.
+
+Frontsmith помогает готовить ответы. Отправка сообщений клиентам требует явного согласия владельца.
 `;
 }
 
 function estimatesReadme(profile) {
-  return `# Estimates And Proposals
+  return `# Сметы и предложения
 
-Business: ${profile.businessName}
+Бизнес: ${profile.businessName}
 
-Use this folder for scope notes, estimate preparation drafts, proposal outlines, assumptions, and owner review notes.
+Храните здесь описание объёма работ, заготовки смет, структуры предложений, допущения и замечания владельца.
 
-Frontsmith can help structure estimate material, but it should not create final pricing unless the owner provides pricing rules or approves the final estimate.
+Правило цен: ${profile.pricingPolicy?.note || "Стоимость согласуется с владельцем до отправки предложения."}
+
+Frontsmith помогает структурировать смету. Итоговую цену можно указывать только по правилам владельца или после согласования сметы.
 `;
 }
 
 function extensionsReadme(profile) {
-  return `# Extensions
+  return `# Расширения
 
-Business: ${profile.businessName}
+Бизнес: ${profile.businessName}
 
-Use this folder for owner-reviewed plans for new tools, skills, connectors, and workflows.
+Храните здесь согласуемые владельцем планы добавления инструментов, навыков, коннекторов и процессов.
 
-Frontsmith can help define an extension path, but it should not connect providers, schedule appointments, send messages, publish, upload files, export data, or execute connected actions without explicit owner approval.
+Frontsmith помогает спланировать расширение. Подключение сервисов, встречи, отправка сообщений, публикация, загрузка файлов, экспорт и внешние действия требуют явного согласия владельца.
 `;
 }

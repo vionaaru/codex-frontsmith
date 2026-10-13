@@ -1,27 +1,27 @@
-# Contributing to Frontsmith
+# Участие в разработке Frontsmith
 
-Frontsmith is a Codex-native front-office kit for local service businesses. Contributions should make the kit clearer, safer, easier to run, or more useful for the narrow v1.0 front-office promise.
+Frontsmith — цифровой офис для небольшого бизнеса в сфере услуг, управляемый через Codex. Изменения должны делать проект понятнее, безопаснее, удобнее в работе или полезнее в рамках узких задач цифрового офиса v1.0.
 
-## Product Boundary
+## Границы продукта
 
-Frontsmith is not a hosted SaaS dashboard, full CRM, accounting system, payment product, or generic connector marketplace.
+Frontsmith не является облачной панелью SaaS, полноценной CRM, бухгалтерской системой, платёжным продуктом или универсальным магазином подключений.
 
-The v1.0 surface is:
+В v1.0 входят:
 
-- local business setup;
-- Owner Brief;
-- Customer Desk;
-- estimate and proposal preparation;
-- website updates and preview;
-- launch readiness;
-- extension planning;
-- owner approval before live action.
+- локальная настройка бизнеса;
+- Сводка владельца;
+- Работа с клиентами;
+- подготовка смет и предложений;
+- обновление и предпросмотр сайта;
+- проверка готовности к запуску;
+- планирование расширений;
+- согласование владельцем перед внешними действиями.
 
-Keep new work inside that boundary unless an issue explicitly proposes a larger extension.
+Сохраняйте новые изменения в этих границах, если задача в обращении явно не предусматривает более широкое расширение.
 
-## Local Setup
+## Локальная настройка
 
-Use Node.js 20 or newer.
+Используйте Node.js 20 или новее.
 
 ```bash
 npm install
@@ -29,47 +29,47 @@ npm run check
 npm test
 ```
 
-Useful workflow checks:
+Полезные проверки процессов:
 
 ```bash
 npm run bootstrap -- --business-name "Acme" --website-url "https://acme.com"
 npm run owner:brief
-npm run prepare:reply -- --name "Customer" --project "Kitchen Remodeling" --notes "Customer wants help planning the next step."
-npm run prepare:estimate -- --project "Kitchen Remodeling" --scope "Cabinets, counters, lighting, and layout clarification."
-npm run prepare:extension -- --capability "Consultation scheduling" --connector "Google Calendar" --goal "Prepare an owner-reviewed workflow for approved consultation requests."
+npm run prepare:reply -- --name "Клиент" --project "Ремонт кухни" --notes "Клиент просит помочь спланировать следующий шаг."
+npm run prepare:estimate -- --project "Ремонт кухни" --scope "Шкафы, столешницы, освещение и уточнение планировки."
+npm run prepare:extension -- --capability "Запись на консультацию" --connector "Google Calendar" --goal "Подготовить процесс для согласованных заявок на консультацию с проверкой владельцем."
 npm run update:website
 npm run launch:status
 ```
 
-## Activation Feedback
+## Обратная связь по первому запуску
 
-If you are not ready to open a code pull request, useful feedback still helps.
+Полезная обратная связь помогает проекту, даже если вы пока не готовы предложить изменение кода через запрос на слияние.
 
-Start with the activation guide:
+Начните с руководства по первому запуску:
 
 ```text
 docs/community/activation-sprint.md
 ```
 
-The most useful issues are:
+Наиболее полезные обращения:
 
-- first-run feedback from a fresh clone;
-- agency/operator feedback about a real local-service workflow;
-- a narrow product gap inside setup, Owner Brief, Customer Desk, estimates, website updates, launch readiness, extension planning, or approval-before-action.
+- впечатления от первого запуска свежей копии репозитория;
+- отзывы агентства или оператора о реальном процессе бизнеса в сфере услуг;
+- конкретный пробел в настройке, Сводке владельца, Работе с клиентами, сметах, обновлении сайта, готовности к запуску, планировании расширений или согласовании до выполнения.
 
-Good first contributions are usually documentation, workflow output clarity, test coverage, and approval-boundary improvements. Avoid broad SaaS, auth, billing, CRM, accounting, payment, or live integration work unless there is an issue that explicitly scopes it.
+Для первых изменений обычно подходят документация, понятность результатов процессов, тестовое покрытие и улучшения границ согласования. Широкие задачи SaaS, авторизации, оплаты подписок, CRM, бухгалтерии, платежей и действующих интеграций требуют обращения с явно заданным объёмом работ.
 
-## Safety Rules
+## Правила безопасности
 
-Do not add behavior that silently sends emails, publishes websites, changes DNS, contacts customers, schedules calendar events, submits provider updates, or runs live connected actions.
+Не добавляйте поведение, которое незаметно отправляет письма, публикует сайты, меняет DNS, связывается с клиентами, создаёт события календаря, отправляет обновления провайдерам или выполняет внешние подключённые действия.
 
-Consequential actions must stay draft, preview, dry-run, or approval-gated by default.
+Действия с последствиями по умолчанию должны оставаться черновиками, предпросмотром или пробным запуском либо требовать согласования.
 
-Do not commit local business records from `.frontsmith/business/`, live credentials, customer data, or provider secrets.
+Не добавляйте в коммиты локальные записи бизнеса из `.frontsmith/business/`, рабочие учётные данные, сведения о клиентах и секреты провайдеров.
 
-## Pull Requests
+## Запрос на слияние
 
-Before opening a pull request, run:
+Перед созданием запроса на слияние выполните:
 
 ```bash
 npm run check
@@ -77,10 +77,10 @@ npm run build:demo
 npm test
 ```
 
-If your change touches deployment readiness, also run:
+Если изменение затрагивает готовность к публикации, также выполните:
 
 ```bash
 CONTACT_DELIVERY_MODE=resend CONTACT_TO_EMAIL=projects@acme.com CONTACT_FROM_EMAIL="Acme <hello@acme.com>" RESEND_API_KEY=re_test_frontsmith npm run deploy:check
 ```
 
-That command validates configuration shape only. It must not send email or deploy.
+Эта команда проверяет только структуру конфигурации. Она не должна отправлять письма или выполнять развёртывание.

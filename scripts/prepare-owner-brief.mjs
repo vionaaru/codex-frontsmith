@@ -10,7 +10,7 @@ const output = path.join(activityDir, "owner-brief.md");
 await mkdir(activityDir, { recursive: true });
 await writeFile(output, await ownerBrief());
 
-console.log(`Prepared Owner Brief: ${output}`);
+console.log(`Подготовлена сводка владельца: ${output}`);
 
 async function ownerBrief() {
   const [
@@ -35,104 +35,106 @@ async function ownerBrief() {
   const estimateCount = estimateDrafts.length;
 
   const summary = [
-    websiteReady ? "the website is ready for owner review" : "the website needs to be restored or updated",
-    `${replyCount} customer reply ${replyCount === 1 ? "draft is" : "drafts are"} waiting`,
-    `${estimateCount} estimate ${estimateCount === 1 ? "draft is" : "drafts are"} waiting`,
-    hasLaunchStatus ? "launch status is current" : "launch status needs refresh",
-    "live actions still need approval"
+    websiteReady ? "сайт готов к проверке владельцем" : "сайт нужно восстановить или обновить",
+    `Черновиков ответов на проверке: ${replyCount}`,
+    `Черновиков смет на проверке: ${estimateCount}`,
+    hasLaunchStatus ? "отчёт готовности к запуску есть" : "готовность к запуску нужно обновить",
+    "внешние действия требуют согласования"
   ];
 
   const changed = [
-    `Business profile loaded for ${business.businessName}`,
-    websiteReady ? "Website source is present at `website/index.html`" : "Website source is missing",
-    websiteReview ? `Website review is available at \`${displayPath(businessPath("launch", "website-review.md"))}\`` : null,
-    hasLaunchStatus ? `Launch status is available at \`${displayPath(businessPath("launch", "launch-status.md"))}\`` : null,
-    replyCount > 0 ? `${replyCount} customer reply ${replyCount === 1 ? "draft is" : "drafts are"} ready for review` : null,
-    estimateCount > 0 ? `${estimateCount} estimate ${estimateCount === 1 ? "draft is" : "drafts are"} ready for review` : null
+    `Загружен профиль бизнеса ${business.businessName}`,
+    websiteReady ? "Исходники сайта находятся в `website/index.html`" : "Исходники сайта отсутствуют",
+    websiteReview ? `Материалы проверки сайта: \`${displayPath(businessPath("launch", "website-review.md"))}\`` : null,
+    hasLaunchStatus ? `Статус запуска: \`${displayPath(businessPath("launch", "launch-status.md"))}\`` : null,
+    replyCount > 0 ? `Черновиков ответов для проверки: ${replyCount}` : null,
+    estimateCount > 0 ? `Черновиков смет для проверки: ${estimateCount}` : null
   ].filter(Boolean);
 
   const waiting = [
-    websiteReady ? "Review the included website before deployment" : "Restore or update the included website",
+    websiteReady ? "Проверьте сайт перед публикацией" : "Восстановите или обновите сайт",
     replyCount > 0
-      ? `${replyCount} customer reply ${replyCount === 1 ? "draft needs" : "drafts need"} owner review`
-      : "No customer reply drafts waiting",
+      ? `Черновиков ответов, требующих проверки владельцем: ${replyCount}`
+      : "Черновиков ответов на проверке нет",
     estimateCount > 0
-      ? `${estimateCount} estimate ${estimateCount === 1 ? "draft needs" : "drafts need"} owner review`
-      : "No estimate drafts waiting"
+      ? `Черновиков смет, требующих проверки владельцем: ${estimateCount}`
+      : "Черновиков смет на проверке нет"
   ];
 
   const blockers = [
-    hasLaunchStatus ? null : "Run `npm run launch:status` to refresh launch readiness",
-    hasIntegrationSettings ? null : "Review integration settings before connected actions",
-    "Live sends, deployment, provider changes, and connected mode remain blocked until owner approval"
+    hasLaunchStatus ? null : "Выполните `npm run launch:status` для обновления готовности к запуску",
+    hasIntegrationSettings ? null : "Проверьте настройки интеграций до внешних действий",
+    "Отправка, публикация, изменения сервисов и подключённый режим заблокированы до согласия владельца"
   ].filter(Boolean);
 
   const approvals = [
-    "Approve website copy and contact details before deployment",
+    "Согласуйте тексты сайта и контакты до публикации",
     replyCount > 0
-      ? `Approve customer reply before sending: \`${displayPath(replyDrafts[0])}\``
-      : "Approve the next customer reply before sending",
+      ? `Согласуйте ответ клиенту до отправки: \`${displayPath(replyDrafts[0])}\``
+      : "Согласуйте следующий ответ клиенту до отправки",
     estimateCount > 0
-      ? `Approve estimate assumptions before sending proposal material: \`${displayPath(estimateDrafts[0])}\``
-      : "Approve estimate assumptions before sending proposal material",
-    "Approve provider setup before enabling connected mode"
+      ? `Согласуйте допущения сметы до отправки предложения: \`${displayPath(estimateDrafts[0])}\``
+      : "Согласуйте допущения сметы до отправки предложения",
+    "Согласуйте настройку сервисов до включения подключённого режима"
   ];
 
   const nextActions = [
-    "Review the included website at `/website` or through `npm run preview:website`",
+    "Проверьте сайт по адресу `/website` или через `npm run preview:website`",
     replyCount > 0
-      ? `Review the customer reply draft: \`${displayPath(replyDrafts[0])}\``
-      : "Prepare a customer reply draft when the next inquiry arrives",
+      ? `Проверьте черновик ответа клиенту: \`${displayPath(replyDrafts[0])}\``
+      : "Подготовьте черновик ответа при следующем обращении",
     estimateCount > 0
-      ? `Review the estimate draft: \`${displayPath(estimateDrafts[0])}\``
-      : "Prepare an estimate draft when scope notes are ready"
+      ? `Проверьте черновик сметы: \`${displayPath(estimateDrafts[0])}\``
+      : "Подготовьте черновик сметы после уточнения объёма работ"
   ];
 
   const artifacts = [
-    ["Business profile", businessPath("business.json")],
-    ["Website review", websiteReview ? businessPath("launch", "website-review.md") : null],
-    ["Launch status", hasLaunchStatus ? businessPath("launch", "launch-status.md") : null],
-    ["Integration settings", hasIntegrationSettings ? businessPath("settings", "integrations.md") : null],
-    ["Reply draft", replyDrafts[0] ?? null],
-    ["Estimate draft", estimateDrafts[0] ?? null]
+    ["Профиль бизнеса", businessPath("business.json")],
+    ["Проверка сайта", websiteReview ? businessPath("launch", "website-review.md") : null],
+    ["Статус запуска", hasLaunchStatus ? businessPath("launch", "launch-status.md") : null],
+    ["Настройки интеграций", hasIntegrationSettings ? businessPath("settings", "integrations.md") : null],
+    ["Черновик ответа", replyDrafts[0] ?? null],
+    ["Черновик сметы", estimateDrafts[0] ?? null]
   ];
 
-  return `# Owner Brief
+  return `# Сводка владельца
 
-Business: ${business.businessName}
-Updated: ${new Date().toISOString()}
+Бизнес: ${business.businessName}
+Режим: ${business.demoMode ? "демонстрационный автосервис; черновики не являются реальными обращениями" : "рабочий профиль"}
+${business.bookingUrl ? `Внешняя запись: ${business.bookingUrl}; данные Booking Flow пока не импортируются.` : ""}
+Обновлено: ${new Date().toISOString()}
 
-## Executive Summary
+## Краткая сводка
 
-${business.businessName} is ready for owner review: ${sentenceList(summary)}. No live customer-facing action has been taken.
+${business.businessName}: материалы для проверки владельцем: ${sentenceList(summary)}. Внешние действия с клиентами не выполнялись.
 
-## Changed
+## Изменения
 
 ${markdownList(changed)}
 
-## Waiting
+## Ожидает проверки
 
 ${markdownList(waiting)}
 
-## Blocked
+## Заблокировано
 
 ${markdownList(blockers)}
 
-## Needs Approval
+## Требует согласования
 
 ${markdownList(approvals)}
 
-## Next Actions
+## Следующие действия
 
 ${numberedList(nextActions)}
 
-## Artifacts
+## Материалы
 
-${artifacts.map(([label, file]) => `- ${label}: ${file ? `\`${displayPath(file)}\`` : "not available yet"}`).join("\n")}
+${artifacts.map(([label, file]) => `- ${label}: ${file ? `\`${displayPath(file)}\`` : "пока нет"}`).join("\n")}
 
-## Safety Boundary
+## Границы безопасности
 
-This Owner Brief is local-only. It does not send emails, publish the website, change DNS, connect providers, or execute connected actions.
+Эта сводка хранится локально. Она не отправляет письма, не публикует сайт, не меняет DNS, не подключает сервисы и не выполняет внешние действия.
 `;
 }
 
@@ -142,7 +144,7 @@ async function readBusinessProfile() {
     return JSON.parse(await readFile(profilePath, "utf8"));
   } catch (error) {
     if (error && error.code === "ENOENT") {
-      throw new Error(`No business workspace found at ${profilePath}. Run npm run bootstrap first.`);
+      throw new Error(`Рабочие данные бизнеса не найдены: ${profilePath}. Сначала выполните npm run bootstrap.`);
     }
     throw error;
   }
@@ -192,11 +194,11 @@ function displayPath(file) {
 
 function sentenceList(items) {
   if (items.length <= 1) return items.join("");
-  return `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
+  return `${items.slice(0, -1).join("; ")}; ${items.at(-1)}`;
 }
 
 function markdownList(items) {
-  return items.length > 0 ? items.map((item) => `- ${item}`).join("\n") : "- None";
+  return items.length > 0 ? items.map((item) => `- ${item}`).join("\n") : "- Нет";
 }
 
 function numberedList(items) {

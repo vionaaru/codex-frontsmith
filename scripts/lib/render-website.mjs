@@ -40,18 +40,19 @@ async function readRequiredFile(file, message = null) {
     return await readFile(file, "utf8");
   } catch (error) {
     if (error && error.code === "ENOENT") {
-      throw new Error(message ?? `Required file not found: ${file}`);
+      throw new Error(message ?? `Не найден обязательный файл: ${file}`);
     }
     throw error;
   }
 }
 
 function missingInstanceMessage(profilePath) {
-  return `No business workspace found at ${profilePath}. Run npm run bootstrap first.`;
+  return `Рабочие данные бизнеса не найдены: ${profilePath}. Сначала выполните npm run bootstrap.`;
 }
 
 function buildReplacements(business) {
-  const websiteUrl = canonicalWebsiteUrl(business.websiteUrl ?? "https://acme.com");
+  const websiteUrl = canonicalWebsiteUrl(business.websiteUrl ?? "http://localhost:4173");
+  const bookingUrl = validatedBookingUrl(business.bookingUrl);
   const socialImage = absoluteUrl(websiteUrl, business.media?.socialImage ?? business.media?.heroImage ?? defaultImages.hero);
   const brandInitials = business.businessName
     .split(/\s+/)
@@ -61,15 +62,15 @@ function buildReplacements(business) {
     .join("");
 
   return {
-    seoTitle: escapeHtml(`${business.businessName} | Kitchen, Bath, and Living Space Remodeling`),
+    seoTitle: escapeHtml(`${business.businessName} | ${business.businessType || "Услуги"}`),
     seoDescription: escapeHtml(seoDescription(business)),
     canonicalUrl: escapeHtml(websiteUrl),
     ogTitle: escapeHtml(`${business.businessName} | ${displayLine(business.tagline)}`),
     ogImage: escapeHtml(socialImage),
-    ogImageAlt: escapeHtml(`${business.businessName} finished remodeling interior preview`),
+    ogImageAlt: escapeHtml(business.media?.heroImageAlt || `Услуги ${business.businessName}`),
     businessName: escapeHtml(business.businessName),
     businessType: escapeHtml(business.businessType),
-    brandTagline: escapeHtml(displayLine(business.brandTagline ?? "Crafted Home Remodeling")),
+    brandTagline: escapeHtml(displayLine(business.brandTagline ?? business.businessType ?? "Услуги")),
     tagline: escapeHtml(displayLine(business.tagline)),
     summary: escapeHtml(displayLine(business.summary)),
     brandInitials: escapeHtml(brandInitials),
@@ -80,44 +81,51 @@ function buildReplacements(business) {
     emailMailto: escapeHtml(`mailto:${business.contact.email}`),
     city: escapeHtml(business.contact.city),
     state: escapeHtml(business.contact.state),
-    cityState: escapeHtml(`${business.contact.city}, ${business.contact.state}`),
+    cityState: escapeHtml([...new Set([business.contact.city, business.contact.state].filter(Boolean))].join(", ")),
     heroImage: escapeHtml(business.media?.heroImage ?? defaultImages.hero),
+    heroImageAlt: escapeHtml(business.media?.heroImageAlt || `Услуги ${business.businessName}`),
+    bookingUrl: escapeHtml(bookingUrl),
+    bookingLabel: escapeHtml(business.bookingLabel || "Записаться"),
+    hoursLabel: escapeHtml(business.hours?.label || "Время работы уточняйте перед визитом"),
+    address: escapeHtml(business.contact.address || "Адрес уточняйте перед визитом"),
+    pricingNote: escapeHtml(business.pricingPolicy?.note || "Стоимость согласуется до начала работ"),
+    demoNotice: escapeHtml(business.demoMode ? "Учебная демонстрация. Контакты и цены — примеры. Запись открывается во внешнем сервисе; заявки не импортируются в Frontsmith." : ""),
     kitchenImage: escapeHtml(business.media?.kitchenImage ?? defaultImages.kitchen),
     bathroomImage: escapeHtml(business.media?.bathroomImage ?? defaultImages.bathroom),
     livingImage: escapeHtml(business.media?.livingImage ?? defaultImages.living),
     craftImage: escapeHtml(business.media?.craftImage ?? defaultImages.craft),
     faqImage: escapeHtml(business.media?.faqImage ?? defaultImages.faq),
     contactImage: escapeHtml(business.media?.contactImage ?? defaultImages.contact),
-    servicesTitle: escapeHtml(`Services | ${business.businessName}`),
+    servicesTitle: escapeHtml(`Услуги | ${business.businessName}`),
     servicesDescription: escapeHtml(
-      `Kitchen, bathroom, and living space remodeling services from ${business.businessName}`
+      `${business.services.map((service) => service.name).join(", ")} — ${business.businessName}`
     ),
-    contactTitle: escapeHtml(`Contact | ${business.businessName}`),
-    contactDescription: escapeHtml(`Contact ${business.businessName} to discuss a remodeling project`),
+    contactTitle: escapeHtml(`Контакты | ${business.businessName}`),
+    contactDescription: escapeHtml(`Свяжитесь с ${business.businessName}, чтобы обсудить услугу`),
     decisionIntro: escapeHtml(
-      "Start with the room, goal, constraints, timing, and clean next step"
+      "Начните с задачи, пожеланий и удобного времени"
     ),
     frontOfficePromise: escapeHtml(
-      `${business.businessName} helps homeowners turn early remodeling ideas into clear project requests with the right room, goals, photos, timeline, and contact path organized from the start.`
+      business.summary || `${business.businessName}: понятные услуги и согласование работ до начала выполнения.`
     ),
     serviceAreaIntro: escapeHtml(
-      "Share the project location so availability, travel time, site visits, and scheduling can be reviewed before the next step is confirmed."
+      "Уточните удобное место и время обслуживания перед записью."
     ),
     homepageContactText: escapeHtml(
-      "Start with your room, timeline, photos, and best contact path"
+      "Выберите услугу и удобный способ связи"
     ),
-    contactCta: escapeHtml(`Contact ${business.businessName}`),
+    contactCta: escapeHtml(`Связаться с ${business.businessName}`),
     servicesIntro: escapeHtml(
-      "Choose the room path first"
+      "Выберите услугу"
     ),
     servicesContactText: escapeHtml(
-      "Send the basic project details and review the cleanest path forward"
+      "Расскажите о проекте и выберите следующий шаг"
     ),
     contactIntro: escapeHtml(
-      "Share details for the first call"
+      "Расскажите о проекте перед первым звонком"
     ),
-    projectTypeDefault: escapeHtml(displayServiceName(business.services[0]?.name ?? "Kitchen Remodeling")),
-    serviceCards: serviceCards(business.services),
+    projectTypeDefault: escapeHtml(displayServiceName(business.services[0]?.name ?? "Услуга")),
+    serviceCards: serviceCards(business.services, business),
     serviceRows: serviceRows(business.services),
     serviceOptions: serviceOptions(business.services),
     serviceAreaPills: serviceAreaPills(business.serviceAreas),
@@ -126,15 +134,22 @@ function buildReplacements(business) {
   };
 }
 
-const defaultImages = {
-  hero: "/assets/acme-hero-remodel.jpg",
-  kitchen: "/assets/acme-kitchen-remodel.jpg",
-  bathroom: "/assets/acme-bathroom-remodel.jpg",
-  living: "/assets/acme-living-remodel.jpg",
-  craft: "/assets/acme-craft-detail.jpg",
-  faq: "/assets/acme-planning-faq.jpg",
-  contact: "/assets/acme-contact-planning.jpg"
-};
+const defaultImages = Object.fromEntries(
+  ["hero", "kitchen", "bathroom", "living", "craft", "faq", "contact"]
+    .map((key) => [key, "/assets/auto-workshop.png"])
+);
+
+export function validatedBookingUrl(value) {
+  if (!value) return "#contact";
+  const raw = String(value).trim();
+  let url;
+  try { url = new URL(raw); }
+  catch { throw new Error("bookingUrl должен быть абсолютной ссылкой HTTP или HTTPS"); }
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) {
+    throw new Error("bookingUrl должен использовать HTTP или HTTPS без учётных данных");
+  }
+  return raw;
+}
 
 const phoneKeypad = {
   A: "2",
@@ -182,7 +197,7 @@ function whatsappHref(phone) {
 
 function canonicalWebsiteUrl(value) {
   const raw = String(value ?? "").trim();
-  if (!raw) return "https://acme.com";
+  if (!raw) return "http://localhost:4173";
   const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`;
   return withProtocol.replace(/\/+$/, "");
 }
@@ -195,7 +210,7 @@ function absoluteUrl(base, value) {
 }
 
 function seoDescription(business) {
-  return `${displayLine(business.summary)} from ${business.businessName} with clear scope, practical guidance, project photos, timeline, and contact options from the start`;
+  return `${displayLine(business.summary)} от ${business.businessName}: понятный объём работ, практические рекомендации, сроки и удобная связь`;
 }
 
 function updateWebsiteFile(content, replacements) {
@@ -223,7 +238,7 @@ function replaceMarkedAttributes(content, replacements) {
     return spec.split(",").reduce((updatedTag, instruction) => {
       const [attribute, key] = instruction.split(":").map((part) => part.trim());
       if (!attribute || !key) {
-        throw new Error(`Invalid website attribute instruction: ${instruction}`);
+        throw new Error(`Неверная инструкция атрибута сайта: ${instruction}`);
       }
       return setAttribute(updatedTag, attribute, replacementFor(replacements, key));
     }, tag);
@@ -240,7 +255,7 @@ function setAttribute(tag, attribute, value) {
 
 function replacementFor(replacements, key) {
   if (!(key in replacements)) {
-    throw new Error(`Missing website replacement: ${key}`);
+    throw new Error(`Нет подстановки сайта: ${key}`);
   }
   return replacements[key];
 }
@@ -251,13 +266,13 @@ function escapeRegExp(value) {
 
 function assertNoLegacyTokens(content, file) {
   if (/\{\{[a-zA-Z0-9]+\}\}/.test(content)) {
-    throw new Error(`Legacy website token found in ${file}`);
+    throw new Error(`В ${file} найден устаревший шаблонный маркер`);
   }
 }
 
 function assertHasMarkers(content, file) {
   if (!content.includes("data-frontsmith-")) {
-    throw new Error(`Website file is missing Frontsmith update markers: ${file}`);
+    throw new Error(`В файле ${file} нет маркеров обновления Frontsmith`);
   }
 }
 
@@ -280,42 +295,32 @@ async function updateWebsiteFiles(replacements) {
   }
 }
 
-function serviceCards(services) {
-  const cards = services
-    .map(
-      (service, index) => `<article class="service-card">
-            <img src="${escapeHtml(imageForService(service.name))}" alt="${escapeHtml(imageAltForService(service.name))}" />
-            <div>
+function serviceCards(services, business) {
+  const bookingUrl = validatedBookingUrl(business.bookingUrl);
+  const currency = business.currency || "RUB";
+  const cards = services.map((service, index) => {
+    const price = service.priceFrom === 0 ? "Бесплатно" :
+      typeof service.priceFrom === "number" && Number.isFinite(service.priceFrom) && service.priceFrom > 0
+        ? `от ${new Intl.NumberFormat("ru-RU", { style: "currency", currency, maximumFractionDigits: 0 }).format(service.priceFrom)}`
+        : "По согласованию";
+    const duration = Number.isFinite(service.durationMinutes) && service.durationMinutes > 0
+      ? `${service.durationMinutes} мин` : "Время уточняется";
+    const external = bookingUrl.startsWith("http:") || bookingUrl.startsWith("https:");
+    return `<article class="service-card" data-service-category="${escapeHtml(service.category || "general")}">
+            <header class="service-card-header">
               <span class="item-index">${String(index + 1).padStart(2, "0")}</span>
-              <h3>${escapeHtml(displayServiceName(service.name))}</h3>
-              <p>${escapeHtml(service.description)}</p>
-            </div>
-          </article>`
-    )
-    .join("\n          ");
+              <h3 class="service-name">${escapeHtml(service.name)}</h3>
+            </header>
+            <p class="service-description">${escapeHtml(service.description || "Объём работ согласуется перед выполнением.")}</p>
+            <footer class="service-meta"><strong class="service-price">${escapeHtml(price)}</strong><span class="service-duration">${escapeHtml(duration)}</span></footer>
+            <a class="booking-link" data-booking-link href="${escapeHtml(bookingUrl)}"${external ? ' target="_blank" rel="noopener noreferrer"' : ""}>${escapeHtml(business.bookingLabel || "Записаться")}</a>
+          </article>`;
+  }).join("\n          ");
   return `\n          ${cards}\n        `;
 }
 
-function imageForService(name) {
-  const normalized = String(name).toLowerCase();
-  if (normalized.includes("kitchen")) return defaultImages.kitchen;
-  if (normalized.includes("bath")) return defaultImages.bathroom;
-  if (normalized.includes("living")) return defaultImages.living;
-  return defaultImages.hero;
-}
-
-function imageAltForService(name) {
-  const normalized = String(name).toLowerCase();
-  if (normalized.includes("kitchen")) return "Finished kitchen remodel with bright cabinetry and counters";
-  if (normalized.includes("bath")) return "Finished bathroom remodel with clean tile and fixtures";
-  if (normalized.includes("living")) return "Finished living room remodel with built-in storage and soft seating";
-  return "Finished remodeled living space with warm neutral materials";
-}
-
 function displayServiceName(name) {
-  return String(name)
-    .replace(/\bRemodeling\b/g, "remodeling")
-    .replace(/\bSpaces\b/g, "spaces");
+  return String(name);
 }
 
 function serviceRows(services) {
@@ -332,7 +337,7 @@ function serviceRows(services) {
 
 function serviceOptions(services) {
   const serviceNames = services.map((service) => displayServiceName(service.name));
-  const options = [...serviceNames, "Other"]
+  const options = [...serviceNames, "Другое"]
     .filter((name, index, names) => names.indexOf(name) === index)
     .map((service, index) => {
       const name = escapeHtml(service);
@@ -365,117 +370,117 @@ function displayLine(value) {
 }
 
 function websiteReview(profile, { root }) {
-  return `# Website Review
+  return `# Проверка сайта
 
-Business: ${profile.businessName}
-Status: Preview, needs owner review, not deployed
-Updated: ${new Date().toISOString()}
+Бизнес: ${profile.businessName}
+Статус: предпросмотр, нужна проверка владельцем, не опубликован
+Обновлено: ${new Date().toISOString()}
 
-## Executive Summary
+## Краткая сводка
 
-The committed website was refreshed from the local business profile for ${profile.businessName}. Review the public copy, contact paths, services, service areas, search/social metadata, and contact delivery setup before deployment. No website has been deployed.
+Сайт обновлён из локального профиля ${profile.businessName}. До публикации проверьте тексты, контакты, услуги, территорию обслуживания, метаданные поиска и соцсетей, доставку заявок. Сайт не опубликован.
 
-## Changed Files
+## Изменённые файлы
 
 - website/index.html
 - ${businessDisplayPath(root, "launch", "website-review.md")}
 - ${businessDisplayPath(root, "activity", "latest-website-update.md")}
 
-## Updated From Business Profile
+## Обновлено из профиля бизнеса
 
-- Business name: ${profile.businessName}
-- Website URL: ${canonicalWebsiteUrl(profile.websiteUrl)}
-- Phone: ${profile.contact.phone}
+- Название бизнеса: ${profile.businessName}
+- URL сайта: ${canonicalWebsiteUrl(profile.websiteUrl)}
+- Телефон: ${profile.contact.phone}
 - Email: ${profile.contact.email}
-- Service areas: ${profile.serviceAreas.join(", ")}
-- Services: ${profile.services.map((service) => service.name).join(", ")}
-- Brand voice: ${profile.brandVoice}
+- Территория обслуживания: ${profile.serviceAreas.join(", ")}
+- Услуги: ${profile.services.map((service) => service.name).join(", ")}
+- Тон общения: ${profile.brandVoice}
 
-## Source To Website Summary
+## Связь профиля и сайта
 
-- Source profile: ${businessDisplayPath(root, "business.json")}
-- Public website source: website/index.html
-- Launch review: ${businessDisplayPath(root, "launch", "website-review.md")}
-- Activity record: ${businessDisplayPath(root, "activity", "latest-website-update.md")}
+- Исходный профиль: ${businessDisplayPath(root, "business.json")}
+- Исходники публичного сайта: website/index.html
+- Проверка запуска: ${businessDisplayPath(root, "launch", "website-review.md")}
+- Запись действия: ${businessDisplayPath(root, "activity", "latest-website-update.md")}
 
-## Owner Review
+## Проверка владельцем
 
-- Confirm the business name, website URL, phone, email, city, and state
-- Confirm service names, descriptions, and service area notes
-- Confirm homepage promise, calls to action, and contact path
-- Confirm no public claim overstates the business
-- Confirm photos are approved for public use
-- Confirm contact delivery environment variables before relying on form email
+- Проверьте название бизнеса, URL сайта, телефон, email, город и регион
+- Проверьте названия и описания услуг, территорию обслуживания
+- Проверьте обещания главной страницы, призывы к действию и способы связи
+- Убедитесь, что публичные утверждения не преувеличивают возможности бизнеса
+- Согласуйте фотографии для публичного использования
+- Проверьте переменные доставки заявок до использования формы
 
-## Local Preview
+## Локальный предпросмотр
 
-1. Run \`npm run preview:website\`
-2. Open the local preview URL
-3. Review \`/website\` inside the hosted Control Panel build when checking the full evaluator journey
+1. Выполните \`npm run preview:website\`
+2. Откройте адрес локального предпросмотра
+3. Проверьте \`/website\` в сборке панели демонстрации для проверки полного сценария
 
-## Deployment Blockers
+## Препятствия публикации
 
-- Owner approval is required before deployment
-- Vercel project and domain settings must be confirmed before publishing
-- Resend/contact delivery environment variables must be configured before relying on form email
-- DNS and provider changes remain blocked until explicitly approved
+- Перед публикацией нужно согласие владельца
+- До публикации проверьте проект Vercel и настройки домена
+- До использования формы настройте переменные Resend и доставки заявок
+- Изменения DNS и сервисов заблокированы до явного согласования
 
-## Artifacts
+## Материалы
 
-- Website source: website/index.html
-- Website styles: website/styles.css
-- Website script: website/script.js
-- Contact function: api/contact.js
-- Review note: ${businessDisplayPath(root, "launch", "website-review.md")}
-- Activity note: ${businessDisplayPath(root, "activity", "latest-website-update.md")}
+- Исходники сайта: website/index.html
+- Стили сайта: website/styles.css
+- Скрипт сайта: website/script.js
+- Обработчик формы: api/contact.js
+- Материалы проверки: ${businessDisplayPath(root, "launch", "website-review.md")}
+- Запись действия: ${businessDisplayPath(root, "activity", "latest-website-update.md")}
 
-## Safety Boundary
+## Границы безопасности
 
-This website update is local-only. It does not deploy the website, change DNS, connect providers, configure Resend, or send customer messages.
+Это локальное обновление сайта. Оно не публикует сайт, не меняет DNS, не подключает сервисы, не настраивает Resend и не отправляет сообщения клиентам.
 `;
 }
 
 function latestWebsiteUpdate(profile, { root }) {
-  return `# Latest Website Update
+  return `# Последнее обновление сайта
 
-Business: ${profile.businessName}
-Status: Local update, needs owner review
-Updated: ${new Date().toISOString()}
+Бизнес: ${profile.businessName}
+Статус: локальное обновление, нужна проверка владельцем
+Обновлено: ${new Date().toISOString()}
 
-## Executive Summary
+## Краткая сводка
 
-Updated the committed website from the local business profile and wrote the launch review note. The website is ready for local preview, not deployment.
+Сайт обновлён из профиля бизнеса, материалы проверки сохранены. Сайт готов к локальному предпросмотру, но не к публикации.
 
-## Changed Files
+## Изменённые файлы
 
 - website/index.html
 - ${businessDisplayPath(root, "launch", "website-review.md")}
 - ${businessDisplayPath(root, "activity", "latest-website-update.md")}
 
-## Updated
+## Обновлено
 
-- Business identity and contact path
-- Services and service area content
-- Homepage copy and calls to action
-- SEO, canonical, Open Graph, and Twitter metadata
-- Contact form wiring remains pointed at api/contact.js
+- Сведения о бизнесе и способы связи
+- Услуги и территория обслуживания
+- Тексты главной страницы и призывы к действию
+- SEO, canonical и метаданные Open Graph и Twitter
+- Форма заявки по-прежнему подключена к api/contact.js
 
-## Before Deployment
+## Перед публикацией
 
-- Preview locally with \`npm run preview:website\`
-- Run \`npm run deploy:check\`
-- Review ${businessDisplayPath(root, "launch", "website-review.md")}
-- Approve deployment, DNS, and contact delivery setup explicitly
+- Проверьте локально через \`npm run preview:website\`
+- Выполните \`npm run deploy:check\`
+- Проверьте ${businessDisplayPath(root, "launch", "website-review.md")}
+- Явно согласуйте публикацию, DNS и настройку доставки заявок
 
-## Artifacts
+## Материалы
 
-- Website source: website/index.html
-- Review note: ${businessDisplayPath(root, "launch", "website-review.md")}
-- Activity note: ${businessDisplayPath(root, "activity", "latest-website-update.md")}
+- Исходники сайта: website/index.html
+- Материалы проверки: ${businessDisplayPath(root, "launch", "website-review.md")}
+- Запись действия: ${businessDisplayPath(root, "activity", "latest-website-update.md")}
 
-## Safety Boundary
+## Границы безопасности
 
-This update did not deploy, change DNS, configure contact delivery, or send customer messages.
+Обновление не публиковало сайт, не меняло DNS, не настраивало доставку заявок и не отправляло сообщения клиентам.
 `;
 }
 

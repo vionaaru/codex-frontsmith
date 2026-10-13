@@ -1,11 +1,11 @@
-# Neura Connected Mode
+# Подключённый режим Neura
 
-Frontsmith can use Neura as the authority rail for consequential actions.
+Frontsmith может использовать Neura для контроля полномочий при значимых внешних действиях.
 
-Connected mode should keep Frontsmith's approval-first flow and add governed preflight before execution:
+Подключённый режим сохраняет согласование Frontsmith и добавляет контролируемую предварительную проверку:
 
 ```text
-draft -> owner review -> Neura Registry and Relay preflight -> approved adapter execution -> local receipt reference
+черновик -> проверка владельцем -> предварительная проверка Neura Registry и Relay -> согласованный запуск адаптера -> ссылка локальной записи
 ```
 
-Frontsmith remains the business kit. Neura supplies governed action identity, preflight, and traceable receipts.
+Frontsmith остаётся набором для бизнеса. Neura обеспечивает идентификацию действий, предварительную проверку и прослеживаемые записи решений.

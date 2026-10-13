@@ -1,47 +1,47 @@
-name: Product gap
-description: Suggest a focused improvement inside the Frontsmith front-office scope
-title: "[Gap]: "
+name: Недостающая возможность
+description: Предложите конкретное улучшение цифрового фронт-офиса Frontsmith
+title: "[Возможность]: "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Frontsmith v1.0 is intentionally narrow: setup, Owner Brief, Customer Desk, estimates, website updates, launch readiness, extension planning, and owner approval before live action.
+        Frontsmith v1.0 ограничен настройкой, сводкой владельца, работой с клиентами, сметами, обновлением сайта, готовностью запуска, планированием расширений и согласованием внешних действий.
   - type: textarea
     id: gap
     attributes:
-      label: What is missing?
-      description: Describe the gap in the current front-office workflow.
+      label: Чего не хватает?
+      description: Опишите пробел текущего процесса цифрового офиса.
     validations:
       required: true
   - type: textarea
     id: user
     attributes:
-      label: Who needs this?
-      description: Name the operator or business scenario.
+      label: Кому это нужно?
+      description: Укажите роль оператора или сценарий бизнеса.
     validations:
       required: true
   - type: textarea
     id: workflow
     attributes:
-      label: Expected workflow
-      description: Describe the prompt, command, output, file, or approval state this should create.
+      label: Ожидаемый процесс
+      description: Опишите запрос, команду, результат, файл или состояние согласования.
     validations:
       required: true
   - type: dropdown
     id: area
     attributes:
-      label: Area
+      label: Область
       options:
-        - Business setup
-        - Owner Brief
-        - Customer Desk
-        - Estimates and proposals
-        - Website
-        - Launch readiness
-        - Extension planning
-        - Documentation
-        - Other
+        - Настройка бизнеса
+        - Сводка владельца
+        - Работа с клиентами
+        - Сметы и предложения
+        - Сайт
+        - Готовность запуска
+        - Планирование расширений
+        - Документация
+        - Другое
     validations:
       required: true
 

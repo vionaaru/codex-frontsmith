@@ -5,9 +5,9 @@ import { businessPath, businessRoot } from "./lib/paths.mjs";
 const root = businessRoot();
 const business = await readBusinessProfile();
 const actionType = readArg("--action-type") ?? "email";
-const title = readArg("--title") ?? "Send consultation follow-up";
-const target = readArg("--target") ?? "Customer follow-up";
-const evidence = readArg("--evidence") ?? "Owner-provided customer notes";
+const title = readArg("--title") ?? "Отправить сообщение после консультации";
+const target = readArg("--target") ?? "Повторный контакт с клиентом";
+const evidence = readArg("--evidence") ?? "Заметки о клиенте от владельца";
 const outputDir = businessPath("connected-actions");
 const slug = slugify(`${actionType}-${title}`);
 const markdownFile = path.join(outputDir, `${slug}-receipt.md`);
@@ -18,9 +18,9 @@ await mkdir(outputDir, { recursive: true });
 await writeFile(jsonFile, `${JSON.stringify(record, null, 2)}\n`);
 await writeFile(markdownFile, renderReceipt({ record, markdownFile, jsonFile }));
 
-console.log(`Prepared connected-action receipt: ${markdownFile}`);
-console.log("Mode: dry-run only");
-console.log("Execution: blocked until owner approval and connected-mode preflight");
+console.log(`Подготовлена запись подключаемого действия: ${markdownFile}`);
+console.log("Режим: только пробный запуск");
+console.log("Выполнение заблокировано до согласования владельцем и предварительной проверки подключённого режима");
 
 function readArg(name) {
   const index = process.argv.indexOf(name);
@@ -34,7 +34,7 @@ async function readBusinessProfile() {
     return JSON.parse(await readFile(profilePath, "utf8"));
   } catch (error) {
     if (error && error.code === "ENOENT") {
-      throw new Error(`No business workspace found at ${profilePath}. Run npm run bootstrap first.`);
+      throw new Error(`Рабочие данные бизнеса не найдены: ${profilePath}. Сначала выполните npm run bootstrap.`);
     }
     throw error;
   }
@@ -71,75 +71,75 @@ function connectedActionRecord({ actionType, title, target, evidence }) {
       owner_approval_required: true,
       approval_status: "not_approved",
       required_before_execution: [
-        "owner approval of the exact action",
-        "confirmed target and payload",
-        "confirmed connector and account",
-        "connected-mode Neura Relay preflight when enabled",
-        "receipt review before adapter execution"
+        "согласие владельца на конкретное действие",
+        "подтверждённые цель и содержимое",
+        "подтверждённые коннектор и учётная запись",
+        "предварительная проверка Neura Relay в подключённом режиме",
+        "проверка записи до запуска адаптера"
       ]
     },
     adapter_boundary: {
       live_adapter_enabled: false,
       blocked_adapters: ["email", "publish", "file", "calendar", "provider_setup"],
-      reason: "Frontsmith records the proposed connected action locally before any live provider action is allowed."
+      reason: "Frontsmith записывает предлагаемое действие локально до разрешения внешних действий сервиса."
     },
     created_at: new Date().toISOString()
   };
 }
 
 function renderReceipt({ record, markdownFile, jsonFile }) {
-  return `# Connected-Action Receipt
+  return `# Запись подключаемого действия
 
-Business: ${record.business.name}
-Status: Dry run, needs owner review, not executed
-Generated: ${record.created_at}
+Бизнес: ${record.business.name}
+Статус: пробный запуск, нужна проверка владельцем, не выполнено
+Создано: ${record.created_at}
 
-## Executive Summary
+## Краткая сводка
 
-Frontsmith prepared a local receipt-style record for a proposed connected action. No provider adapter ran. No email was sent, website was published, file was uploaded, calendar event was created, provider was configured, or external action was executed.
+Frontsmith создал локальную запись предлагаемого внешнего действия. Адаптеры не запускались: письма не отправлены, сайт не опубликован, файлы не загружены, встречи не созданы, сервисы не настроены.
 
-## Proposed Action
+## Предлагаемое действие
 
-- Action ref: \`${record.proposed_action.action_ref}\`
-- Type: ${record.proposed_action.type}
-- Title: ${record.proposed_action.title}
-- Target: ${record.proposed_action.target}
-- Evidence: ${record.proposed_action.evidence}
-- Execution default: ${record.proposed_action.execution_default}
+- Ссылка действия: \`${record.proposed_action.action_ref}\`
+- Тип: ${record.proposed_action.type}
+- Название: ${record.proposed_action.title}
+- Цель: ${record.proposed_action.target}
+- Основание: ${record.proposed_action.evidence}
+- Выполнение по умолчанию: заблокировано (${record.proposed_action.execution_default})
 
-## Neura References
+## Ссылки Neura
 
-- Registry ref: \`${record.authority_refs.neura_registry_ref}\`
-- Relay Action Card ref: \`${record.authority_refs.neura_relay_action_card_ref}\`
-- Relay Decision Receipt ref: \`${record.authority_refs.neura_relay_decision_receipt_ref}\`
-- Trace ref: \`${record.authority_refs.trace_ref}\`
+- Ссылка Registry: \`${record.authority_refs.neura_registry_ref}\`
+- Ссылка Relay Action Card: \`${record.authority_refs.neura_relay_action_card_ref}\`
+- Ссылка Relay Decision Receipt: \`${record.authority_refs.neura_relay_decision_receipt_ref}\`
+- Ссылка трассировки: \`${record.authority_refs.trace_ref}\`
 
-These refs are local placeholders until connected client mode is approved and a real Neura Relay preflight is run.
+Эти ссылки — локальные заготовки до согласования подключённого режима и настоящей предварительной проверки Neura Relay.
 
-## Approval Gate
+## Условия согласования
 
-- Owner approval required: ${record.approval_gate.owner_approval_required ? "yes" : "no"}
-- Approval status: ${record.approval_gate.approval_status}
+- Нужно согласие владельца: ${record.approval_gate.owner_approval_required ? "да" : "нет"}
+- Статус согласования: не согласовано (${record.approval_gate.approval_status})
 
-Required before execution:
+Требуется до выполнения:
 
 ${record.approval_gate.required_before_execution.map((item) => `- ${item}`).join("\n")}
 
-## Adapter Boundary
+## Границы адаптера
 
-- Live adapter enabled: ${record.adapter_boundary.live_adapter_enabled ? "yes" : "no"}
-- Blocked adapters: ${record.adapter_boundary.blocked_adapters.join(", ")}
-- Reason: ${record.adapter_boundary.reason}
+- Рабочий адаптер включён: ${record.adapter_boundary.live_adapter_enabled ? "да" : "нет"}
+- Заблокированные адаптеры: ${record.adapter_boundary.blocked_adapters.join(", ")}
+- Причина: ${record.adapter_boundary.reason}
 
-## Artifacts
+## Материалы
 
-- Markdown receipt: \`${displayPath(markdownFile)}\`
-- JSON receipt: \`${displayPath(jsonFile)}\`
-- Business profile: \`${displayPath(businessPath("business.json"))}\`
+- Запись Markdown: \`${displayPath(markdownFile)}\`
+- Запись JSON: \`${displayPath(jsonFile)}\`
+- Профиль бизнеса: \`${displayPath(businessPath("business.json"))}\`
 
-## Safety Boundary
+## Границы безопасности
 
-This connected-action receipt is local-only. It does not send email, publish the website, change DNS, create calendar events, upload files, export data, configure providers, or execute connected actions.
+Эта запись хранится локально. Она не отправляет письма, не публикует сайт, не меняет DNS, не создаёт встречи, не загружает файлы, не экспортирует данные, не настраивает сервисы и не выполняет внешние действия.
 `;
 }
 
@@ -147,7 +147,7 @@ function slugify(value) {
   return String(value)
     .toLowerCase()
     .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
 }

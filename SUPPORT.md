@@ -1,36 +1,36 @@
-# Support
+# Поддержка
 
-Frontsmith is an open-source kit. The fastest support path is to open a focused GitHub issue with the command you ran, what you expected, what happened, and the relevant terminal output.
+Frontsmith — набор инструментов с открытым исходным кодом. Самый быстрый способ получить поддержку — создать конкретную задачу в GitHub: указать выполненную команду, ожидаемый результат, фактический результат и относящийся к проблеме вывод терминала.
 
-## Good Issues
+## Подходящие темы задач
 
-Use issues for:
+Создавайте задачи для:
 
-- first-run feedback from a fresh clone;
-- agency or operator adoption feedback;
-- setup problems;
-- workflow command failures;
-- documentation gaps;
-- website preview issues;
-- launch-readiness check failures;
-- product gaps inside the v1.0 front-office scope.
+- обратной связи о первом запуске свежего клона;
+- обратной связи о внедрении от агентств и операторов;
+- проблем с настройкой;
+- ошибок команд рабочих процессов;
+- пробелов в документации;
+- проблем с предварительным просмотром сайта;
+- ошибок проверки готовности к запуску;
+- недостающих возможностей в пределах цифрового офиса версии v1.0.
 
-## Not Support
+## Ограничения поддержки
 
-Do not include private customer data, live credentials, API keys, provider account details, or real contact-form submissions in a public issue.
+Не включайте в публичную задачу приватные данные клиентов, действующие учётные данные, ключи API, сведения об аккаунтах провайдеров или реальные заявки из контактной формы.
 
-Frontsmith does not provide live business operations, legal advice, accounting advice, payment processing, or production deployment services by default.
+По умолчанию Frontsmith не предоставляет услуги текущего управления бизнесом, юридические и бухгалтерские консультации, обработку платежей или развёртывание в рабочей среде.
 
-## Useful Checks
+## Полезные проверки
 
-Before filing an issue, run:
+Перед созданием задачи выполните:
 
 ```bash
 npm run check
 npm test
 ```
 
-If the issue is about the hosted Control Panel or website build, also run:
+Если проблема связана с размещённой панелью управления или сборкой сайта, также выполните:
 
 ```bash
 npm run build:demo

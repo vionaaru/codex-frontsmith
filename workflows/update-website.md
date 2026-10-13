@@ -1,15 +1,15 @@
-# Workflow: Update Website
+# Процесс: обновление сайта
 
-Use this workflow to update the website from the local business profile.
+Обновите сайт из локального профиля бизнеса.
 
-## Inputs
+## Входные данные
 
-- business profile
-- services
-- contact details
-- brand voice
+- профиль бизнеса
+- услуги
+- контакты
+- тон общения
 
-## Website Files
+## Файлы сайта
 
 ```text
 website/index.html
@@ -18,33 +18,33 @@ website/script.js
 website/frontsmith-mark.svg
 ```
 
-## Operator Review
+## Проверка оператором
 
-After update, Frontsmith should write a reviewable launch note and activity note:
+После обновления Frontsmith сохраняет материалы проверки запуска и запись действия:
 
 ```text
 .frontsmith/business/launch/website-review.md
 .frontsmith/business/activity/latest-website-update.md
 ```
 
-The review output should include:
+Отчёт проверки должен содержать:
 
-- executive summary;
-- changed files;
-- updated business-profile fields;
-- source-to-website summary;
-- local preview instructions;
-- deployment blockers;
-- artifacts;
-- safety boundary.
+- краткую сводку;
+- изменённые файлы;
+- обновлённые поля профиля;
+- связь профиля и сайта;
+- инструкции локального предпросмотра;
+- препятствия публикации;
+- материалы;
+- границы безопасности.
 
-Ask the owner to review:
+Предложите владельцу проверить:
 
-- business name and contact information;
-- service names and descriptions;
-- calls to action;
-- claims that should be softened or removed.
+- название бизнеса и контакты;
+- названия и описания услуг;
+- призывы к действию;
+- утверждения, которые нужно смягчить или удалить.
 
-## Safety
+## Безопасность
 
-Updating the website is local-only. It must not deploy, change DNS, configure providers, or rely on live contact delivery until the owner explicitly approves those actions.
+Обновление локальное. Публикация, изменение DNS, настройка сервисов и реальная доставка заявок требуют явного согласия владельца.

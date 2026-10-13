@@ -1,25 +1,25 @@
-name: First-run feedback
-description: Share what happened when you cloned and tried Frontsmith
-title: "[First run]: "
+name: Отзыв о первом запуске
+description: Расскажите о результатах клонирования и первого знакомства с Frontsmith
+title: "[Первый запуск]: "
 labels: ["feedback", "activation"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for trying Frontsmith. Do not include credentials, private customer data, API keys, provider account details, or real business records.
+        Спасибо за знакомство с Frontsmith. Не включайте секреты, приватные данные клиентов, API-ключи, сведения об аккаунтах сервисов и реальные записи бизнеса.
   - type: textarea
     id: goal
     attributes:
-      label: What were you trying to do?
-      description: Tell us whether you were testing as a developer, agency, or operator.
-      placeholder: I wanted to see whether Frontsmith could...
+      label: Что вы хотели сделать?
+      description: "Укажите вашу роль: разработчик, агентство или оператор."
+      placeholder: Я хотел проверить, может ли Frontsmith...
     validations:
       required: true
   - type: textarea
     id: commands
     attributes:
-      label: Commands you ran
-      description: Paste the commands you tried.
+      label: Выполненные команды
+      description: Вставьте использованные команды.
       render: shell
       placeholder: |
         npm install
@@ -32,31 +32,31 @@ body:
   - type: textarea
     id: result
     attributes:
-      label: What happened?
-      description: Include the result, error, confusing step, or useful output.
+      label: Что произошло?
+      description: Укажите результат, ошибку, непонятный шаг или полезный вывод.
     validations:
       required: true
   - type: textarea
     id: useful
     attributes:
-      label: What felt useful?
-      description: Name any part of the setup, Owner Brief, Customer Desk, estimate flow, website update, or approval boundary that made sense.
+      label: Что оказалось полезным?
+      description: Укажите полезную часть настройки, сводки владельца, работы с клиентами, смет, обновления сайта или согласования.
   - type: textarea
     id: improvement
     attributes:
-      label: One improvement that would make adoption easier
-      description: Keep it narrow and practical.
+      label: Одно улучшение для упрощения внедрения
+      description: Предлагайте конкретное практическое изменение.
     validations:
       required: true
   - type: input
     id: environment
     attributes:
-      label: Environment
-      placeholder: "macOS 15, Node 24, Codex desktop"
+      label: Окружение
+      placeholder: "Windows 11, Node 24, настольный Codex"
   - type: checkboxes
     id: safety
     attributes:
-      label: Safety check
+      label: Проверка безопасности
       options:
-        - label: I removed credentials, customer data, and private business records from this issue
+        - label: Я удалил секреты, данные клиентов и приватные записи бизнеса из обращения
           required: true

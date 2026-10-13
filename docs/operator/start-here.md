@@ -1,198 +1,220 @@
-# Operator Start Here
+# Начало работы для оператора
 
-Frontsmith is designed to be opened in Codex.
+Frontsmith предназначен для работы в Codex.
 
-Start with one plain instruction:
+Назначение полей конфигурации и переменных окружения: [справочник настроек](settings.md).
 
-```text
-Bootstrap my remodeling business with Frontsmith.
-```
-
-Codex should guide the setup, run local scripts when needed, prepare the Owner Brief, update the website, and keep the ongoing Customer Desk, replies, follow-ups, estimates, and approvals ready for owner review.
-
-You operate Frontsmith through prompts and reviewable outputs, not through a separate SaaS dashboard. Codex is the working surface; `.frontsmith/business/` and `website/` are the source-of-truth files.
-
-Example operating loop:
+Начните с простой инструкции:
 
 ```text
-Run today's Owner Brief for Acme.
-Prepare a reply for Jamie's kitchen request.
-Draft the estimate path and show what still needs owner approval.
-Update the website services and show me the changed files.
-Prepare an extension plan for consultation scheduling.
+Настрой Frontsmith для моего автосервиса.
 ```
 
-Each run should return a clear formatted response, point to the generated files, and stop before sending, publishing, or connecting live providers unless the owner explicitly approves that action.
+Codex должен помочь с настройкой, при необходимости запустить локальные скрипты, подготовить Сводку владельца, обновить сайт и подготовить обращения клиентов, ответы, повторные контакты, сметы и согласования к проверке владельцем.
 
-## First Run
+Вы управляете Frontsmith через запросы и проверяемые результаты. Рабочая среда — Codex; файлы в `.frontsmith/business/` и `website/` служат основным источником данных.
 
-For your business, give Codex the basic facts:
+Пример рабочего цикла:
 
 ```text
-Set up Frontsmith for Acme.
-Service areas for launch planning: Primary Service Area, Nearby Communities, Surrounding Service Area.
-Services: kitchen remodeling, bathroom remodeling, living spaces.
-Phone: 1-800-123-ACME.
-Email: projects@acme.com.
-Prepare the Owner Brief, update the website, and show me what needs review.
-Prepare the first customer reply and estimate path if there is an open request.
+Подготовь сегодняшнюю Сводку владельца для АвтоРитм.
+Подготовь ответ на заявку Ивана о диагностике ходовой.
+Набросай план подготовки сметы и покажи, что ещё требует согласования владельца.
+Обнови услуги на сайте и покажи изменённые файлы.
+Подготовь план расширения для записи на консультации.
 ```
 
-Codex should create the local business workspace, prepare the Owner Brief, update `website/`, create reviewable Customer Desk and estimate files when needed, and point you to the review files.
+Каждый запуск должен возвращать понятный, оформленный ответ и ссылки на созданные файлы. Отправка, публикация и подключение внешних сервисов требуют явного согласования владельца.
 
-Then run the first-run readiness check:
+## Первый запуск
+
+По умолчанию демонстрация использует автосервис «АвтоРитм». Общий начальный профиль — `blueprints/auto-service/business.example.json`. Его локальная рабочая копия создаётся в `.frontsmith/business/business.json`:
+
+```bash
+npm run bootstrap
+npm run first-run:status
+npm run owner:brief
+npm run preview:website
+```
+
+Повторный `bootstrap` защищает существующий профиль от случайной перезаписи. Для изменения текущих данных редактируйте `.frontsmith/business/business.json` и выполняйте `npm run update:website`. Для явной замены профиля используйте `npm run bootstrap -- --profile ПУТЬ-К-ПРОФИЛЮ.json`; остальные записи бизнеса остаются в каталоге. `--reset` удаляет прежний каталог бизнеса со всеми рабочими материалами, после чего создаёт его заново.
+
+Сообщите Codex основные сведения о компании:
+
+```text
+Подготовь локальную демонстрацию цифрового офиса АвтоРитм из blueprints/auto-service/business.example.json.
+Сохрани восемь услуг, демонстрационные цены и длительности.
+Оставь внешнюю запись https://example.com/booking обычной ссылкой без импорта заявок.
+Телефон и электронная почта пока демонстрационные; почту и календарь не подключай.
+Подготовь Сводку владельца, обнови сайт и покажи, что нужно проверить.
+Подготовь первый ответ клиенту и план подготовки сметы, если есть открытая заявка.
+```
+
+Codex должен создать локальную рабочую область компании, подготовить Сводку владельца, обновить `website/`, при необходимости создать проверяемые материалы для работы с клиентами и смет и указать файлы для проверки.
+
+Затем запустите проверку готовности к первому запуску:
 
 ```bash
 npm run first-run:status
 ```
 
-The check writes:
+Проверка создаёт файл:
 
 ```text
 .frontsmith/business/launch/first-run-readiness.md
 ```
 
-Use it to see which fields still look like Acme defaults, which business profile fields are customized, which workspace files exist, and which actions still need owner approval before launch.
+В нём видно, какие поля остались демонстрационными данными АвтоРитм, какие сведения о компании уже настроены, какие рабочие файлы существуют и какие действия перед запуском требуют согласования владельца.
 
-## What You Can Do In v1.0
+## Демонстрационный каталог
 
-- Set up the business profile.
-- Review first-run readiness for a real business replacing Acme defaults.
-- Review the Owner Brief.
-- Run ongoing customer communication through Customer Desk.
-- Update the included local service business website.
-- Customize services, website URL, contact information, brand voice, and launch-planning notes.
-- Prepare customer reply drafts.
-- Prepare estimate and proposal drafts.
-- Track follow-ups and next customer steps.
-- Prepare extension plans for tools, skills, connectors, and new workflows.
-- Prepare dry-run connected-action receipts before email, publishing, file, calendar, or provider actions.
-- Review launch readiness.
-- Preview the website locally.
-- Run the deployment readiness check.
-- Prepare Vercel deployment after the website is explicitly approved.
+| Услуга | Цена за работу | Длительность |
+| --- | --- | --- |
+| Консультация по телефону | Бесплатно | 30 мин |
+| Компьютерная диагностика | от 1 500 ₽ | 45 мин |
+| ТО: замена масла и фильтров | от 1 500 ₽ | 60 мин |
+| Диагностика ходовой | от 1 200 ₽ | 45 мин |
+| Замена тормозных колодок | от 1 800 ₽ | 60 мин |
+| Шиномонтаж | от 3 200 ₽ | 60 мин |
+| Развал-схождение | от 2 800 ₽ | 60 мин |
+| Заправка кондиционера | от 2 500 ₽ | 60 мин |
 
-## Owner Brief
+Цены и длительности — учебные ориентиры, а не утверждённое предложение клиенту. Запчасти и расходные материалы оплачиваются отдельно; итоговую стоимость согласуют до начала работ. Источник каталога — профиль бизнеса. `npm run update:website` сохраняет восемь услуг, цены, длительности и адрес записи, перенося их в сайт.
 
-The Owner Brief is the current-state summary for the business.
+## Внешняя запись
 
-It should show:
+Кнопки записи открывают [Booking Flow](https://example.com/booking) — отдельную закрытую демонстрацию, которая может запросить пароль. Не сохраняйте пароль или другие учётные данные в репозитории, профиле либо документации. Это обычная внешняя ссылка: Frontsmith не импортирует заявки, не синхронизирует API и не подключает календарь. Тарифы в Booking Flow могут отличаться от демонстрационных цен сайта.
 
-- what changed since the last review;
-- what customer requests need attention;
-- what estimate or proposal drafts are waiting;
-- what website or launch items are blocked;
-- what action needs owner approval;
-- what to do next.
+## Возможности v1.0
 
-The Owner Brief can be prepared from local Frontsmith records before any live app connection is configured.
+- Настроить профиль компании.
+- Проверить готовность к первому запуску после замены данных АвтоРитм сведениями реальной компании.
+- Просмотреть Сводку владельца.
+- Вести постоянное общение с клиентами в модуле «Работа с клиентами».
+- Обновить включённый в проект сайт компании.
+- Настроить услуги, адрес сайта, контакты, стиль общения и заметки к плану запуска.
+- Подготовить черновики ответов клиентам.
+- Подготовить черновики смет и коммерческих предложений.
+- Отслеживать повторные контакты и следующие шаги по клиентам.
+- Подготовить планы расширений для инструментов, навыков, подключений и новых рабочих процессов.
+- Подготовить записи пробного прогона подключённых действий перед отправкой писем, публикацией, операциями с файлами, календарём или внешними сервисами.
+- Проверить готовность к запуску.
+- Открыть локальный предпросмотр сайта.
+- Проверить готовность к развёртыванию.
+- Подготовить развёртывание на Vercel после явного согласования сайта.
 
-## Customer Desk
+## Сводка владельца
 
-Customer Desk is the ongoing front-office communication lane.
+Сводка владельца показывает текущее состояние дел одной компании.
 
-It should keep together:
+Она должна показывать:
 
-- new inquiries and project notes;
-- reply drafts;
-- follow-up notes;
-- estimate and proposal next steps;
-- owner approval state;
-- activity history.
+- что изменилось с последней проверки;
+- какие обращения клиентов требуют внимания;
+- какие черновики смет или предложений ожидают проверки;
+- что мешает обновлению сайта или запуску;
+- какие действия требуют согласования владельца;
+- что делать дальше.
 
-Customer Desk is not a one-time setup step. It is the recurring operating loop after the website is live.
+Сводку владельца можно подготовить из локальных записей Frontsmith ещё до подключения внешних приложений.
 
-## Local Output
+## Работа с клиентами
 
-Frontsmith writes private local business data under:
+Модуль «Работа с клиентами» предназначен для постоянного общения с клиентами в цифровом офисе.
+
+Он объединяет:
+
+- новые обращения и заметки о проектах;
+- черновики ответов;
+- заметки о повторных контактах;
+- следующие шаги по сметам и предложениям;
+- состояние согласования владельцем;
+- историю действий.
+
+Работа с клиентами продолжается после публикации сайта и входит в регулярный рабочий цикл.
+
+## Локальные результаты
+
+Frontsmith сохраняет приватные данные компании в:
 
 ```text
 .frontsmith/business/
 ```
 
-Important files:
+Основные файлы и каталоги:
 
 ```text
-business.json
-launch/launch-checklist.md
-launch/website-review.md
-activity/activity-log.md
-activity/owner-brief.md
-activity/latest-website-update.md
-settings/integrations.md
-customer-inquiries/
-estimates/
-extensions/
+business.json                       профиль компании
+launch/launch-checklist.md           контрольный список запуска
+launch/website-review.md             проверка сайта
+activity/activity-log.md            журнал действий
+activity/owner-brief.md              Сводка владельца
+activity/latest-website-update.md    последнее обновление сайта
+settings/integrations.md             настройки подключений
+customer-inquiries/                 обращения клиентов
+estimates/                          сметы и предложения
+extensions/                         планы расширений
 ```
 
-## Website Code
+## Код сайта
 
-The launchable website code lives in:
+Исходный код сайта для публикации находится в:
 
 ```text
 website/
 ```
 
-Bootstrap updates that single-page website from your business profile. You can ask Codex to change sections, copy, styles, website URL, search metadata, contact details, or service content.
+Первичная настройка обновляет этот одностраничный сайт по профилю компании. Можно попросить Codex изменить разделы, тексты, стили, адрес сайта, поисковые метаданные, контакты или описания услуг.
 
-This is a static website, not a Next.js application. Images currently come from the business profile's media URLs. To use local approved images, place them under `website/assets/` and update the business profile media fields to `/assets/...` paths.
+Сайт статический; Next.js не требуется. Изображения сейчас загружаются по ссылкам из профиля компании. Чтобы использовать согласованные локальные изображения, поместите их в `website/assets/` и укажите пути `/assets/...` в полях медиа профиля.
 
-The hosted Frontsmith demo is separate from the business website. It opens as a Control Panel and includes the Acme website at `/website`.
+Онлайн-демонстрация Frontsmith отделена от сайта компании. Она открывается как Панель демонстрации и включает сайт АвтоРитм по адресу `/website`.
 
-## Contact Form
+## Контактная форма
 
-The contact form is wired for real deployed delivery through `/api/contact`.
+Контактная форма подготовлена для отправки заявок с опубликованного сайта через `/api/contact`.
 
-For production, configure the business-owned Resend account and Vercel environment variables:
+В локальной демонстрации почта отключена. Демонстрационная форма показывает учебный результат и не отправляет заявку; запись открывается отдельно во внешнем Booking Flow. Контакты в профиле — примеры.
 
-```text
-CONTACT_DELIVERY_MODE=resend
-CONTACT_TO_EMAIL=projects@acme.com
-CONTACT_FROM_EMAIL="Acme <hello@acme.com>"
-CONTACT_SUBJECT_PREFIX=Website project request
-FRONTSMITH_TENANT_ID=acme
-RESEND_API_KEY=re_xxxxxxxxx
-```
+Реальная отправка через Resend требует отдельной настройки и явного согласия владельца. Переменные и режимы описаны в [справочнике настроек](settings.md). Для этой демонстрации подключать Resend, календарь, API записи или выполнять развёртывание не требуется.
 
-The form validates email or phone before sending. If email delivery is not configured yet, the website opens a prefilled email draft as a fallback instead of dropping the request.
+## Готовность к развёртыванию
 
-## Deployment Readiness
-
-Before any live deployment, ask Codex to run:
+Перед публикацией попросите Codex выполнить:
 
 ```bash
 npm run deploy:check
 ```
 
-This is a readiness gate. It checks `website/`, `vercel.json`, icons, search and social metadata, clean in-page routes, contact form API wiring, and production contact-delivery environment variables. It does not deploy, connect DNS, send email, or change provider settings.
+Команда проверяет `website/`, `vercel.json`, иконки, поисковые метаданные и данные для соцсетей, корректные адреса разделов, подключение API контактной формы и переменные окружения для доставки заявок. Она проверяет готовность: развёртывание, настройку DNS, отправку писем и изменение настроек сервисов выполняют отдельно.
 
-For the hosted Control Panel target, Codex can also run:
+Для Панели демонстрации Codex также может запустить:
 
 ```bash
 npm run preview:demo
 ```
 
-## Daily Front-Office Commands
+## Ежедневные команды цифрового офиса
 
-Codex can run these tools for you:
+Codex может запускать эти инструменты за вас:
 
 ```bash
-npm run prepare:reply -- --name "Customer Name" --project "Kitchen Remodeling" --notes "Customer notes"
-npm run prepare:estimate -- --project "Kitchen Remodeling" --scope "Scope notes"
-npm run prepare:extension -- --capability "Consultation scheduling" --connector "Google Calendar" --goal "Prepare an owner-reviewed workflow for approved consultation requests."
-npm run prepare:connected-action -- --action-type "email" --title "Send consultation follow-up" --target "Customer follow-up" --evidence "Owner-provided customer notes"
+npm run prepare:reply -- --name "Иван" --project "Диагностика ходовой" --notes "Стук спереди на неровностях; автомобиль Kia Rio 2018; точный диагноз после осмотра"
+npm run prepare:estimate -- --project "Диагностика ходовой" --scope "Проверка подвески и люфтов; дополнительные работы и запчасти только после согласования"
+npm run prepare:extension -- --capability "Запись на консультации" --connector "Google Calendar" --goal "Подготовить процесс записи по согласованным заявкам с проверкой владельцем."
+npm run prepare:connected-action -- --action-type "email" --title "Отправить письмо после консультации" --target "Повторный контакт с клиентом" --evidence "Заметки о клиенте, предоставленные владельцем"
 npm run first-run:status
 npm run owner:brief
 npm run launch:status
 npm run deploy:check
 ```
 
-The tools write reviewable Markdown into the local business workspace. They do not send messages, publish pages, or execute live provider actions.
+Инструменты сохраняют проверяемые Markdown-файлы в локальной рабочей области компании. Отправка сообщений, публикация страниц и действия во внешних сервисах выполняются отдельно.
 
-Deployment, email, calendar, storage, and publishing integrations stay off until the owner approves the specific live action.
+Подключения для развёртывания, почты, календаря, хранения файлов и публикации остаются выключенными до согласования владельцем конкретного действия.
 
-## What Frontsmith Does Not Do By Default
+## Что Frontsmith не делает автоматически
 
-Frontsmith v1.0 does not automatically send emails, publish websites, change DNS, post on social media, collect payments, or create invoices.
+Frontsmith v1.0 автоматически не отправляет письма, не публикует сайты, не меняет DNS, не размещает записи в соцсетях, не принимает оплату и не выставляет счета.
 
-Those actions require explicit approval and, in connected client mode, governed preflight through Neura.
+Эти действия требуют явного согласования. В режиме подключённого клиента также нужна предварительная проверка полномочий через Neura.

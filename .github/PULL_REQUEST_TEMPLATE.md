@@ -1,24 +1,24 @@
-## Summary
+## Краткое описание
 
 - 
 
-## Scope
+## Область изменений
 
-- [ ] Setup
-- [ ] Owner Brief
-- [ ] Customer Desk
-- [ ] Estimates and proposals
-- [ ] Website
-- [ ] Launch readiness
-- [ ] Extension planning
-- [ ] Documentation
+- [ ] Настройка
+- [ ] Сводка владельца
+- [ ] Работа с клиентами
+- [ ] Сметы и предложения
+- [ ] Сайт
+- [ ] Готовность запуска
+- [ ] Планирование расширений
+- [ ] Документация
 
-## Safety
+## Безопасность
 
-- [ ] No live credentials, customer data, or private business records are committed
-- [ ] No live sends, publishing, DNS changes, provider actions, or customer-facing actions run without approval
+- [ ] Рабочие секреты, данные клиентов и приватные записи бизнеса не включены в коммит
+- [ ] Отправка, публикация, изменения DNS, сервисов и клиентские действия не выполняются без согласия
 
-## Verification
+## Проверка
 
 ```bash
 npm run check

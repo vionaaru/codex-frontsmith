@@ -1,79 +1,84 @@
-# Frontsmith Codex Instructions
+# Инструкции Codex для Frontsmith
 
-## Product Boundary
+## Чтение файлов в Windows
 
-Frontsmith is a standalone open-source product.
+- При чтении текстовых файлов через PowerShell используйте `Get-Content -Encoding UTF8 -LiteralPath ...`.
+- Если кириллица отображается как `Р...` или `вЂ...`, сначала считайте это проблемой декодирования терминала, а не повреждением файла.
 
-It is not a NeuraPath website section, hosted dashboard, or Neura-branded surface. Neura can be used behind the scenes for governed consequential action, but the product must stand on its own business value.
+## Границы продукта
 
-## v1.0 Direction
+Frontsmith — самостоятельный продукт с открытым исходным кодом.
 
-Frontsmith v1.0 is a Codex-native business front-office kit.
+Он не является разделом сайта NeuraPath, размещённой онлайн-панелью управления или интерфейсом под брендом Neura. Neura можно использовать внутри для контроля действий с внешними последствиями, но продукт должен иметь самостоятельную ценность для бизнеса.
 
-The primary operator interface is Codex plus repository files, workflows, scripts, website code, and local business records. The hosted evaluator path at `frontsmith.neurapath.ai` may use a Control Panel that shows the Codex-native journey, with the included website shown as the customer-facing site inside that journey.
+## Направление v1.0
 
-The default use case is a local service business.
+Frontsmith v1.0 — комплект цифрового офиса компании для работы через Codex.
 
-The default v1.0 capabilities are:
+Основной интерфейс оператора — Codex вместе с файлами репозитория, рабочими процессами, скриптами, кодом сайта и локальными записями компании. Онлайн-демонстрация по адресу `frontsmith.neurapath.ai` может использовать Панель демонстрации, показывающую работу через Codex; включённый сайт представлен в этом процессе как сайт для клиентов.
 
-- Business Setup
-- Owner Brief
-- Website
-- Customer Desk
-- Estimates and Proposals
-- Launch Plan
-- Activity Log
-- Settings and Integrations
-- Extension Planning
+Основной сценарий — местная компания услуг.
 
-Reviews, proof libraries, marketing, social posting, payments, invoices, and accounting are not default v1.0 capabilities. Treat them as later extensions.
+Возможности v1.0 по умолчанию:
 
-The Owner Brief is the product name for the current-state summary module. Use it instead of `Business Pulse`, `Front Office Pulse`, or generic pulse language.
+- Настройка компании
+- Сводка владельца
+- Сайт
+- Работа с клиентами
+- Сметы и коммерческие предложения
+- План запуска
+- Журнал действий
+- Настройки и подключения
+- Планирование расширений
 
-## Execution Rules
+Отзывы, библиотеки подтверждающих материалов, маркетинг, публикации в соцсетях, платежи, счета и бухгалтерский учёт не входят в стандартные возможности v1.0. Рассматривайте их как будущие расширения.
 
-- Preserve standalone Frontsmith value before adding Neura-specific public language.
-- Keep the first use case narrow: a local service business with service, inquiry, estimate, launch, and approval workflows.
-- Keep the Owner Brief narrow: state, blockers, approvals, and next actions for one business.
-- Treat "run the business" as too broad for v1.0. The promise is "run the digital front office."
-- The committed and deployable business website belongs under `website/`.
-- The hosted Frontsmith Control Panel belongs under `demo/` and builds into `dist/frontsmith-demo`.
-- `.frontsmith/business/` is for private local business data, activity, drafts, and review notes only.
-- Default to draft, preview, owner approval, and dry-run before any live action.
-- No live credentials, customer messages, public posts, provider submissions, DNS changes, repo publication, or external actions without explicit owner approval.
-- Use direct, decisive, high-standard language.
-- Do not add planning documents when existing control docs already capture the decision.
+Сводка владельца (Owner Brief) — продуктовое название модуля текущего состояния. Используйте его вместо `Business Pulse`, `Front Office Pulse` или общих формулировок о «пульсе бизнеса».
 
-## Neura Boundary
+## Правила выполнения
 
-In connected client mode:
+- Сохраняйте самостоятельную ценность Frontsmith прежде, чем добавлять публичные формулировки о Neura.
+- Ограничьте первый сценарий местной компанией услуг: услуги, обращения, сметы, запуск и согласования.
+- Ограничьте Сводку владельца состоянием, препятствиями, согласованиями и следующими действиями одной компании.
+- Обещание «управлять бизнесом» слишком широко для v1.0. Обещание продукта — «вести цифровой офис».
+- Сайт компании, включённый в репозиторий и готовый к развёртыванию, находится в `website/`.
+- Онлайн-Панель демонстрации Frontsmith находится в `demo/` и собирается в `dist/frontsmith-demo`.
+- `.frontsmith/business/` предназначен только для приватных локальных данных компании, истории действий, черновиков и заметок для проверки.
+- По умолчанию перед реальным действием используйте черновик, предпросмотр, согласование владельца и пробный прогон.
+- Рабочие учётные данные, сообщения клиентам, публичные публикации, отправка данных сервисам, изменения DNS, публикация репозитория и внешние действия требуют явного согласования владельца.
+- Пишите прямо, решительно и с высокими требованиями к качеству.
+- Не добавляйте документы планирования, если существующие управляющие документы уже фиксируют решение.
+
+## Граница Neura
+
+В режиме подключённого клиента:
 
 ```text
-Frontsmith action
-  -> Neura Registry agent identity
-  -> Neura Relay preflight
-  -> owner approval when required
-  -> execution adapter
-  -> local activity record
+действие Frontsmith
+  -> идентификация агента в Neura Registry
+  -> предварительная проверка Neura Relay
+  -> согласование владельца, когда оно требуется
+  -> адаптер выполнения
+  -> локальная запись действия
 ```
 
-The operator-facing language should be simple: nothing goes live without review and traceable approval.
+Формулировка для оператора должна быть простой: ничего не выполняется во внешних сервисах без проверки и прослеживаемого согласования.
 
-## Masterpiece Standard
+## Стандарт качества
 
-Every deliverable carrying the Frontsmith name must be:
+Каждый результат под именем Frontsmith должен быть:
 
-- clear enough for a small business owner;
-- credible enough for developers;
-- useful before Neura enrollment;
-- governed by Neura when connected client mode is enabled;
-- scoped tightly enough for an operator to execute without operational sprawl.
+- понятным владельцу малого бизнеса;
+- убедительным для разработчиков;
+- полезным до регистрации в Neura;
+- подконтрольным Neura при включённом режиме подключённого клиента;
+- достаточно узким по объёму, чтобы оператор мог выполнить работу без разрастания задач.
 
-## Public Layout Rule
+## Правила публичного оформления
 
-Public headings, subheadings, video captions, and section intros must be edited to fit cleanly in their containers.
+Публичные заголовки, подзаголовки, видеоподписи и вводные тексты разделов должны аккуратно помещаться в свои блоки.
 
-- Avoid awkward two-line wraps, orphan words, and clipped text.
-- Do not end titles, headings, subheadings, or video-caption lines with periods.
-- If copy wraps badly, shorten the copy first; then adjust responsive sizing or layout.
-- When matching an existing pattern from another Neura/Frontsmith surface, match the typography, spacing, icon treatment, and responsive behavior instead of improvising adjacent styling.
+- Избегайте неудачных переносов на две строки, одиноких слов и обрезанного текста.
+- Не ставьте точки в конце названий, заголовков, подзаголовков и строк видеоподписей.
+- При неудачных переносах сначала сократите текст, затем настройте адаптивный размер или компоновку.
+- При повторении существующего оформления другой страницы Neura/Frontsmith воспроизводите типографику, отступы, оформление иконок и адаптивное поведение, а не придумывайте похожий стиль.

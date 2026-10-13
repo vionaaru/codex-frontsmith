@@ -1,7 +1,7 @@
 {
   "name": "frontsmith",
   "version": "1.0.0",
-  "description": "Codex-native front-office kit for local service businesses.",
+  "description": "Цифровой фронт-офис местного бизнеса услуг для работы через Codex.",
   "license": "MIT",
   "type": "module",
   "repository": {

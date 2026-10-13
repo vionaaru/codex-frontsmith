@@ -1,8 +1,8 @@
-# README Assets
+# Материалы README
 
-These screenshots are generated from the local Frontsmith demo preview and are used by the public GitHub README.
+Эти снимки получены из локального предпросмотра Frontsmith и используются в публичном README GitHub.
 
-- `frontsmith-control-panel.png` shows the hosted evaluator Control Panel.
-- `frontsmith-acme-website.png` shows the included Acme customer-facing website.
+- `frontsmith-control-panel.png` показывает панель демонстрации.
+- `frontsmith-acme-website.png` показывает текущий клиентский сайт автосервиса АвтоРитм. Историческое имя файла сохранено для совместимости ссылок.
 
-Regenerate them from a local preview before public launch if the UI changes materially.
+При существенных изменениях интерфейса обновите снимки из локального предпросмотра до публичного запуска.

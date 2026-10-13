@@ -1,59 +1,59 @@
-# Workflow: Deploy Website
+# Процесс: публикация сайта
 
-Use this workflow only after the website has been reviewed and approved.
+Используйте только после проверки и согласования сайта.
 
-## Preconditions
+## Условия
 
-- website updated;
-- owner reviewed business facts;
-- owner approved public claims;
-- contact delivery mode selected;
-- Resend domain and Vercel environment variables configured if the form should send email;
-- `npm run deploy:check` passes with production contact-delivery environment variables;
-- domain and Vercel target confirmed;
-- connected-mode decision made if governed consequential actions are enabled.
+- сайт обновлён;
+- владелец проверил сведения о бизнесе;
+- публичные утверждения согласованы;
+- режим доставки заявок выбран;
+- домен Resend и переменные Vercel настроены, если форма отправляет письма;
+- `npm run deploy:check` проходит с рабочими переменными доставки заявок;
+- домен и целевой проект Vercel подтверждены;
+- подключённый режим согласован, если используется контроль значимых действий.
 
-## Default Behavior
+## Поведение по умолчанию
 
-Prepare deployment steps and run dry checks first.
+Сначала подготовьте шаги публикации и выполните пробные проверки.
 
-Do not deploy, change DNS, or connect a live provider without explicit owner approval.
+Публикация, изменение DNS и подключение сервиса требуют явного согласия владельца.
 
-## Readiness Gate
+## Проверка готовности
 
-Run:
+Выполните:
 
 ```bash
 npm run deploy:check
 ```
 
-The command checks the hosted demo build, included `website/` files, required icons, clean URLs, OpenGraph and Twitter metadata, local asset references, Vercel static-site configuration, `/api/contact` wiring, and required production Resend variables.
+Команда проверяет сборку демонстрации, `website/`, иконки, чистые URL, метаданные Open Graph и Twitter, локальные ассеты, статическую конфигурацию Vercel, подключение `/api/contact` и рабочие переменные Resend.
 
-If it reports blockers, fix those before preparing a deployment. Passing the check means the code and configuration shape are ready for deployment review; it does not mean the demo or website has been deployed.
+Устраните препятствия до подготовки публикации. Успешная проверка означает готовность к проверке публикации, но не саму публикацию.
 
-## Vercel Static Site Shape
+## Статический сайт Vercel
 
-- Frontsmith's included website is static, not Next.js.
-- The hosted demo target builds into `dist/frontsmith-demo`.
-- The included website remains in `website/` and is copied into the demo build at `/website/`.
-- `vercel.json` sets the framework preset to Other and the output directory to `dist/frontsmith-demo`.
-- Local testing uses `npm run preview:website`.
-- Hosted demo testing uses `npm run preview:demo`.
-- Vercel deployment remains a live external action and requires explicit owner approval.
+- Включённый сайт Frontsmith статический.
+- Демонстрация собирается в `dist/frontsmith-demo`.
+- Исходники сайта остаются в `website/` и копируются в сборку демонстрации по адресу `/website/`.
+- `vercel.json` задаёт статический режим (Other) и каталог сборки `dist/frontsmith-demo`.
+- Локальная проверка: `npm run preview:website`.
+- Проверка демонстрации: `npm run preview:demo`.
+- Публикация Vercel — внешнее действие с явным согласованием владельцем.
 
-## Contact Form Delivery
+## Доставка заявок
 
-The website posts contact requests to `/api/contact`.
+Сайт отправляет заявки в `/api/contact`.
 
-Production delivery uses business-owned Resend credentials by default:
+По умолчанию рабочие учётные данные Resend принадлежат бизнесу:
 
 ```text
 CONTACT_DELIVERY_MODE=resend
 CONTACT_TO_EMAIL=projects@acme.com
 CONTACT_FROM_EMAIL="Acme <hello@acme.com>"
-CONTACT_SUBJECT_PREFIX=Website project request
+CONTACT_SUBJECT_PREFIX=Заявка с сайта
 FRONTSMITH_TENANT_ID=acme
 RESEND_API_KEY=re_xxxxxxxxx
 ```
 
-Use `CONTACT_DELIVERY_MODE=dry-run` only for local verification. If the function is missing or not configured, the website falls back to a prefilled email draft.
+`CONTACT_DELIVERY_MODE=dry-run` используйте только для локальной проверки. При отсутствии или ненастроенной функции сайт предлагает заполненный черновик письма.

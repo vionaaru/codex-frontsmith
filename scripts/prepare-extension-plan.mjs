@@ -2,10 +2,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { businessPath, businessRoot } from "./lib/paths.mjs";
 
-const capability = readArg("--capability") ?? "Consultation scheduling";
+const capability = readArg("--capability") ?? "Запись на консультацию";
 const goal =
   readArg("--goal") ??
-  "Prepare an owner-reviewed workflow for approved consultation requests.";
+  "Подготовить согласуемый владельцем процесс записи на консультации.";
 const connector = readArg("--connector") ?? "Google Calendar";
 const root = businessRoot();
 const business = await readBusinessProfile();
@@ -15,7 +15,7 @@ const file = path.join(outputDir, `${slugify(capability)}-extension-plan.md`);
 await mkdir(outputDir, { recursive: true });
 await writeFile(file, extensionPlan({ business, capability, goal, connector, file }));
 
-console.log(`Prepared extension plan: ${file}`);
+console.log(`Подготовлен план расширения: ${file}`);
 
 function readArg(name) {
   const index = process.argv.indexOf(name);
@@ -29,7 +29,7 @@ async function readBusinessProfile() {
     return JSON.parse(await readFile(profilePath, "utf8"));
   } catch (error) {
     if (error && error.code === "ENOENT") {
-      throw new Error(`No business workspace found at ${profilePath}. Run npm run bootstrap first.`);
+      throw new Error(`Рабочие данные бизнеса не найдены: ${profilePath}. Сначала выполните npm run bootstrap.`);
     }
     throw error;
   }
@@ -38,68 +38,68 @@ async function readBusinessProfile() {
 function extensionPlan({ business, capability, goal, connector, file }) {
   const workflowSlug = slugify(capability);
 
-  return `# Extension Plan
+  return `# План расширения
 
-Business: ${business.businessName}
-Capability: ${capability}
-Status: Draft plan, needs owner review, not connected
-Generated: ${new Date().toISOString()}
+Бизнес: ${business.businessName}
+Возможность: ${capability}
+Статус: черновик плана, нужна проверка владельцем, не подключено
+Создано: ${new Date().toISOString()}
 
-## Executive Summary
+## Краткая сводка
 
-An extension plan is ready for owner review. It defines the workflow, skill boundary, connector boundary, approval checks, and files needed before ${capability.toLowerCase()} becomes part of the front office. No connector has been run.
+План расширения готов к проверке владельцем. Он определяет процесс, границы навыка и коннектора, согласования и файлы для возможности «${capability.toLowerCase()}». Коннекторы не запускались.
 
-## Requested Capability
+## Запрашиваемая возможность
 
-- Capability: ${capability}
-- Goal: ${goal}
-- Connector target: ${connector}
-- Default mode: dry-run and owner review first
+- Возможность: ${capability}
+- Цель: ${goal}
+- Коннектор: ${connector}
+- Режим по умолчанию: пробный запуск и проверка владельцем
 
-## Workflow Boundary
+## Границы процесса
 
-- Create or update \`workflows/${workflowSlug}.md\` before adding live behavior
-- Keep business-specific notes under \`.frontsmith/business/extensions/\`
-- Record proposed actions in the activity log before any provider action
-- Require owner approval before customer sends, publishing, scheduling, exports, uploads, or provider setup
+- Создайте или обновите \`workflows/${workflowSlug}.md\` до добавления внешних действий
+- Храните заметки бизнеса в \`.frontsmith/business/extensions/\`
+- Записывайте предлагаемые действия в журнал до обращения к сервисам
+- Требуйте согласия владельца перед отправкой, публикацией, записью, экспортом, загрузкой или настройкой сервисов
 
-## Skill Boundary
+## Границы навыка
 
-- Skill input: approved business profile, customer context, and owner-provided rules
-- Skill output: reviewable Markdown, checklist, or draft action plan
-- Skill must not invent pricing, schedule commitments, legal claims, or customer promises
-- Skill must point to generated files and the exact approval needed
+- Вход навыка: согласованный профиль бизнеса, сведения о клиенте и правила владельца
+- Выход навыка: Markdown для проверки, чек-лист или черновик плана действий
+- Навык не должен выдумывать цены, сроки, юридические утверждения или обещания клиенту
+- Навык должен указывать созданные файлы и конкретное необходимое согласование
 
-## Connector Boundary
+## Границы коннектора
 
-- ${connector}: prepare the action path only after owner approval
-- Gmail: draft or send only after owner approval
-- Google Drive: store files only after owner approval
-- Neura: run governed preflight before consequential connected action when connected mode is enabled
+- ${connector}: подготовка действий только после согласия владельца
+- Gmail: черновик или отправка только после согласия владельца
+- Google Drive: сохранение файлов только после согласия владельца
+- Neura: контролируемая предварительная проверка перед значимым внешним действием в подключённом режиме
 
-## Needs Owner Review
+## Проверка владельцем
 
-- Confirm ${capability.toLowerCase()} belongs in the default business workflow
-- Confirm the connector, data fields, and approval rules
-- Confirm what counts as a live action
-- Confirm rollback or undo expectations before execution
+- Проверьте, нужна ли возможность «${capability.toLowerCase()}» в основном процессе бизнеса
+- Проверьте коннектор, поля данных и правила согласования
+- Уточните, что считается внешним действием
+- Согласуйте порядок отмены или отката до выполнения
 
-## Implementation Checklist
+## Чек-лист внедрения
 
-- Add workflow runbook
-- Add or update local script
-- Add regression coverage
-- Add dry-run output before live connector behavior
-- Update README/operator docs only after the workflow is real
+- Добавьте инструкцию процесса
+- Добавьте или обновите локальный скрипт
+- Добавьте регрессионные проверки
+- Добавьте пробный режим до внешних действий коннектора
+- Обновите README и инструкции оператора после реализации процесса
 
-## Artifacts
+## Материалы
 
-- Extension plan: \`${displayPath(file)}\`
-- Business profile: \`${displayPath(businessPath("business.json"))}\`
+- План расширения: \`${displayPath(file)}\`
+- Профиль бизнеса: \`${displayPath(businessPath("business.json"))}\`
 
-## Safety Boundary
+## Границы безопасности
 
-This extension plan is local-only. It does not connect providers, send messages, publish, schedule, upload files, export data, or execute connected actions.
+Этот план расширения хранится локально. Он не подключает сервисы, не отправляет сообщения, не публикует материалы, не назначает встречи, не загружает файлы, не экспортирует данные и не выполняет внешние действия.
 `;
 }
 
@@ -107,7 +107,7 @@ function slugify(value) {
   return String(value)
     .toLowerCase()
     .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 64);
 }

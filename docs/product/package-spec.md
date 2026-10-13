@@ -1,134 +1,134 @@
-# Frontsmith v1.0 Package Spec
+# Состав комплекта Frontsmith v1.0
 
-## Default Package
+## Стандартный комплект
 
-Frontsmith v1.0 ships as a Codex-native kit for one local service business.
+Frontsmith v1.0 поставляется как набор для работы через Codex с одной местной компанией услуг.
 
-Default capabilities:
+Возможности по умолчанию:
 
-1. Business Setup
-2. Owner Brief
-3. Website
-4. Customer Desk
-5. Ongoing Customer Communication
-6. Estimates and Proposals
-7. Launch Plan
-8. Activity Log
-9. Settings and Integrations
-10. Extension Planning
+1. Настройка компании
+2. Сводка владельца
+3. Сайт
+4. Работа с клиентами
+5. Постоянное общение с клиентами
+6. Сметы и коммерческие предложения
+7. План запуска
+8. Журнал действий
+9. Настройки и подключения
+10. Планирование расширений
 
-## Required First-Run Experience
+## Требования к первому запуску
 
-The repository should be useful within minutes:
+Репозиторий должен приносить пользу уже через несколько минут:
 
 ```text
-clone or download repo
-open folder in Codex
-ask Codex to set up the business workspace
-prepare customer reply and follow-up drafts
-review Owner Brief
-website is updated
-prepare estimate and proposal draft
-preview website
-review launch next steps
-prepare extension plans without turning on live connectors
+клонировать или скачать репозиторий
+открыть каталог в Codex
+попросить Codex настроить рабочую область компании
+подготовить черновики ответов клиентам и повторных контактов
+просмотреть Сводку владельца
+обновить сайт
+подготовить черновик сметы и коммерческого предложения
+открыть предпросмотр сайта
+проверить следующие шаги запуска
+подготовить планы расширений без включения подключений к внешним сервисам
 ```
 
-Terminal commands are implementation details. They remain available for developers, but Codex should be able to run them for an operator.
+Команды терминала — детали реализации. Они остаются доступными разработчикам, но Codex должен уметь выполнять их за оператора.
 
-## First-Run Output
+## Результаты первого запуска
 
-The first run should create:
+Первый запуск должен создать:
 
-- a local business workspace;
-- an Owner Brief summarizing state, blockers, approvals, and next actions;
-- an updated single-page website from the committed `website/` code;
-- a website review note;
-- customer inquiry records, reply drafts, and follow-up notes;
-- estimate and proposal drafts tied back to customer context;
-- a launch checklist;
-- an activity log;
-- integration settings with all live actions disabled.
-- Customer Desk and estimate folders with review-first tooling.
-- an extension planning folder and command for tools, skills, connectors, and workflows.
-- a contact form delivery path that can run in dry-run locally and send through Resend after environment setup.
-- a deployment readiness check that validates the website, Vercel static-site configuration, metadata, icons, assets, and contact-delivery environment shape without deploying.
-- a hosted Control Panel shell that explains the operator journey and includes the sample customer-facing website.
+- локальную рабочую область компании;
+- Сводку владельца с текущим состоянием, препятствиями, согласованиями и следующими действиями;
+- обновлённый одностраничный сайт на основе включённого в репозиторий кода `website/`;
+- заметку о проверке сайта;
+- записи обращений клиентов, черновики ответов и заметки о повторных контактах;
+- черновики смет и предложений, связанные с данными клиента;
+- контрольный список запуска;
+- журнал действий;
+- настройки подключений, в которых все действия во внешних сервисах выключены;
+- каталоги работы с клиентами и смет с инструментами, требующими проверки перед выполнением;
+- каталог планов расширений и команду для планирования инструментов, навыков, подключений и рабочих процессов;
+- механизм доставки заявок контактной формы с локальным пробным прогоном и отправкой через Resend после настройки окружения;
+- проверку готовности к развёртыванию: сайт, настройки статического сайта Vercel, метаданные, иконки, ресурсы и наличие требуемых переменных окружения для доставки заявок, без публикации;
+- оболочку онлайн-Панели демонстрации, которая объясняет путь оператора и включает демонстрационный сайт для клиентов.
 
-The Owner Brief command is:
+Команда Сводки владельца:
 
 ```bash
 npm run owner:brief
 ```
 
-The recurring Customer Desk commands are:
+Команды регулярной работы с клиентами:
 
 ```bash
 npm run prepare:reply
 npm run prepare:estimate
 ```
 
-The extension planning command is:
+Команда планирования расширений:
 
 ```bash
 npm run prepare:extension
 ```
 
-## Website Requirement
+## Требования к сайту
 
-The default website must exist as real committed code in:
+Сайт по умолчанию должен существовать как настоящий исходный код, включённый в репозиторий:
 
 ```text
 website/
 ```
 
-Scripts may update business-specific content in the website, but the website should be inspectable and customizable as website code from the beginning.
+Скрипты могут обновлять сведения о компании на сайте, но его код должен быть доступен для изучения и настройки с самого начала.
 
-The default website should be complete enough for a local service business to launch after replacing local identity, contact details, core services, branding, and images. The default public website is a single-page site with anchored sections, not separate thin service and contact pages.
+Стандартный сайт должен быть достаточно полным для запуска местной компанией услуг после замены названия и местных сведений, контактов, основных услуг, оформления и изображений. Публичный сайт по умолчанию — одностраничный, с переходами к разделам по якорям; отдельные малосодержательные страницы услуг и контактов не требуются.
 
-The contact form must have a real server-side path for deployment. Front-end JavaScript can validate and show status, but email delivery belongs in `/api/contact` with provider secrets in Vercel environment variables.
+Контактная форма должна иметь настоящий серверный обработчик для опубликованного сайта. JavaScript в браузере может проверять данные и показывать состояние, но доставка писем относится к `/api/contact`, а секреты сервиса хранятся в переменных окружения Vercel.
 
-The website package must include a preflight command that can report deployment blockers without deploying, changing DNS, connecting providers, or sending email.
+Комплект сайта должен включать команду предварительной проверки, которая сообщает о препятствиях для развёртывания, не публикуя сайт, не меняя DNS, не подключая сервисы и не отправляя письма.
 
-The Frontsmith hosted target must open as a Control Panel first. It must not make the website look like the whole product. The page should make ongoing Customer Desk operations visible before presenting the website as the first customer-facing output.
+Онлайн-версия Frontsmith должна сначала открывать Панель демонстрации. Она не должна создавать впечатление, что весь продукт сводится к сайту. Страница должна показывать регулярную работу с клиентами до представления сайта как первого результата, доступного клиентам.
 
-## Extension Requirement
+## Требования к расширениям
 
-The default kit must make extension work safe before it becomes live automation.
+Стандартный комплект должен обеспечивать безопасное планирование расширений до запуска автоматизации во внешних сервисах.
 
-Frontsmith should be able to prepare an owner-reviewed extension plan for a new tool, skill, connector, or workflow. The plan must name the capability, workflow boundary, skill boundary, connector boundary, owner review items, implementation checklist, and safety boundary.
+Frontsmith должен уметь подготовить проверяемый владельцем план расширения для нового инструмента, навыка, подключения или рабочего процесса. План должен назвать возможность, границы рабочего процесса, навыка и подключения, пункты для проверки владельцем, контрольный список реализации и границы безопасности.
 
-Extension planning must stay local-only. It must not connect providers, schedule appointments, send messages, publish, upload files, export data, or execute connected actions.
+Планирование расширений выполняется только локально. Оно не должно подключать сервисы, назначать встречи, отправлять сообщения, публиковать материалы, загружать файлы, экспортировать данные или выполнять подключённые действия.
 
-## Connected-Action Receipt Requirement
+## Требования к записи подключённого действия
 
-Frontsmith should be able to prepare a dry-run connected-action receipt before any proposed live email, publishing, file, calendar, or provider action.
+Frontsmith должен уметь подготовить запись пробного прогона подключённого действия до любой предлагаемой отправки письма, публикации, операции с файлами, календарём или внешним сервисом.
 
-The receipt must name the proposed action, target, evidence, approval gate, Neura Registry reference placeholder, Neura Relay Action Card reference placeholder, Decision Receipt state, trace reference, blocked adapters, and generated Markdown/JSON artifacts.
+Запись должна содержать предлагаемое действие, цель, основания, требование согласования, поле для ссылки на Neura Registry, поле для ссылки на карточку действия Neura Relay Action Card, состояние записи решения Decision Receipt, ссылку на трассировку, заблокированные адаптеры и созданные материалы Markdown/JSON.
 
-Connected-action receipts must stay local-only. They must not connect providers, schedule appointments, send messages, publish, upload files, export data, or execute connected actions.
+Создание записей подключённых действий выполняется только локально. Оно не должно подключать сервисы, назначать встречи, отправлять сообщения, публиковать материалы, загружать файлы, экспортировать данные или выполнять подключённые действия.
 
-## Relay Proof Map
+## Карта проверок Relay
 
-The practical Relay proof map lives at `docs/product/relay-proof-map.md`.
+Практическая карта проверок Relay находится в `docs/product/relay-proof-map.md`.
 
-It connects Frontsmith workflows to the authority-before-action question without claiming that Frontsmith runs Relay by default. Customer Desk replies, estimate preparation, website updates, launch status, extension planning, and connected-action receipts should remain owner-reviewed before any live action.
+Она связывает процессы Frontsmith с вопросом проверки полномочий до действия, не утверждая, что Frontsmith запускает Relay по умолчанию. Ответы клиентам, подготовка смет, обновления сайта, состояние запуска, планирование расширений и записи подключённых действий должны проходить проверку владельца перед любым действием во внешних сервисах.
 
-## Default Exclusions
+## Что не входит в стандартный комплект
 
-These are excluded from the v1.0 default surface:
+Из стандартных возможностей v1.0 исключены:
 
-- broad 31-skill small-business bundle
-- generic app connector marketplace
-- reviews and proof library
-- marketing calendar
-- Instagram and Facebook
-- payments
-- invoices
-- accounting
-- invoice chasing
-- hiring packet automation
-- full CRM
-- project management
+- широкий набор из 31 навыка для малого бизнеса;
+- универсальный каталог подключений приложений;
+- отзывы и библиотека подтверждающих материалов;
+- маркетинговый календарь;
+- Instagram и Facebook;
+- платежи;
+- счета;
+- бухгалтерский учёт;
+- напоминания о неоплаченных счетах;
+- автоматическая подготовка пакетов документов для найма;
+- полноценная CRM;
+- управление проектами.
 
-They can become extensions after the core kit is solid.
+Эти возможности могут стать расширениями после укрепления основного комплекта.

@@ -84,7 +84,9 @@ const jsonFiles = [
   "package.json",
   "vercel.json",
   "frontsmith.config.json",
-  "blueprints/local-service/blueprint.json"
+  "blueprints/local-service/blueprint.json",
+  "blueprints/auto-service/blueprint.json",
+  "blueprints/auto-service/business.example.json"
 ];
 
 const removedConcept = ["de", "mo"].join("");
@@ -129,19 +131,19 @@ async function exists(path) {
 
 for (const file of requiredFiles) {
   if (!(await exists(file))) {
-    throw new Error(`Missing required file: ${file}`);
+    throw new Error(`Отсутствует обязательный файл: ${file}`);
   }
 }
 
 for (const file of forbiddenPaths) {
   if (await exists(file)) {
-    throw new Error(`Forbidden product-repo path still present: ${file}`);
+    throw new Error(`В репозитории продукта остался запрещённый путь: ${file}`);
   }
 }
 
 for (const file of forbiddenTrackedPaths) {
   if (await isTracked(file)) {
-    throw new Error(`Forbidden tracked product-repo path still present: ${file}`);
+    throw new Error(`Git всё ещё отслеживает запрещённый путь репозитория продукта: ${file}`);
   }
 }
 
@@ -152,19 +154,19 @@ for (const file of jsonFiles) {
 for (const file of ["website/index.html"]) {
   const content = await readFile(file, "utf8");
   if (!content.includes("data-frontsmith-")) {
-    throw new Error(`Missing Frontsmith website update markers: ${file}`);
+    throw new Error(`Отсутствуют маркеры обновления сайта Frontsmith: ${file}`);
   }
   if (/\{\{[a-zA-Z0-9]+\}\}/.test(content)) {
-    throw new Error(`Legacy website token found in ${file}`);
+    throw new Error(`В ${file} найден устаревший маркер сайта`);
   }
   if (/\bhref=["'][^"']+\.html(?:[#?][^"']*)?["']/.test(content)) {
-    throw new Error(`Website navigation must not link to .html routes: ${file}`);
+    throw new Error(`Навигация сайта не должна ссылаться на маршруты .html: ${file}`);
   }
   if (!content.includes('rel="icon"') || !content.includes('href="/favicon.svg"')) {
-    throw new Error(`Website must declare the Frontsmith SVG favicon: ${file}`);
+    throw new Error(`Сайт должен объявлять значок Frontsmith в формате SVG: ${file}`);
   }
   if (!content.includes('href="/favicon.png"') || !content.includes('href="/apple-touch-icon.png"')) {
-    throw new Error(`Website must declare PNG favicon fallbacks: ${file}`);
+    throw new Error(`Сайт должен объявлять резервные значки PNG: ${file}`);
   }
   for (const requiredHeadToken of [
     'rel="canonical"',
@@ -177,7 +179,7 @@ for (const file of ["website/index.html"]) {
     'name="twitter:image:alt"'
   ]) {
     if (!content.includes(requiredHeadToken)) {
-      throw new Error(`Website head metadata missing ${requiredHeadToken}: ${file}`);
+      throw new Error(`В метаданных head сайта отсутствует ${requiredHeadToken}: ${file}`);
     }
   }
 }
@@ -189,12 +191,12 @@ for (const file of trackedFiles) {
   const content = await readFile(file, "utf8");
   for (const text of forbiddenText) {
     if (content.includes(text)) {
-      throw new Error(`Forbidden text "${text}" found in ${file}`);
+      throw new Error(`В ${file} найден запрещённый текст "${text}"`);
     }
   }
 }
 
-console.log("Frontsmith v1.0 kit check passed.");
+console.log("Проверка набора Frontsmith v1.0 пройдена.");
 
 async function listTrackedFiles() {
   try {

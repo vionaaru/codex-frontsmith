@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm, writeFile, access } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
+import { runInNewContext } from "node:vm";
 
 const websiteRoot = "website";
 const websiteFiles = ["index.html", "styles.css", "script.js", "frontsmith-mark.svg", "favicon.svg"];
@@ -15,7 +16,7 @@ const testEnv = {
   CONTACT_DELIVERY_MODE: "dry-run",
   CONTACT_TO_EMAIL: "projects@acme.com",
   CONTACT_FROM_EMAIL: "Acme <hello@acme.com>",
-  CONTACT_SUBJECT_PREFIX: "Website project request",
+  CONTACT_SUBJECT_PREFIX: "Заявка с сайта",
   FRONTSMITH_TENANT_ID: "acme"
 };
 const deployCheckEnv = {
@@ -36,30 +37,69 @@ try {
   await assertExists(path.join(websiteRoot, "index.html"));
   await run("npm", ["run", "launch:status"]);
 
-  await rm(testRoot, { recursive: true, force: true });
+  const defaultProfile = JSON.parse(await readFile(path.join(root, "business.json"), "utf8"));
+  assertEqual(defaultProfile.businessType, "Автосервис", "тип бизнеса автосервиса");
+  assertEqual(defaultProfile.businessName, "АвтоРитм", "название демонстрационного автосервиса");
+  assertEqual(defaultProfile.demoMode, true, "демонстрационный режим профиля");
+  assertEqual(defaultProfile.services.length, 8, "восемь услуг автосервиса");
+  assertEqual(defaultProfile.pricingPolicy.mode, "demo", "демонстрационные цены");
+  assertEqual(defaultProfile.pricingPolicy.ownerApprovedForLiveQuotes, false, "цены не согласованы для реальных предложений");
+  const seedProfile = JSON.parse(await readFile("blueprints/auto-service/business.example.json", "utf8"));
+  assertEqual(JSON.stringify(defaultProfile.services), JSON.stringify(seedProfile.services), "услуги, цены и длительности сохранены из шаблона");
+  assertEqual(new URL(defaultProfile.bookingUrl).origin, "https://example.com", "внешний адрес записи");
+  await run("npm", ["run", "first-run:status"]);
+  const defaultReadiness = await readFile(path.join(root, "launch", "first-run-readiness.md"), "utf8");
+  assertDoesNotInclude(defaultReadiness, "Все обязательные поля профиля для первого запуска заполнены.", "демонстрационный профиль не готов к рабочему запуску");
+  assertIncludes(defaultReadiness.toLowerCase(), "демонстра", "отчёт явно обозначает демонстрационный режим");
+  assertIncludes(defaultReadiness, "До запуска владелец должен заполнить поля: 10.", "демонстрационные данные не считаются подтверждёнными сведениями бизнеса");
+  const defaultWebsite = await readFile(path.join(websiteRoot, "index.html"), "utf8");
+  assertIncludes(defaultWebsite, '<html lang="ru">', "русский язык после персонализации сайта");
+  assertIncludes(defaultWebsite, "/assets/auto-workshop.png", "изображение автомобильной мастерской");
+  assertDoesNotInclude(defaultWebsite, "acme-kitchen-remodel", "сайт не содержит фотографии кухни");
+  assertAutoServices(defaultWebsite, defaultProfile);
+  const defaultProfileBefore = await readFile(path.join(root, "business.json"), "utf8");
+  await runRejected("npm", ["run", "bootstrap"]);
+  assertEqual(await readFile(path.join(root, "business.json"), "utf8"), defaultProfileBefore, "повторная настройка не перезаписывает профиль");
+  assertEqual(await readFile(path.join(websiteRoot, "index.html"), "utf8"), defaultWebsite, "отказ повторной настройки не меняет сайт");
+
+  const malformedProfilePath = path.join(testRoot, "invalid-booking-profile.json");
+  await writeFile(malformedProfilePath, JSON.stringify({ ...defaultProfile, bookingUrl: "/booking" }));
+  const publicFilesBefore = new Map();
+  for (const file of websiteFiles) publicFilesBefore.set(file, await readFile(path.join(websiteRoot, file), "utf8"));
+  await runRejected("npm", ["run", "bootstrap", "--", "--profile", malformedProfilePath]);
+  assertEqual(await readFile(path.join(root, "business.json"), "utf8"), defaultProfileBefore, "неверный адрес записи не заменяет приватный профиль");
+  for (const [file, before] of publicFilesBefore) {
+    assertEqual(await readFile(path.join(websiteRoot, file), "utf8"), before, "неверный адрес записи не меняет публичный файл " + file);
+  }
+
+  const legacyProfile = {
+    ...defaultProfile,
+    businessName: "Acme",
+    businessType: "Local Service Business",
+    demoMode: false,
+    websiteUrl: "https://acme.com",
+    contact: { ...defaultProfile.contact, phone: "1-800-123-ACME", email: "projects@acme.com", city: "Local", state: "ST" },
+    serviceAreas: ["Your City", "Nearby Communities", "Surrounding Service Area"],
+    services: ["Kitchen Remodeling", "Bathroom Remodeling", "Living Spaces"].map(name => ({ name })),
+    brandVoice: "Clear, practical, respectful, detail-oriented, and homeowner-friendly."
+  };
+  await writeFile(path.join(root, "business.json"), JSON.stringify(legacyProfile));
+  await run("npm", ["run", "first-run:status"]);
+  const legacyReadiness = await readFile(path.join(root, "launch", "first-run-readiness.md"), "utf8");
+  assertIncludes(legacyReadiness, "До запуска владелец должен заполнить поля: 10.", "старые английские примеры также требуют заполнения");
+
+  await rm(root, { recursive: true, force: true });
 
   await run("npm", [
-    "run",
-    "bootstrap",
-    "--",
-    "--business-name",
-    "Acme",
-    "--business-type",
-    "Local Service Business",
-    "--service-areas",
-    "Primary Service Area,Nearby Communities,Surrounding Service Area",
-    "--services",
-    "Kitchen Remodeling,Bathroom Remodeling,Living Spaces",
-    "--phone",
-    "1-800-123-ACME",
-    "--email",
-    "projects@acme.com",
-    "--website-url",
-    "https://acme.com",
-    "--city",
-    "Local",
-    "--state",
-    "ST"
+    "run", "bootstrap", "--",
+    "--business-name", "АвтоРитм",
+    "--business-type", "Автосервис",
+    "--service-areas", "Москва,Ближайшие районы",
+    "--phone", "+7 (495) 123-45-67",
+    "--email", "service@avtoritm.example",
+    "--website-url", "https://avtoritm.example",
+    "--city", "Москва",
+    "--state", "Москва"
   ]);
 
   await assertExists(path.join(root, "business.json"));
@@ -76,9 +116,9 @@ try {
 
   const business = JSON.parse(await readFile(path.join(root, "business.json"), "utf8"));
   const vercelConfig = JSON.parse(await readFile("vercel.json", "utf8"));
-  assertEqual(business.businessName, "Acme", "business name");
-  assertEqual(business.contact.email, "projects@acme.com", "contact email");
-  assertEqual(business.websiteUrl, "https://acme.com", "website URL");
+  assertEqual(business.businessName, "АвтоРитм", "business name");
+  assertEqual(business.contact.email, "service@avtoritm.example", "contact email");
+  assertEqual(business.websiteUrl, "https://avtoritm.example", "URL сайта");
   assertEqual(vercelConfig.outputDirectory, "dist/frontsmith-demo", "Vercel output directory");
   assertEqual(vercelConfig.framework, null, "Vercel framework");
   assertEqual(vercelConfig.buildCommand, "npm run build:demo", "Vercel build command");
@@ -103,55 +143,62 @@ try {
   assertEqual(vercelConfig.redirects?.[1]?.permanent, true, "Vercel default host path redirect permanence");
 
   const homepage = await readFile(path.join(websiteRoot, "index.html"), "utf8");
-  assertIncludes(homepage, "Acme", "homepage business name");
-  assertIncludes(homepage, "Kitchen remodeling", "homepage kitchen service");
-  assertIncludes(homepage, "Bathroom remodeling", "homepage bathroom service");
-  assertIncludes(homepage, "Living spaces", "homepage living service");
-  assertIncludes(homepage, "tel:18001232263", "vanity phone href");
-  assertIncludes(homepage, "https://wa.me/18001232263", "vanity WhatsApp href");
-  assertIncludes(homepage, "Message on WhatsApp", "WhatsApp action label");
+  assertIncludes(homepage, "АвтоРитм", "homepage business name");
+  assertIncludes(homepage, "Компьютерная диагностика", "homepage kitchen service");
+  assertIncludes(homepage, "Шиномонтаж", "homepage bathroom service");
+  assertIncludes(homepage, "Развал-схождение", "homepage living service");
+  assertIncludes(homepage, "Контакты · нерабочие образцы", "контакты явно помечены как демонстрационные");
+  assertIncludes(homepage, business.contact.phone, "телефон показан текстом из профиля");
+  assertIncludes(homepage, business.contact.email, "почта показана текстом из профиля");
+  assertDoesNotInclude(homepage, 'href="tel:', "нерабочие контакты не предлагают звонок");
+  assertDoesNotInclude(homepage, "https://wa.me/", "демонстрационные контакты не предлагают WhatsApp");
+  assertDoesNotInclude(homepage, 'href="mailto:', "демонстрационные контакты не предлагают отправку письма");
   assertIncludes(homepage, 'rel="canonical"', "canonical metadata");
   assertIncludes(homepage, 'property="og:image"', "Open Graph image metadata");
   assertIncludes(homepage, 'name="twitter:card"', "Twitter card metadata");
   assertIncludes(homepage, 'name="twitter:image:alt"', "Twitter image alt metadata");
   assertIncludes(homepage, 'action="/api/contact"', "contact API form action");
-  assertIncludes(homepage, 'data-fallback-action="mailto:projects@acme.com"', "contact mailto fallback");
   assertIncludes(homepage, 'data-intake-status', "contact status message");
-  assertIncludes(homepage, "https://acme.com", "canonical URL");
+  assertIncludes(homepage, "https://avtoritm.example", "canonical URL");
   assertDoesNotInclude(homepage, ["Base", "ment"].join(""), "legacy extra service");
   assertDoesNotInclude(homepage, ".html", "extensionless website routes");
   assertNoTokens(homepage, "homepage");
+  assertIncludes(homepage, 'data-demo-mode="true"', "демонстрационная форма не отправляет реальные заявки");
+  assertAutoServices(homepage, business);
+  const websiteScript = await readFile(path.join(websiteRoot, "script.js"), "utf8");
+  await assertDemoFormLocal(websiteScript);
+  assertServiceFilters(homepage, websiteScript, business);
 
   await run("npm", [
     "run",
     "prepare:reply",
     "--",
     "--name",
-    "Jamie",
+    "Иван",
     "--project",
-    "Kitchen Remodeling",
+    "Компьютерная диагностика",
     "--notes",
-    "Customer wants a better layout, new cabinets, and clearer next steps."
+    "Клиент заметил индикатор неисправности двигателя и хочет понять результаты диагностики."
   ]);
-  const replyDraftPath = path.join(root, "customer-inquiries", "kitchen-remodeling-reply-draft.md");
+  const replyDraftPath = path.join(root, "customer-inquiries", "компьютерная-диагностика-reply-draft.md");
   await assertExists(replyDraftPath);
   const replyDraft = await readFile(replyDraftPath, "utf8");
-  assertIncludes(replyDraft, "Customer Desk Reply Draft", "reply draft title");
-  assertIncludes(replyDraft, "Status: Draft, needs owner review, not sent", "reply draft status");
-  assertIncludes(replyDraft, "Executive Summary", "reply draft executive summary");
-  assertIncludes(replyDraft, "Customer Context", "reply draft customer context");
-  assertIncludes(replyDraft, "Follow-Up Tracking", "reply draft follow-up tracking");
-  assertIncludes(replyDraft, "Needs Owner Review", "reply draft owner review");
-  assertIncludes(replyDraft, "Send Checklist", "reply draft send checklist");
-  assertIncludes(replyDraft, "Connector Handoff", "reply draft connector handoff");
-  assertIncludes(replyDraft, "Artifacts", "reply draft artifacts");
+  assertIncludes(replyDraft, "Черновик ответа клиенту", "reply draft title");
+  assertIncludes(replyDraft, "Статус: черновик, нужна проверка владельцем, не отправлен", "reply draft status");
+  assertIncludes(replyDraft, "Краткая сводка", "reply draft executive summary");
+  assertIncludes(replyDraft, "Сведения о клиенте", "reply draft customer context");
+  assertIncludes(replyDraft, "Повторный контакт", "reply draft follow-up tracking");
+  assertIncludes(replyDraft, "Проверка владельцем", "reply draft owner review");
+  assertIncludes(replyDraft, "Чек-лист отправки", "reply draft send checklist");
+  assertIncludes(replyDraft, "Передача коннектору", "reply draft connector handoff");
+  assertIncludes(replyDraft, "Материалы", "reply draft artifacts");
   assertIncludes(
     replyDraft,
-    ".frontsmith/business/customer-inquiries/kitchen-remodeling-reply-draft.md",
+    ".frontsmith/business/customer-inquiries/компьютерная-диагностика-reply-draft.md",
     "reply draft artifact path"
   );
-  assertIncludes(replyDraft, "Safety Boundary", "reply draft safety boundary");
-  assertIncludes(replyDraft, "Nothing has been sent", "reply draft send boundary");
+  assertIncludes(replyDraft, "Границы безопасности", "reply draft safety boundary");
+  assertIncludes(replyDraft, "Ничего не отправлено", "reply draft send boundary");
   assertDoesNotInclude(replyDraft, testRoot, "reply draft temporary root path");
 
   await run("npm", [
@@ -159,37 +206,37 @@ try {
     "prepare:estimate",
     "--",
     "--project",
-    "Kitchen Remodeling",
+    "Компьютерная диагностика",
     "--scope",
-    "Cabinet replacement, counter update, lighting review, and layout clarification."
+    "Считывание кодов ошибок, проверка электронных систем и рекомендации по дальнейшей диагностике."
   ]);
-  const estimateDraftPath = path.join(root, "estimates", "kitchen-remodeling-estimate-draft.md");
+  const estimateDraftPath = path.join(root, "estimates", "компьютерная-диагностика-estimate-draft.md");
   await assertExists(estimateDraftPath);
   const estimateDraft = await readFile(estimateDraftPath, "utf8");
-  assertIncludes(estimateDraft, "Estimate Preparation Draft", "estimate draft title");
-  assertIncludes(estimateDraft, "Status: Preparation draft, needs owner review, not sent", "estimate draft status");
-  assertIncludes(estimateDraft, "Executive Summary", "estimate draft executive summary");
-  assertIncludes(estimateDraft, "Scope Captured", "estimate draft scope captured");
-  assertIncludes(estimateDraft, "- Cabinet replacement", "estimate draft scope item");
-  assertIncludes(estimateDraft, "Missing Before Pricing", "estimate draft missing before pricing");
-  assertIncludes(estimateDraft, "Owner Questions", "estimate draft owner questions");
-  assertIncludes(estimateDraft, "Proposal Outline", "estimate draft proposal outline");
-  assertIncludes(estimateDraft, "Pricing Rules", "estimate draft pricing rules");
-  assertIncludes(estimateDraft, "Needs Owner Review", "estimate draft owner review");
-  assertIncludes(estimateDraft, "Connector Handoff", "estimate draft connector handoff");
-  assertIncludes(estimateDraft, "Artifacts", "estimate draft artifacts");
+  assertIncludes(estimateDraft, "Заготовка сметы", "estimate draft title");
+  assertIncludes(estimateDraft, "Статус: заготовка, нужна проверка владельцем, не отправлена", "estimate draft status");
+  assertIncludes(estimateDraft, "Краткая сводка", "estimate draft executive summary");
+  assertIncludes(estimateDraft, "Известный объём работ", "estimate draft scope captured");
+  assertIncludes(estimateDraft, "- Считывание кодов ошибок", "estimate draft scope item");
+  assertIncludes(estimateDraft, "Что нужно до расчёта цены", "estimate draft missing before pricing");
+  assertIncludes(estimateDraft, "Вопросы владельцу", "estimate draft owner questions");
+  assertIncludes(estimateDraft, "Структура предложения", "estimate draft proposal outline");
+  assertIncludes(estimateDraft, "Правила расчёта", "estimate draft pricing rules");
+  assertIncludes(estimateDraft, "Проверка владельцем", "estimate draft owner review");
+  assertIncludes(estimateDraft, "Передача коннектору", "estimate draft connector handoff");
+  assertIncludes(estimateDraft, "Материалы", "estimate draft artifacts");
   assertIncludes(
     estimateDraft,
-    ".frontsmith/business/estimates/kitchen-remodeling-estimate-draft.md",
+    ".frontsmith/business/estimates/компьютерная-диагностика-estimate-draft.md",
     "estimate draft artifact path"
   );
   assertIncludes(
     estimateDraft,
-    ".frontsmith/business/customer-inquiries/kitchen-remodeling-reply-draft.md",
+    ".frontsmith/business/customer-inquiries/компьютерная-диагностика-reply-draft.md",
     "estimate draft related reply path"
   );
-  assertIncludes(estimateDraft, "Safety Boundary", "estimate draft safety boundary");
-  assertIncludes(estimateDraft, "Nothing has been sent", "estimate draft send boundary");
+  assertIncludes(estimateDraft, "Границы безопасности", "estimate draft safety boundary");
+  assertIncludes(estimateDraft, "Ничего не отправлено", "estimate draft send boundary");
   assertDoesNotInclude(estimateDraft, testRoot, "estimate draft temporary root path");
 
   await run("npm", [
@@ -197,26 +244,26 @@ try {
     "prepare:extension",
     "--",
     "--capability",
-    "Consultation scheduling",
+    "Запись на консультацию",
     "--connector",
     "Google Calendar",
     "--goal",
-    "Prepare an owner-reviewed workflow for approved consultation requests."
+    "Подготовить согласуемый владельцем процесс записи на консультации."
   ]);
-  const extensionPlanPath = path.join(root, "extensions", "consultation-scheduling-extension-plan.md");
+  const extensionPlanPath = path.join(root, "extensions", "запись-на-консультацию-extension-plan.md");
   await assertExists(extensionPlanPath);
   const extensionPlan = await readFile(extensionPlanPath, "utf8");
-  assertIncludes(extensionPlan, "Extension Plan", "extension plan title");
-  assertIncludes(extensionPlan, "Status: Draft plan, needs owner review, not connected", "extension plan status");
-  assertIncludes(extensionPlan, "Executive Summary", "extension plan executive summary");
-  assertIncludes(extensionPlan, "Workflow Boundary", "extension plan workflow boundary");
-  assertIncludes(extensionPlan, "Skill Boundary", "extension plan skill boundary");
-  assertIncludes(extensionPlan, "Connector Boundary", "extension plan connector boundary");
-  assertIncludes(extensionPlan, "Needs Owner Review", "extension plan owner review");
-  assertIncludes(extensionPlan, "Implementation Checklist", "extension plan implementation checklist");
-  assertIncludes(extensionPlan, ".frontsmith/business/extensions/consultation-scheduling-extension-plan.md", "extension plan artifact path");
-  assertIncludes(extensionPlan, "Safety Boundary", "extension plan safety boundary");
-  assertIncludes(extensionPlan, "does not connect providers", "extension plan live-action boundary");
+  assertIncludes(extensionPlan, "План расширения", "extension plan title");
+  assertIncludes(extensionPlan, "Статус: черновик плана, нужна проверка владельцем, не подключено", "extension plan status");
+  assertIncludes(extensionPlan, "Краткая сводка", "extension plan executive summary");
+  assertIncludes(extensionPlan, "Границы процесса", "extension plan workflow boundary");
+  assertIncludes(extensionPlan, "Границы навыка", "extension plan skill boundary");
+  assertIncludes(extensionPlan, "Границы коннектора", "extension plan connector boundary");
+  assertIncludes(extensionPlan, "Проверка владельцем", "extension plan owner review");
+  assertIncludes(extensionPlan, "Чек-лист внедрения", "extension plan implementation checklist");
+  assertIncludes(extensionPlan, ".frontsmith/business/extensions/запись-на-консультацию-extension-plan.md", "extension plan artifact path");
+  assertIncludes(extensionPlan, "Границы безопасности", "extension plan safety boundary");
+  assertIncludes(extensionPlan, "не подключает сервисы", "extension plan live-action boundary");
   assertDoesNotInclude(extensionPlan, testRoot, "extension plan temporary root path");
 
   await run("npm", [
@@ -226,14 +273,14 @@ try {
     "--action-type",
     "email",
     "--title",
-    "Send consultation follow-up",
+    "Отправить сообщение после консультации",
     "--target",
-    "Customer follow-up",
+    "Повторный контакт с клиентом",
     "--evidence",
-    "Owner-provided customer notes"
+    "Заметки о клиенте от владельца"
   ]);
-  const connectedActionMarkdownPath = path.join(root, "connected-actions", "email-send-consultation-follow-up-receipt.md");
-  const connectedActionJsonPath = path.join(root, "connected-actions", "email-send-consultation-follow-up-receipt.json");
+  const connectedActionMarkdownPath = path.join(root, "connected-actions", "email-отправить-сообщение-после-консультации-receipt.md");
+  const connectedActionJsonPath = path.join(root, "connected-actions", "email-отправить-сообщение-после-консультации-receipt.json");
   await assertExists(connectedActionMarkdownPath);
   await assertExists(connectedActionJsonPath);
   const connectedActionReceipt = await readFile(connectedActionMarkdownPath, "utf8");
@@ -241,15 +288,15 @@ try {
   assertEqual(connectedActionRecord.schema, "frontsmith.connected_action_receipt.v0.1", "connected-action schema");
   assertEqual(connectedActionRecord.mode, "dry_run", "connected-action mode");
   assertEqual(connectedActionRecord.adapter_boundary.live_adapter_enabled, false, "connected-action live adapter boundary");
-  assertIncludes(connectedActionReceipt, "Connected-Action Receipt", "connected-action receipt title");
-  assertIncludes(connectedActionReceipt, "Neura References", "connected-action Neura refs");
+  assertIncludes(connectedActionReceipt, "Запись подключаемого действия", "connected-action receipt title");
+  assertIncludes(connectedActionReceipt, "Ссылки Neura", "connected-action Neura refs");
   assertIncludes(connectedActionReceipt, "registry-ref-pending", "connected-action registry ref");
   assertIncludes(connectedActionReceipt, "relay-action-card-pending", "connected-action relay action card ref");
   assertIncludes(connectedActionReceipt, "pending_until_connected_mode_preflight", "connected-action decision receipt boundary");
-  assertIncludes(connectedActionReceipt, "Blocked adapters", "connected-action blocked adapters");
-  assertIncludes(connectedActionReceipt, ".frontsmith/business/connected-actions/email-send-consultation-follow-up-receipt.md", "connected-action markdown artifact path");
-  assertIncludes(connectedActionReceipt, ".frontsmith/business/connected-actions/email-send-consultation-follow-up-receipt.json", "connected-action json artifact path");
-  assertIncludes(connectedActionReceipt, "does not send email", "connected-action send boundary");
+  assertIncludes(connectedActionReceipt, "Заблокированные адаптеры", "connected-action blocked adapters");
+  assertIncludes(connectedActionReceipt, ".frontsmith/business/connected-actions/email-отправить-сообщение-после-консультации-receipt.md", "connected-action markdown artifact path");
+  assertIncludes(connectedActionReceipt, ".frontsmith/business/connected-actions/email-отправить-сообщение-после-консультации-receipt.json", "connected-action json artifact path");
+  assertIncludes(connectedActionReceipt, "не отправляет письма", "connected-action send boundary");
   assertDoesNotInclude(connectedActionReceipt, testRoot, "connected-action temporary root path");
 
   await run("npm", ["run", "launch:status"]);
@@ -257,55 +304,58 @@ try {
 
   await run("npm", ["run", "first-run:status"]);
   const firstRunReadiness = await readFile(path.join(root, "launch", "first-run-readiness.md"), "utf8");
-  assertIncludes(firstRunReadiness, "First-Run Readiness", "first-run readiness title");
-  assertIncludes(firstRunReadiness, "Business Profile Review", "first-run business profile review");
-  assertIncludes(firstRunReadiness, "Needs Owner Input", "first-run owner input section");
-  assertIncludes(firstRunReadiness, "Owner Approval Boundary", "first-run approval boundary");
-  assertIncludes(firstRunReadiness, "Safety Boundary", "first-run safety boundary");
+  assertIncludes(firstRunReadiness, "Готовность первого запуска", "first-run readiness title");
+  assertIncludes(firstRunReadiness, "Проверка профиля бизнеса", "first-run business profile review");
+  assertIncludes(firstRunReadiness, "Нужны данные владельца", "first-run owner input section");
+  assertIncludes(firstRunReadiness, "Границы согласования владельцем", "first-run approval boundary");
+  assertIncludes(firstRunReadiness, "Границы безопасности", "first-run safety boundary");
   assertIncludes(firstRunReadiness, ".frontsmith/business/launch/first-run-readiness.md", "first-run artifact path");
-  assertIncludes(firstRunReadiness, "does not send emails", "first-run send boundary");
+  assertIncludes(firstRunReadiness, "не отправляет письма", "first-run send boundary");
   assertDoesNotInclude(firstRunReadiness, testRoot, "first-run temporary root path");
 
   await run("npm", ["run", "owner:brief"]);
   await assertExists(path.join(root, "activity", "owner-brief.md"));
   const ownerBrief = await readFile(path.join(root, "activity", "owner-brief.md"), "utf8");
-  assertIncludes(ownerBrief, "Owner Brief", "owner brief title");
-  assertIncludes(ownerBrief, "Executive Summary", "owner brief executive summary");
-  assertIncludes(ownerBrief, "Changed", "owner brief changed section");
-  assertIncludes(ownerBrief, "Waiting", "owner brief waiting section");
-  assertIncludes(ownerBrief, "Blocked", "owner brief blocked section");
-  assertIncludes(ownerBrief, "Needs Approval", "owner brief approval section");
-  assertIncludes(ownerBrief, "Next Actions", "owner brief next actions");
-  assertIncludes(ownerBrief, "Artifacts", "owner brief artifacts");
-  assertIncludes(ownerBrief, ".frontsmith/business/customer-inquiries/kitchen-remodeling-reply-draft.md", "owner brief reply artifact path");
-  assertIncludes(ownerBrief, ".frontsmith/business/estimates/kitchen-remodeling-estimate-draft.md", "owner brief estimate artifact path");
-  assertIncludes(ownerBrief, "Safety Boundary", "owner brief safety boundary");
+  assertIncludes(ownerBrief, "Сводка владельца", "owner brief title");
+  assertIncludes(ownerBrief, "Краткая сводка", "owner brief executive summary");
+  assertIncludes(ownerBrief, "Изменения", "owner brief changed section");
+  assertIncludes(ownerBrief, "Ожидает проверки", "owner brief waiting section");
+  assertIncludes(ownerBrief, "Заблокировано", "owner brief blocked section");
+  assertIncludes(ownerBrief, "Требует согласования", "owner brief approval section");
+  assertIncludes(ownerBrief, "Следующие действия", "owner brief next actions");
+  assertIncludes(ownerBrief, "Материалы", "owner brief artifacts");
+  assertIncludes(ownerBrief, ".frontsmith/business/customer-inquiries/компьютерная-диагностика-reply-draft.md", "owner brief reply artifact path");
+  assertIncludes(ownerBrief, ".frontsmith/business/estimates/компьютерная-диагностика-estimate-draft.md", "owner brief estimate artifact path");
+  assertIncludes(ownerBrief, "Границы безопасности", "owner brief safety boundary");
   assertDoesNotInclude(ownerBrief, testRoot, "owner brief temporary root path");
 
   await run("npm", ["run", "update:website"]);
+  await run("npm", ["run", "update:website"]);
+  assertAutoServices(await readFile(path.join(websiteRoot, "index.html"), "utf8"), business);
+  assertEqual(JSON.stringify(JSON.parse(await readFile(path.join(root, "business.json"), "utf8")).services), JSON.stringify(business.services), "обновления сайта сохраняют профиль восьми услуг");
   const websiteReview = await readFile(path.join(root, "launch", "website-review.md"), "utf8");
   const websiteActivity = await readFile(path.join(root, "activity", "latest-website-update.md"), "utf8");
-  assertIncludes(websiteReview, "Website Review", "website review title");
-  assertIncludes(websiteReview, "Status: Preview, needs owner review, not deployed", "website review status");
-  assertIncludes(websiteReview, "Executive Summary", "website review executive summary");
-  assertIncludes(websiteReview, "Changed Files", "website review changed files");
-  assertIncludes(websiteReview, "Updated From Business Profile", "website review business profile");
-  assertIncludes(websiteReview, "Source To Website Summary", "website review source summary");
-  assertIncludes(websiteReview, "Owner Review", "website review owner review");
-  assertIncludes(websiteReview, "Local Preview", "website review local preview");
-  assertIncludes(websiteReview, "Deployment Blockers", "website review blockers");
-  assertIncludes(websiteReview, "Artifacts", "website review artifacts");
+  assertIncludes(websiteReview, "Проверка сайта", "website review title");
+  assertIncludes(websiteReview, "Статус: предпросмотр, нужна проверка владельцем, не опубликован", "website review status");
+  assertIncludes(websiteReview, "Краткая сводка", "website review executive summary");
+  assertIncludes(websiteReview, "Изменённые файлы", "website review changed files");
+  assertIncludes(websiteReview, "Обновлено из профиля бизнеса", "website review business profile");
+  assertIncludes(websiteReview, "Связь профиля и сайта", "website review source summary");
+  assertIncludes(websiteReview, "Проверка владельцем", "website review owner review");
+  assertIncludes(websiteReview, "Локальный предпросмотр", "website review local preview");
+  assertIncludes(websiteReview, "Препятствия публикации", "website review blockers");
+  assertIncludes(websiteReview, "Материалы", "website review artifacts");
   assertIncludes(websiteReview, ".frontsmith/business/launch/website-review.md", "website review artifact path");
   assertIncludes(websiteReview, ".frontsmith/business/activity/latest-website-update.md", "website review activity path");
-  assertIncludes(websiteReview, "Safety Boundary", "website review safety boundary");
+  assertIncludes(websiteReview, "Границы безопасности", "website review safety boundary");
   assertDoesNotInclude(websiteReview, testRoot, "website review temporary root path");
-  assertIncludes(websiteActivity, "Latest Website Update", "website activity title");
-  assertIncludes(websiteActivity, "Status: Local update, needs owner review", "website activity status");
-  assertIncludes(websiteActivity, "Executive Summary", "website activity executive summary");
-  assertIncludes(websiteActivity, "Changed Files", "website activity changed files");
-  assertIncludes(websiteActivity, "Before Deployment", "website activity deployment review");
-  assertIncludes(websiteActivity, "Artifacts", "website activity artifacts");
-  assertIncludes(websiteActivity, "Safety Boundary", "website activity safety boundary");
+  assertIncludes(websiteActivity, "Последнее обновление сайта", "website activity title");
+  assertIncludes(websiteActivity, "Статус: локальное обновление, нужна проверка владельцем", "website activity status");
+  assertIncludes(websiteActivity, "Краткая сводка", "website activity executive summary");
+  assertIncludes(websiteActivity, "Изменённые файлы", "website activity changed files");
+  assertIncludes(websiteActivity, "Перед публикацией", "website activity deployment review");
+  assertIncludes(websiteActivity, "Материалы", "website activity artifacts");
+  assertIncludes(websiteActivity, "Границы безопасности", "website activity safety boundary");
   assertDoesNotInclude(websiteActivity, testRoot, "website activity temporary root path");
   await run("npm", ["run", "check"]);
   await run("npm", ["run", "deploy:check"], deployCheckEnv);
@@ -313,9 +363,9 @@ try {
   await assertExists(path.join("dist", "frontsmith-demo", "website", "index.html"));
 
   const demoHomepage = await readFile(path.join("dist", "frontsmith-demo", "index.html"), "utf8");
-  assertTextIncludes(demoHomepage, "Set up your front office in Codex", "demo hero");
-  assertIncludes(demoHomepage, "What Frontsmith Runs", "demo module list");
-  assertIncludes(demoHomepage, "Customer Desk", "demo customer desk");
+  assertTextIncludes(demoHomepage, "Настройте цифровой офис в Codex", "demo hero");
+  assertIncludes(demoHomepage, "Что делает Frontsmith", "demo module list");
+  assertIncludes(demoHomepage, "Работа с клиентами", "demo customer desk");
   assertIncludes(demoHomepage, 'href="/website"', "demo website preview link");
   assertIncludes(demoHomepage, "https://github.com/neurarelay/frontsmith", "demo GitHub setup path");
 
@@ -324,44 +374,44 @@ try {
   assertIncludes(builtWebsite, 'src="/website/script.js"', "built website script path");
   assertDoesNotInclude(builtWebsite, 'href="./styles.css"', "built website relative stylesheet path");
 
-  const demoPreview = spawn("node", ["scripts/preview-demo.mjs", "--port", demoPort, "--quiet"], {
+  const demoPreview = spawn(process.execPath, ["scripts/preview-demo.mjs", "--port", demoPort, "--quiet"], {
     env: testEnv,
     stdio: ["ignore", "pipe", "pipe"]
   });
 
   try {
-    await waitForPreview(demoPreview, "Frontsmith demo preview");
+    await waitForPreview(demoPreview, "Предпросмотр демонстрации Frontsmith");
     for (const route of ["/", "/website", "/styles.css", "/script.js", "/frontsmith-mark.svg", "/website/styles.css"]) {
       const response = await fetch(`http://127.0.0.1:${demoPort}${route}`);
       if (!response.ok) {
-        throw new Error(`Demo preview route failed: ${route} returned ${response.status}`);
+        throw new Error(`Ошибка маршрута предпросмотра демонстрации: ${route} вернул ${response.status}`);
       }
     }
   } finally {
     await stopPreview(demoPreview);
   }
 
-  const preview = spawn("node", ["scripts/preview-website.mjs", "--port", testPort], {
+  const preview = spawn(process.execPath, ["scripts/preview-website.mjs", "--port", testPort], {
     env: testEnv,
     stdio: ["ignore", "pipe", "pipe"]
   });
 
   try {
-    await waitForPreview(preview, "Frontsmith website preview");
+    await waitForPreview(preview, "Предпросмотр сайта Frontsmith");
     for (const route of ["/", "/styles.css", "/script.js", "/frontsmith-mark.svg", "/favicon.svg", "/favicon.png", "/apple-touch-icon.png"]) {
       const response = await fetch(`http://127.0.0.1:${testPort}${route}`);
       if (!response.ok) {
-        throw new Error(`Preview route failed: ${route} returned ${response.status}`);
+        throw new Error(`Ошибка маршрута предпросмотра: ${route} вернул ${response.status}`);
       }
       if (route.endsWith(".png") && response.headers.get("content-type") !== "image/png") {
-        throw new Error(`Preview route served wrong PNG type: ${route}`);
+        throw new Error(`Маршрут предпросмотра вернул неправильный тип PNG: ${route}`);
       }
     }
 
     const invalidContact = await fetch(`http://127.0.0.1:${testPort}/api/contact`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: "No contact" })
+      body: JSON.stringify({ name: "Нет контактов" })
     });
     assertEqual(invalidContact.status, 400, "invalid contact request status");
 
@@ -369,12 +419,12 @@ try {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        name: "Jamie",
+        name: "Иван",
         email: "jamie@example.com",
         phone: "",
         preferred_contact: "Email",
-        project_type: "Kitchen remodeling",
-        project_notes: "We want to review cabinets, counters, and lighting."
+        project_type: "Компьютерная диагностика",
+        project_notes: "Нужна диагностика индикатора неисправности двигателя."
       })
     });
     const validContactBody = await validContact.json();
@@ -385,7 +435,7 @@ try {
     await stopPreview(preview);
   }
 
-  console.log("Frontsmith regression tests passed.");
+  console.log("Регрессионные тесты Frontsmith пройдены.");
 } finally {
   await restoreWebsite();
   await rm(testRoot, { recursive: true, force: true });
@@ -393,16 +443,109 @@ try {
 
 async function run(command, args, env = testEnv) {
   await new Promise((resolve, reject) => {
-    const child = spawn(command, args, { env, stdio: "inherit" });
+    const npmCli = env.npm_execpath;
+    if (command === "npm" && !npmCli) {
+      reject(new Error("Не найден npm CLI: запускайте регрессионные тесты через npm run test:regression или npm test."));
+      return;
+    }
+    const executable = command === "npm" ? process.execPath : command;
+    const commandArgs = command === "npm" ? [npmCli, ...args] : args;
+    const child = spawn(executable, commandArgs, { env, stdio: "inherit" });
     child.on("close", (code) => {
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`${command} ${args.join(" ")} failed with exit code ${code}`));
+        reject(new Error(`${command} ${args.join(" ")} завершилась с кодом ${code}`));
       }
     });
     child.on("error", reject);
   });
+}
+
+async function runRejected(command, args, env = testEnv) {
+  let rejected = false;
+  try { await run(command, args, env); }
+  catch (error) {
+    if (!/завершилась с кодом [1-9]/.test(error.message)) throw error;
+    rejected = true;
+  }
+  assertEqual(rejected, true, "некорректная операция завершилась отказом");
+}
+
+function assertAutoServices(html, profile) {
+  const cards = [...html.matchAll(/<article\b[^>]*class="service-card"[^>]*>[\s\S]*?<\/article>/g)].map(match => match[0]);
+  assertEqual(cards.length, 8, "восемь карточек услуг после обновления");
+  for (const service of profile.services) {
+    const card = cards.find(value => value.includes(service.name));
+    assertEqual(Boolean(card), true, "карточка услуги " + service.name);
+    const price = service.priceFrom === 0 ? "Бесплатно" : "от " + new Intl.NumberFormat("ru-RU", {
+      style: "currency", currency: profile.currency, maximumFractionDigits: 0
+    }).format(service.priceFrom);
+    assertIncludes(card, price, "цена услуги " + service.name);
+    assertIncludes(card, `href="${profile.bookingUrl}"`, "ссылка записи услуги " + service.name);
+    assertIncludes(card, 'rel="noopener noreferrer"', "безопасная внешняя ссылка записи " + service.name);
+    assertIncludes(card, String(service.durationMinutes), "длительность услуги " + service.name);
+    assertIncludes(card, `data-service-category="${service.category}"`, "категория услуги " + service.name);
+  }
+}
+
+async function assertDemoFormLocal(source) {
+  const marker = 'intakeForm.addEventListener("submit", async (event) => {';
+  const start = source.indexOf(marker);
+  const end = source.indexOf('\n});', start);
+  assertEqual(start >= 0 && end > start, true, "найден обработчик формы");
+  const handler = source.slice(start + marker.length, end);
+  let requests = 0;
+  let mailDrafts = 0;
+  let busyChanges = 0;
+  let prevented = false;
+  let status = "";
+  await runInNewContext(`(async (event) => {${handler}\n})(event)`, {
+    event: { preventDefault() { prevented = true; } },
+    intakeForm: { dataset: { demoMode: "true" }, action: "/api/contact" },
+    validateIntakeForm: () => true,
+    intakePayload: () => ({ name: "Иван", email: "ivan@example.com" }),
+    setIntakeStatus(message) { status = message; },
+    setSubmitting() { busyChanges++; },
+    fetch() { requests++; throw new Error("Демо-форма попыталась отправить запрос"); },
+    fallbackMailto() { mailDrafts++; }
+  });
+  assertEqual(prevented, true, "демо-форма отменяет стандартную отправку");
+  assertEqual(requests, 0, "демо-форма не вызывает fetch");
+  assertEqual(mailDrafts, 0, "демо-форма не открывает почтовую отправку");
+  assertEqual(busyChanges, 0, "демо-форма возвращается до сетевой отправки");
+  assertIncludes(status, "Данные никуда не отправлены", "результат локальной проверки формы");
+}
+
+function assertServiceFilters(html, source, profile) {
+  const categories = ["all", ...new Set(profile.services.map(service => service.category))];
+  const buttons = categories.map(category => {
+    assertIncludes(html, `data-service-filter="${category}"`, "фильтр категории " + category);
+    return {
+      dataset: { serviceFilter: category },
+      classList: { toggle() {} },
+      setAttribute(name, value) { this[name] = value; },
+      addEventListener(name, handler) { this.click = handler; }
+    };
+  });
+  const cards = profile.services.map(service => ({ dataset: { serviceCategory: service.category }, hidden: false }));
+  const status = { textContent: "" };
+  const marker = "const serviceFilters =";
+  assertEqual(source.includes(marker), true, "логика фильтрации существует");
+  runInNewContext(source.slice(source.indexOf(marker)), {
+    document: {
+      querySelectorAll(selector) { return selector === "[data-service-filter]" ? buttons : cards; },
+      querySelector() { return status; }
+    }
+  });
+  for (const button of buttons) {
+    button.click();
+    const category = button.dataset.serviceFilter;
+    const expected = category === "all" ? 8 : profile.services.filter(service => service.category === category).length;
+    assertEqual(cards.filter(card => !card.hidden).length, expected, "фильтр показывает только свою категорию " + category);
+    assertEqual(button["aria-pressed"], "true", "активный фильтр обозначен для доступности");
+    assertEqual(status.textContent, `Показано услуг: ${expected}`, "число услуг после фильтрации");
+  }
 }
 
 async function restoreWebsite() {
@@ -415,19 +558,19 @@ async function assertExists(file) {
   try {
     await access(file);
   } catch {
-    throw new Error(`Expected file to exist: ${file}`);
+    throw new Error(`Ожидался существующий файл: ${file}`);
   }
 }
 
 function assertEqual(actual, expected, label) {
   if (actual !== expected) {
-    throw new Error(`Expected ${label} to be ${expected}, received ${actual}`);
+    throw new Error(`Ожидалось ${label}: ${expected}, получено ${actual}`);
   }
 }
 
 function assertIncludes(content, expected, label) {
   if (!content.includes(expected)) {
-    throw new Error(`Expected ${label} to include ${expected}`);
+    throw new Error(`Ожидалось, что ${label} содержит ${expected}`);
   }
 }
 
@@ -437,13 +580,13 @@ function assertTextIncludes(content, expected, label) {
 
 function assertDoesNotInclude(content, expected, label) {
   if (content.includes(expected)) {
-    throw new Error(`Expected ${label} not to include ${expected}`);
+    throw new Error(`Ожидалось, что ${label} не содержит ${expected}`);
   }
 }
 
 function assertNoTokens(content, label) {
   if (/\{\{[a-zA-Z0-9]+\}\}/.test(content)) {
-    throw new Error(`Unresolved website token found in ${label}`);
+    throw new Error(`В ${label} найден незаменённый маркер сайта`);
   }
 }
 
@@ -461,7 +604,7 @@ async function waitForPreview(child, readyText) {
     if (output.includes(readyText)) return;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error(`Preview server did not start. Output: ${output}`);
+  throw new Error(`Сервер предпросмотра не запустился. Вывод: ${output}`);
 }
 
 async function stopPreview(child) {

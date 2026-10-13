@@ -1,56 +1,56 @@
-name: Agency or operator feedback
-description: Tell us whether Frontsmith fits a real local-service business workflow
-title: "[Agency/operator feedback]: "
+name: Отзыв агентства или оператора
+description: Расскажите, подходит ли Frontsmith для реального местного бизнеса услуг
+title: "[Отзыв агентства/оператора]: "
 labels: ["feedback", "agency", "operator"]
 body:
   - type: markdown
     attributes:
       value: |
-        Use this for practical adoption feedback. Do not include credentials, private customer data, API keys, provider account details, or real business records.
+        Здесь можно оставить практический отзыв о внедрении. Не включайте секреты, приватные данные клиентов, API-ключи, сведения об аккаунтах и реальные записи бизнеса.
   - type: dropdown
     id: role
     attributes:
-      label: Perspective
+      label: Ваша роль
       options:
-        - Agency
-        - Developer
-        - Local service business operator
-        - Other
+        - Агентство
+        - Разработчик
+        - Оператор местного бизнеса услуг
+        - Другое
     validations:
       required: true
   - type: textarea
     id: scenario
     attributes:
-      label: Real-world scenario
-      description: Describe the kind of business or client workflow you are evaluating.
-      placeholder: A remodeling contractor needs help with website updates, replies, estimates, and launch checks.
+      label: Реальный сценарий
+      description: Опишите бизнес или клиентский процесс, который проверяете.
+      placeholder: Подрядчику по ремонту нужны обновление сайта, ответы клиентам, сметы и проверки запуска.
     validations:
       required: true
   - type: textarea
     id: fit
     attributes:
-      label: Where Frontsmith fits
-      description: Which part of the front-office loop looks useful?
+      label: Где подходит Frontsmith
+      description: Какая часть работы цифрового офиса выглядит полезной?
     validations:
       required: true
   - type: textarea
     id: blocker
     attributes:
-      label: Adoption blocker
-      description: What would stop you from using or recommending Frontsmith?
+      label: Препятствие внедрению
+      description: Что мешает использовать или рекомендовать Frontsmith?
     validations:
       required: true
   - type: textarea
     id: next
     attributes:
-      label: One change that would make this more useful
-      description: Keep it inside the v1.0 scope when possible.
+      label: Одно изменение для большей пользы
+      description: По возможности оставайтесь в рамках v1.0.
     validations:
       required: true
   - type: checkboxes
     id: safety
     attributes:
-      label: Safety check
+      label: Проверка безопасности
       options:
-        - label: I removed credentials, customer data, and private business records from this issue
+        - label: Я удалил секреты, данные клиентов и приватные записи бизнеса из обращения
           required: true

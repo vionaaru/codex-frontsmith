@@ -1,61 +1,67 @@
 # Frontsmith
 
-Frontsmith is an open-source Codex-native front-office kit for local service businesses.
+Frontsmith — цифровой офис с открытым кодом для небольшого бизнеса в сфере услуг, управляемый через Codex.
 
-Primary use:
+Основное назначение:
 
-Set up and operate a local service business digital front office from Codex: Owner Brief, Customer Desk, estimates, proposals, website updates, launch checks, activity records, and approval-gated connected actions.
+Настройка и работа цифрового офиса небольшого бизнеса через Codex: Сводка владельца, Работа с клиентами, сметы, предложения, обновления сайта, проверки запуска, журнал действий и подключённые действия с обязательным согласованием.
 
-Frontsmith stands on its own business value. It does not require Neura to be useful.
+Frontsmith обладает самостоятельной ценностью для бизнеса. Для полезной работы ему не требуется Neura.
 
-## Primary URLs
+## Основные адреса
 
-- Frontsmith Control Panel: https://frontsmith.neurapath.ai/
-- Included website preview: https://frontsmith.neurapath.ai/website
-- Codex workflow walkthrough video: https://frontsmith.neurapath.ai/#walkthrough
-- YouTube walkthrough: https://youtu.be/4B4Gal-I-I0
-- Sitemap: https://frontsmith.neurapath.ai/sitemap.xml
-- Robots: https://frontsmith.neurapath.ai/robots.txt
-- Public repo: https://github.com/neurarelay/frontsmith
+- Панель демонстрации Frontsmith: https://frontsmith.neurapath.ai/
+- Предпросмотр встроенного сайта: https://frontsmith.neurapath.ai/website
+- Видео рабочего процесса Codex: https://frontsmith.neurapath.ai/#walkthrough
+- Обзор на YouTube: https://youtu.be/4B4Gal-I-I0
+- Карта сайта: https://frontsmith.neurapath.ai/sitemap.xml
+- Правила поисковой индексации: https://frontsmith.neurapath.ai/robots.txt
+- Публичный репозиторий: https://github.com/neurarelay/frontsmith
 
-## Evaluation Path
+## Учебный сценарий
+
+По умолчанию Frontsmith создаёт локальный цифровой офис автосервиса «АвтоРитм» из blueprints/auto-service/business.example.json. Восемь услуг, цены и длительности — демонстрационные данные. Примеры работы с демо-клиентом Алексеем показывают компьютерную диагностику и подготовку ТО; это иллюстрации рабочих процессов, а не текущие клиентские записи.
+
+Сайт автосервиса содержит внешнюю ссылку https://example.com/booking на отдельную закрытую демонстрацию Booking Flow. Frontsmith не импортирует оттуда заявки и не синхронизирует API. Почта и календарь локальной демонстрации не подключены.
+
+## Как оценить продукт
 
 ```bash
 git clone https://github.com/neurarelay/frontsmith.git
 cd frontsmith
 npm install
-npm run bootstrap -- --business-name "Acme"
+npm run bootstrap
 npm run first-run:status
 npm run owner:brief
-npm run prepare:connected-action -- --action-type "email" --title "Send consultation follow-up" --target "Customer follow-up" --evidence "Owner-provided customer notes"
+npm run prepare:connected-action -- --action-type "email" --title "Отправить сообщение после консультации" --target "Повторный контакт с клиентом" --evidence "Заметки о клиенте от владельца"
 ```
 
-## Neura Boundary
+## Границы Neura
 
-When connected client mode is enabled, Frontsmith can prepare proposed connected actions for Neura Relay preflight before any adapter runs:
+При включённом подключённом клиентском режиме Frontsmith может готовить предлагаемые подключённые действия для предварительной проверки Neura Relay до запуска любого адаптера:
 
-Frontsmith action -> Neura Registry identity -> Neura Relay preflight -> owner approval when required -> execution adapter -> local activity record
+Действие Frontsmith -> идентификация Neura Registry -> предварительная проверка Neura Relay -> согласование владельцем при необходимости -> адаптер выполнения -> локальная запись в журнале
 
-Neura Relay returns Decision Receipt refs before developer-owned execution. Frontsmith does not send messages, publish changes, connect accounts, submit provider actions, or execute customer-facing actions without explicit owner approval.
+Neura Relay возвращает ссылки Decision Receipt до выполнения под контролем разработчика. Frontsmith не отправляет сообщения, не публикует изменения, не подключает аккаунты, не направляет действия провайдерам и не выполняет действия для клиентов без явного согласования владельцем.
 
-## Related Neura Surfaces
+## Связанные ресурсы Neura
 
 - Neura Relay: https://www.neurarelay.com/
-- Relay first proof: https://www.neurarelay.com/developers/first-proof?neura_source=frontsmith&neura_campaign=frontsmith_applied_proof&neura_surface=demo_llms_txt
-- Relay llms.txt: https://www.neurarelay.com/llms.txt
-- Relay Agent Card: https://www.neurarelay.com/.well-known/agent-card.json
-- NeuraPath route: https://neurapath.ai/frontsmith
+- Первое подтверждение Relay: https://www.neurarelay.com/developers/first-proof?neura_source=frontsmith&neura_campaign=frontsmith_applied_proof&neura_surface=demo_llms_txt
+- Описание Relay для ИИ: https://www.neurarelay.com/llms.txt
+- Карточка агента Relay: https://www.neurarelay.com/.well-known/agent-card.json
+- Страница NeuraPath: https://neurapath.ai/frontsmith
 
-## Claim Boundaries
+## Границы заявлений
 
-Frontsmith does not claim:
+Frontsmith не утверждает:
 
-- that Neura executes downstream actions;
-- that Frontsmith depends on Neura to function;
-- public production API-key issuance;
-- public production MCP or A2A token issuance;
-- provider approval, endorsement, listing, integration, or partnership.
+- что Neura выполняет дальнейшие внешние действия;
+- что Frontsmith зависит от Neura для своей работы;
+- что рабочие API-ключи выдаются публично;
+- что рабочие токены MCP или A2A выдаются публично;
+- что провайдер одобрил, рекомендовал, разместил в каталоге, интегрировал продукт или заключил партнёрство.
 
-## Canonical Summary
+## Основное описание
 
-Frontsmith helps a local service business run the digital front office from Codex. Its connected-action workflow is the applied proof case for why consequential agent actions need approval and traceable authority before execution.
+Frontsmith помогает небольшому бизнесу в сфере услуг вести цифровой офис через Codex. Процесс подключённых действий на практике показывает, почему действия агента с последствиями требуют согласования и проверяемых полномочий до выполнения.

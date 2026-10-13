@@ -1,22 +1,22 @@
-# Workflow: Bootstrap Business
+# Процесс: настройка бизнеса
 
-Use this workflow when an operator wants to create or reset a Frontsmith business workspace.
+Используйте этот процесс для создания или сброса рабочих данных Frontsmith.
 
-## Operator Prompt
+## Запрос оператора
 
 ```text
-Bootstrap my remodeling business with Frontsmith.
+Настрой Frontsmith для моего бизнеса по ремонту помещений.
 ```
 
-## Codex Steps
+## Шаги Codex
 
-1. Confirm the business type or use the default local service blueprint.
-2. Create the local business workspace under `.frontsmith/business/`.
-3. Create or update the business profile.
-4. Update `website/` from the business profile.
-5. Create launch and website review files.
-6. Report the next owner review steps.
+1. Уточните тип бизнеса или используйте базовый сценарий местного бизнеса услуг.
+2. Создайте локальные рабочие данные в `.frontsmith/business/`.
+3. Создайте или обновите профиль бизнеса.
+4. Обновите `website/` из профиля бизнеса.
+5. Создайте материалы запуска и проверки сайта.
+6. Сообщите следующие шаги проверки владельцем.
 
-## Safety
+## Безопасность
 
-Do not connect live integrations, deploy websites, send emails, or change provider settings during bootstrap unless the owner explicitly approves that action.
+Подключение интеграций, публикация сайтов, отправка писем и изменение сервисов при настройке требуют явного согласия владельца.

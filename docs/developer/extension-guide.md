@@ -1,64 +1,64 @@
-# Developer Extension Guide
+# Руководство разработчика по расширениям
 
-Frontsmith is a kit with clear extension points.
+Frontsmith — набор инструментов с понятными точками расширения.
 
-## Extension Points
+## Точки расширения
 
 ```text
-blueprints/      business-type definitions
-workflows/       Codex operating runbooks
-scripts/         local automation
-packages/core    shared domain model
-packages/adapters provider integrations
-packages/neura   governed-action integration
-.frontsmith/     ignored local business workspace data
+blueprints/       описания типов бизнеса
+workflows/        рабочие инструкции Codex
+scripts/          локальная автоматизация
+packages/core     общая предметная модель
+packages/adapters интеграции с провайдерами
+packages/neura    интеграция контролируемых действий
+.frontsmith/      локальные данные бизнеса, исключённые из Git
 ```
 
-## Default Rule
+## Основное правило
 
-Add business value before adding infrastructure.
+Сначала добавляйте пользу для бизнеса, затем инфраструктуру.
 
-If a feature does not help a local service business set up the front office, update the website, handle customers, prepare estimates, or launch cleanly, keep it out of the default package.
+Если функция не помогает местному сервисному бизнесу настроить цифровой офис, обновить сайт, работать с клиентами, подготовить сметы или организовать запуск, не включайте её в базовый набор.
 
-## Adapter Boundary
+## Границы адаптеров
 
-Adapters should prepare or execute external actions only after owner approval.
+Адаптеры должны готовить или выполнять внешние действия только после одобрения владельца.
 
-Examples:
+Примеры:
 
-- Vercel deployment adapter
-- Resend contact delivery adapter
-- Gmail draft/send adapter
-- Google Drive asset adapter
-- Google Calendar scheduling adapter
-- Neura Relay preflight adapter
+- адаптер развёртывания Vercel;
+- адаптер доставки заявок Resend;
+- адаптер черновиков и отправки Gmail;
+- адаптер материалов Google Drive;
+- адаптер планирования Google Calendar;
+- адаптер предварительной проверки Neura Relay.
 
-Dry-run behavior should exist before live execution.
+Перед реальным выполнением должен быть реализован тестовый режим без внешних действий.
 
-## Extension Planning Workflow
+## Планирование расширений
 
-Before adding a new live connector, tool, skill, or workflow, create a reviewable extension plan:
+Перед добавлением нового действующего коннектора, инструмента, навыка или рабочего процесса создайте план расширения для проверки:
 
 ```bash
-npm run prepare:extension -- --capability "Consultation scheduling" --connector "Google Calendar" --goal "Prepare an owner-reviewed workflow for approved consultation requests."
+npm run prepare:extension -- --capability "Планирование консультаций" --connector "Google Calendar" --goal "Подготовить проверяемый владельцем процесс для одобренных заявок на консультацию."
 ```
 
-The plan is written under `.frontsmith/business/extensions/`. It should define the workflow boundary, skill boundary, connector boundary, owner review items, implementation checklist, and safety boundary before implementation moves into live behavior.
+План сохраняется в `.frontsmith/business/extensions/`. До перехода к реальным действиям он должен определить границы рабочего процесса, навыка и коннектора, вопросы для проверки владельцем, контрольный список реализации и ограничения безопасности.
 
-The default extension path must not send, publish, schedule, upload, export, or execute provider actions until the owner approves the exact live action.
+По умолчанию расширение не должно отправлять, публиковать, назначать события, загружать, экспортировать или выполнять действия провайдера, пока владелец не одобрит конкретное реальное действие.
 
-## Connected-Action Receipt Workflow
+## Запись действия через подключённый сервис
 
-Before adding a live email, publishing, file, calendar, or provider adapter, create a local receipt-style record:
+Перед добавлением действующего адаптера почты, публикации, файлов, календаря или другого провайдера создайте локальную запись действия:
 
 ```bash
-npm run prepare:connected-action -- --action-type "email" --title "Send consultation follow-up" --target "Customer follow-up" --evidence "Owner-provided customer notes"
+npm run prepare:connected-action -- --action-type "email" --title "Отправить письмо после консультации" --target "Повторный контакт с клиентом" --evidence "Заметки о клиенте, предоставленные владельцем"
 ```
 
-The receipt is written under `.frontsmith/business/connected-actions/` as Markdown and JSON. It records the proposed action, approval gate, Neura Registry ref placeholder, Neura Relay Action Card ref placeholder, Decision Receipt state, trace ref, blocked adapters, and safety boundary.
+Запись сохраняется в `.frontsmith/business/connected-actions/` в форматах Markdown и JSON. Она содержит предлагаемое действие, условие одобрения, заготовку ссылки Neura Registry, заготовку ссылки на карточку действия Neura Relay (Action Card), состояние записи решения (Decision Receipt), ссылку на трассировку, заблокированные адаптеры и ограничения безопасности.
 
-This workflow does not run Neura Relay, connect providers, send messages, publish, schedule, upload, export, or execute external actions. A real connected-mode implementation must replace the placeholder refs only after owner approval and a governed preflight.
+Этот процесс не запускает Neura Relay, не подключает провайдеров, не отправляет сообщения, не публикует, не назначает события, не загружает, не экспортирует и не выполняет внешние действия. Реализация подключённого режима должна заменять заготовки ссылок только после одобрения владельца и контролируемой предварительной проверки.
 
-## Local Testing Boundary
+## Границы локального тестирования
 
-Regression tests should not erase `.frontsmith/business/`. Use `FRONTSMITH_BUSINESS_ROOT` when a test needs an isolated local business workspace.
+Регрессионные тесты не должны удалять `.frontsmith/business/`. Используйте `FRONTSMITH_BUSINESS_ROOT`, когда тесту требуется отдельная локальная рабочая область бизнеса.

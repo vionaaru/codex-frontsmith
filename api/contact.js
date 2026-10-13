@@ -18,7 +18,7 @@ export async function POST(request) {
 
     if (isRateLimited(request)) {
       return jsonResponse(
-        { ok: false, error: "Too many requests. Please try again in a few minutes" },
+        { ok: false, error: "Слишком много заявок. Повторите попытку через несколько минут" },
         429
       );
     }
@@ -29,13 +29,13 @@ export async function POST(request) {
       return jsonResponse({
         ok: true,
         id: "dry-run",
-        message: "Contact request accepted in dry-run mode"
+        message: "Заявка принята в тестовом режиме без отправки"
       });
     }
 
     if (mode === "disabled") {
       return jsonResponse(
-        { ok: false, code: "contact_not_configured", error: "Contact delivery is not configured" },
+        { ok: false, code: "contact_not_configured", error: "Отправка заявок не настроена" },
         503
       );
     }
@@ -61,20 +61,20 @@ export async function POST(request) {
     const result = await safeJson(response);
 
     if (!response.ok) {
-      console.error("Frontsmith contact delivery failed", {
+      console.error("Ошибка отправки заявки Frontsmith", {
         status: response.status,
-        error: result?.message ?? result?.error ?? "Unknown Resend error"
+        error: result?.message ?? result?.error ?? "Неизвестная ошибка Resend"
       });
       return jsonResponse(
-        { ok: false, error: "The request could not be sent right now" },
+        { ok: false, error: "Не удалось отправить заявку. Попробуйте позже" },
         502
       );
     }
 
     return jsonResponse({ ok: true, id: result?.id ?? null });
   } catch (error) {
-    console.error("Frontsmith contact handler failed", error);
-    return jsonResponse({ ok: false, error: "The request could not be sent right now" }, 500);
+    console.error("Ошибка обработки заявки Frontsmith", error);
+    return jsonResponse({ ok: false, error: "Не удалось отправить заявку. Попробуйте позже" }, 500);
   }
 }
 
@@ -120,11 +120,11 @@ function normalizeSubmission(input) {
 
 function validateSubmission(submission) {
   if (!submission.email && !submission.phone) {
-    return { ok: false, message: "Add an email or phone number so the business can respond" };
+    return { ok: false, message: "Укажите электронную почту или телефон, чтобы мы могли ответить" };
   }
 
   if (submission.email && !isEmail(submission.email)) {
-    return { ok: false, message: "Enter a valid email address" };
+    return { ok: false, message: "Укажите корректный адрес электронной почты" };
   }
 
   return { ok: true };
@@ -138,7 +138,7 @@ function readResendConfig() {
   if (!apiKey || !toEmail || !fromEmail) {
     return {
       ok: false,
-      message: "Contact delivery is not configured"
+      message: "Отправка заявок не настроена"
     };
   }
 
@@ -147,13 +147,13 @@ function readResendConfig() {
     apiKey,
     toEmail,
     fromEmail,
-    subjectPrefix: process.env.CONTACT_SUBJECT_PREFIX ?? "Website project request",
+    subjectPrefix: process.env.CONTACT_SUBJECT_PREFIX ?? "Заявка на проект с сайта",
     tenantId: process.env.FRONTSMITH_TENANT_ID ?? "frontsmith"
   };
 }
 
 function emailPayload(submission, config) {
-  const subjectName = submission.name || submission.projectType || "Website visitor";
+  const subjectName = submission.name || displayOption(submission.projectType) || "Посетитель сайта";
   const subject = `${config.subjectPrefix}: ${subjectName}`;
   const text = emailText(submission);
   const html = emailHtml(submission);
@@ -174,19 +174,19 @@ function emailPayload(submission, config) {
 
 function emailText(submission) {
   return [
-    "New website project request",
+    "Новая заявка на проект с сайта",
     "",
-    line("Name", submission.name),
-    line("Email", submission.email),
-    line("Phone", submission.phone),
-    line("Preferred contact", submission.preferredContact),
-    line("Project type", submission.projectType),
-    line("Project location", submission.projectLocation),
-    line("Ideal timeline", submission.idealTimeline),
-    line("Budget range", submission.budgetComfort),
+    line("Имя", submission.name),
+    line("Электронная почта", submission.email),
+    line("Телефон", submission.phone),
+    line("Предпочтительный способ связи", displayOption(submission.preferredContact)),
+    line("Тип проекта", displayOption(submission.projectType)),
+    line("Адрес объекта", submission.projectLocation),
+    line("Желаемые сроки", submission.idealTimeline),
+    line("Бюджет", submission.budgetComfort),
     "",
-    "Project notes",
-    submission.projectNotes || "Not provided"
+    "Описание проекта",
+    submission.projectNotes || "Не указано"
   ]
     .filter((item) => item !== null)
     .join("\n");
@@ -194,14 +194,14 @@ function emailText(submission) {
 
 function emailHtml(submission) {
   const rows = [
-    ["Name", submission.name],
-    ["Email", submission.email],
-    ["Phone", submission.phone],
-    ["Preferred contact", submission.preferredContact],
-    ["Project type", submission.projectType],
-    ["Project location", submission.projectLocation],
-    ["Ideal timeline", submission.idealTimeline],
-    ["Budget range", submission.budgetComfort]
+    ["Имя", submission.name],
+    ["Электронная почта", submission.email],
+    ["Телефон", submission.phone],
+    ["Предпочтительный способ связи", displayOption(submission.preferredContact)],
+    ["Тип проекта", displayOption(submission.projectType)],
+    ["Адрес объекта", submission.projectLocation],
+    ["Желаемые сроки", submission.idealTimeline],
+    ["Бюджет", submission.budgetComfort]
   ]
     .filter(([, value]) => value)
     .map(
@@ -211,13 +211,13 @@ function emailHtml(submission) {
     .join("");
 
   return `<!doctype html>
-<html>
+<html lang="ru">
   <body style="margin:0;padding:24px;background:#f7f6f0;font-family:Arial,sans-serif;color:#292a25">
     <div style="max-width:640px;margin:0 auto;background:#fffefa;border:1px solid #dcddd4;border-radius:8px;padding:24px">
-      <h1 style="font-size:24px;line-height:1.2;margin:0 0 18px">New website project request</h1>
+      <h1 style="font-size:24px;line-height:1.2;margin:0 0 18px">Новая заявка на проект с сайта</h1>
       <table style="width:100%;border-collapse:collapse;margin:0 0 20px">${rows}</table>
-      <h2 style="font-size:16px;line-height:1.3;margin:0 0 8px">Project notes</h2>
-      <p style="white-space:pre-wrap;line-height:1.55;margin:0;color:#4f534d">${escapeHtml(submission.projectNotes || "Not provided")}</p>
+      <h2 style="font-size:16px;line-height:1.3;margin:0 0 8px">Описание проекта</h2>
+      <p style="white-space:pre-wrap;line-height:1.55;margin:0;color:#4f534d">${escapeHtml(submission.projectNotes || "Не указано")}</p>
     </div>
   </body>
 </html>`;
@@ -225,6 +225,17 @@ function emailHtml(submission) {
 
 function line(label, value) {
   return value ? `${label}: ${value}` : null;
+}
+
+function displayOption(value) {
+  return {
+    Email: "Электронная почта",
+    Phone: "Телефон",
+    "Kitchen remodeling": "Ремонт кухни",
+    "Bathroom remodeling": "Ремонт ванной",
+    "Living spaces": "Жилые помещения",
+    Other: "Другое"
+  }[value] || value;
 }
 
 function clean(value, maxLength) {

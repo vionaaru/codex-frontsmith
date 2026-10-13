@@ -1,86 +1,87 @@
-# Frontsmith Relay Proof Map
+# Карта подтверждений Frontsmith Relay
 
-Status: local proof map for reviewers and operators  
-Boundary: no live provider action, no customer send, no deployment, no connected-mode execution
+Статус: локальная карта подтверждений для проверяющих и операторов
 
-Frontsmith is a practical proof case for approval-before-action workflows. It shows how a local service business can use Codex to prepare useful front-office work while keeping consequential action behind owner review.
+Границы: без внешних действий через провайдеров, отправки клиентам, развёртывания и выполнения в подключённом режиме
 
-This map connects Frontsmith workflows to the Neura Relay authority question:
+Frontsmith — практический пример процессов с согласованием до выполнения. Он показывает, как небольшой бизнес в сфере услуг может готовить полезные материалы цифрового офиса через Codex, оставляя действия с последствиями под контролем владельца.
 
-```text
-Can the workflow prove authority before the action executes?
-```
-
-## Proof Pattern
+Карта связывает процессы Frontsmith с вопросом о полномочиях в Neura Relay:
 
 ```text
-Frontsmith draft or prep artifact
-  -> owner review
-  -> connected-action receipt if live action is proposed
-  -> optional Neura Relay preflight in connected client mode
-  -> developer-owned execution or restraint
+Может ли процесс подтвердить полномочия до выполнения действия?
 ```
 
-Frontsmith does not execute downstream actions by default. It prepares reviewable files and receipts first.
+## Схема подтверждения
 
-## Workflow Map
+```text
+Черновик или подготовленный материал Frontsmith
+  -> проверка владельцем
+  -> квитанция подключённого действия, если предложено внешнее действие
+  -> необязательная предварительная проверка Neura Relay в подключённом клиентском режиме
+  -> выполнение или отказ от выполнения под контролем разработчика
+```
 
-| Frontsmith workflow | Proposed consequential action | Current proof artifact | Relay authority opportunity | Execution boundary |
+По умолчанию Frontsmith не выполняет дальнейшие внешние действия. Сначала он готовит файлы и квитанции для проверки.
+
+## Карта процессов
+
+| Процесс Frontsmith | Предлагаемое действие с последствиями | Текущий подтверждающий материал | Возможная проверка полномочий Relay | Условия выполнения |
 | --- | --- | --- | --- | --- |
-| Customer Desk reply | Send a customer email or follow-up | `.frontsmith/business/customer-desk/...` reply draft | `external_email_send` | Owner must approve exact message, recipient, and send mode |
-| Estimate preparation | Send estimate/proposal material | `.frontsmith/business/estimates/...` draft | `external_email_send`, `customer_data_export` | Owner must approve scope, price assumptions, files, and delivery |
-| Website update | Publish changed business website content | `website/` diff and preview | `production_deploy` | Owner must approve content and deployment target |
-| Launch status | Deploy site, configure domain, connect providers | `.frontsmith/business/launch/...` status artifact | `production_deploy`, `permission_change` | Owner must approve provider, account, domain, and deployment |
-| Extension planning | Add email, calendar, storage, publishing, or Neura integration | `.frontsmith/business/extensions/...` plan | `permission_change`, `workflow_close`, `persistent_memory_write` | Owner must approve capability, connector, data fields, and policy |
-| Connected-action receipt | Prepare a live action for email, calendar, file, publishing, provider setup, or export | `.frontsmith/business/connected-actions/...` Markdown and JSON receipt | Action-specific Relay preflight | Adapter execution remains blocked until owner approval and connected-mode preflight |
+| Ответ в модуле «Работа с клиентами» | Отправить письмо клиенту или повторное обращение | Черновик ответа `.frontsmith/business/customer-inquiries/...` | `external_email_send` | Владелец должен согласовать точный текст, получателя и режим отправки |
+| Подготовка сметы | Отправить смету или предложение | Черновик `.frontsmith/business/estimates/...` | `external_email_send`, `customer_data_export` | Владелец должен согласовать объём, ценовые допущения, файлы и доставку |
+| Обновление сайта | Опубликовать изменённые материалы сайта бизнеса | Изменения и предпросмотр `website/` | `production_deploy` | Владелец должен согласовать содержание и целевое окружение публикации |
+| Статус запуска | Развернуть сайт, настроить домен, подключить провайдеров | Материал со статусом `.frontsmith/business/launch/...` | `production_deploy`, `permission_change` | Владелец должен согласовать провайдера, аккаунт, домен и развёртывание |
+| Планирование расширений | Добавить почту, календарь, хранилище, публикацию или интеграцию Neura | План `.frontsmith/business/extensions/...` | `permission_change`, `workflow_close`, `persistent_memory_write` | Владелец должен согласовать возможность, подключение, поля данных и политику |
+| Квитанция подключённого действия | Подготовить внешнее действие для почты, календаря, файлов, публикации, настройки провайдера или экспорта | Квитанции Markdown и JSON `.frontsmith/business/connected-actions/...` | Предварительная проверка Relay для конкретного действия | Адаптер заблокирован до согласования владельцем и предварительной проверки в подключённом режиме |
 
-## Relay-Compatible Receipt Fields
+## Поля квитанции, совместимые с Relay
 
-Frontsmith connected-action receipts already make the following fields explicit enough for a Relay preflight handoff:
+Квитанции подключённых действий Frontsmith уже явно фиксируют поля для передачи в предварительную проверку Relay:
 
-- proposed action type;
-- target;
-- evidence;
-- approval gate;
-- owner approval status;
-- blocked adapters;
-- Neura Registry reference placeholder;
-- Neura Relay Action Card reference placeholder;
-- Relay Decision Receipt state;
-- trace reference;
-- Markdown and JSON artifact paths.
+- тип предлагаемого действия;
+- цель;
+- подтверждающие сведения;
+- условие согласования;
+- статус согласования владельцем;
+- заблокированные адаптеры;
+- заготовку ссылки Neura Registry;
+- заготовку ссылки Neura Relay Action Card;
+- состояние Relay Decision Receipt;
+- ссылку на трассировку;
+- пути материалов Markdown и JSON.
 
-## What This Proves
+## Что это подтверждает
 
-Frontsmith proves the practical need for pre-action authority in a real small-business workflow:
+Frontsmith показывает практическую потребность в проверке полномочий до действия в реальном процессе малого бизнеса:
 
-- useful AI work can happen before live execution;
-- the owner can review the exact proposed action;
-- the system can record a receipt-shaped artifact before an adapter runs;
-- live connected actions remain blocked by default;
-- Relay can be introduced as the governed preflight layer when connected mode is enabled.
+- полезная работа ИИ возможна до выполнения внешних действий;
+- владелец может проверить точное предлагаемое действие;
+- система может записать материал в формате квитанции до запуска адаптера;
+- внешние подключённые действия по умолчанию остаются заблокированными;
+- при включении подключённого режима Relay можно добавить как управляемый слой предварительной проверки.
 
-## What This Does Not Claim
+## Чего карта не утверждает
 
-This map does not claim:
+Карта не утверждает, что:
 
-- Frontsmith runs Neura Relay by default;
-- Frontsmith sends emails, publishes websites, uploads files, changes DNS, creates calendar events, configures providers, exports data, or executes live connected actions;
-- any provider has approved, endorsed, integrated, listed, or partnered with Frontsmith or Neura;
-- placeholder refs are production Relay receipts.
+- Frontsmith по умолчанию запускает Neura Relay;
+- Frontsmith отправляет письма, публикует сайты, загружает файлы, меняет DNS, создаёт события календаря, настраивает провайдеров, экспортирует данные или выполняет внешние подключённые действия;
+- какой-либо провайдер одобрил, рекомендовал, интегрировал или разместил Frontsmith либо Neura в своём каталоге или заключил с ними партнёрство;
+- заготовки ссылок являются настоящими квитанциями Relay для рабочего окружения.
 
-## Operator Check
+## Проверка оператором
 
-Use the connected-action receipt command to generate the proof artifact locally:
+Создайте подтверждающий материал локально командой подготовки квитанции подключённого действия:
 
 ```bash
-npm run prepare:connected-action -- --action-type "email" --title "Send consultation follow-up" --target "Customer follow-up" --evidence "Owner-provided customer notes"
+npm run prepare:connected-action -- --action-type "email" --title "Отправить сообщение после консультации" --target "Повторный контакт с клиентом" --evidence "Заметки о клиенте от владельца"
 ```
 
-Then review:
+Затем проверьте:
 
 ```text
 .frontsmith/business/connected-actions/
 ```
 
-The generated receipt should show the proposed action, approval gate, Neura reference placeholders, blocked adapters, and no-live-action boundary before any provider adapter can run.
+До запуска любого адаптера провайдера квитанция должна показывать предлагаемое действие, условие согласования, заготовки ссылок Neura, заблокированные адаптеры и запрет внешних действий.

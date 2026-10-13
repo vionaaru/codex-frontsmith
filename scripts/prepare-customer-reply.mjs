@@ -2,9 +2,9 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { businessPath, businessRoot } from "./lib/paths.mjs";
 
-const inquiryName = readArg("--name") ?? "New Homeowner";
-const projectType = readArg("--project") ?? "Remodeling Project";
-const notes = readArg("--notes") ?? "Homeowner asked for help planning the project scope and next step.";
+const inquiryName = readArg("--name") ?? "Новый клиент";
+const projectType = readArg("--project") ?? "Техническое обслуживание";
+const notes = readArg("--notes") ?? "Клиент попросил помочь определить объём работ и следующий шаг.";
 const root = businessRoot();
 const business = await readBusinessProfile();
 const outputDir = path.join(root, "customer-inquiries");
@@ -13,7 +13,7 @@ const file = path.join(outputDir, `${slugify(projectType)}-reply-draft.md`);
 await mkdir(outputDir, { recursive: true });
 await writeFile(file, replyDraft({ business, inquiryName, projectType, notes, file }));
 
-console.log(`Prepared customer reply draft: ${file}`);
+console.log(`Подготовлен черновик ответа клиенту: ${file}`);
 
 function readArg(name) {
   const index = process.argv.indexOf(name);
@@ -25,7 +25,7 @@ function slugify(value) {
   return value
     .toLowerCase()
     .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 64);
 }
@@ -36,78 +36,91 @@ async function readBusinessProfile() {
     return JSON.parse(await readFile(profilePath, "utf8"));
   } catch (error) {
     if (error && error.code === "ENOENT") {
-      throw new Error(`No business workspace found at ${profilePath}. Run npm run bootstrap first.`);
+      throw new Error(`Рабочие данные бизнеса не найдены: ${profilePath}. Сначала выполните npm run bootstrap.`);
     }
     throw error;
   }
 }
 
 function replyDraft({ business, inquiryName, projectType, notes, file }) {
-  return `# Customer Desk Reply Draft
+  const automotive = business.blueprint === "auto-service" || /автосервис/i.test(business.businessType);
+  const questions = automotive
+    ? "Для подготовки к визиту укажите марку, модель, год выпуска, пробег и двигатель автомобиля. Опишите симптомы и когда они появляются. Если на панели есть сообщение об ошибке, приложите его фото. Точный диагноз и итоговую стоимость согласуем после проверки."
+    : "Для первого разговора пришлите фотографии, укажите помещения, желаемые сроки, обязательные результаты и ограничения. После этого предложим следующий шаг: консультацию по телефону, выезд или подготовку сметы.";
+  const nextStep = automotive
+    ? "запросить данные автомобиля, пробег, симптомы и желаемую услугу"
+    : "запросить фотографии, помещения, сроки и обязательные результаты";
+  const booking = automotive && business.bookingUrl
+    ? `Выбрать услугу и удобное время можно в отдельном сервисе записи: ${business.bookingUrl}. Это ссылка на Booking Flow; время не забронировано этим черновиком.`
+    : "";
+  return `# Черновик ответа клиенту
 
-Business: ${business.businessName}
-Customer: ${inquiryName}
-Project: ${projectType}
-Status: Draft, needs owner review, not sent
-Generated: ${new Date().toISOString()}
+Бизнес: ${business.businessName}
+Клиент: ${inquiryName}
+Проект: ${projectType}
+Статус: черновик, нужна проверка владельцем, не отправлен
+Режим данных: ${business.demoMode ? "учебный пример, не реальное обращение" : "рабочий профиль"}
+Создано: ${new Date().toISOString()}
 
-## Executive Summary
+## Краткая сводка
 
-A reply draft is ready for owner review. It acknowledges ${inquiryName}'s ${projectType.toLowerCase()} request, asks for the minimum context needed to choose the right next step, and avoids pricing, scheduling promises, or live commitments. Nothing has been sent.
+Черновик ответа готов к проверке владельцем. Он подтверждает обращение клиента ${inquiryName} по проекту «${projectType.toLowerCase()}», запрашивает необходимые сведения и не обещает цену или сроки. Ничего не отправлено.
 
-## Customer Context
+## Сведения о клиенте
 
-- Customer: ${inquiryName}
-- Project: ${projectType}
-- Incoming notes: ${notes}
-- Business voice: ${business.brandVoice ?? "Clear, practical, respectful, and owner-approved"}
+- Клиент: ${inquiryName}
+- Проект: ${projectType}
+- Заметки обращения: ${notes}
+- Тон общения: ${business.brandVoice ?? "Ясный, практичный, уважительный тон, согласованный владельцем"}
 
-## Draft Reply
+## Черновик ответа
 
-Hi ${inquiryName},
+Здравствуйте, ${inquiryName}!
 
-Thank you for reaching out to ${business.businessName}. We can help you think through the ${projectType.toLowerCase()} scope and identify the right next step before anything is scheduled.
+Спасибо за обращение в ${business.businessName}. Поможем определить объём работ по проекту «${projectType.toLowerCase()}» и следующий шаг до назначения встречи.
 
-To prepare a useful first conversation, please send any photos you have, the rooms or areas involved, your timing goals, and any must-have outcomes or constraints. Once we have that context, we can recommend whether the next step should be a phone consultation, site visit, or estimate preparation.
+${questions}
 
-Best,
+${booking}
+
+С уважением,
 ${business.businessName}
 
-## Follow-Up Tracking
+## Повторный контакт
 
-- Current state: Initial reply draft prepared
-- Suggested next step: Ask for photos, affected areas, timing goals, and must-have outcomes
-- Follow-up trigger: Customer sends added project context or owner approves a consultation path
-- Related estimate path: Prepare an estimate draft only after scope details are clear enough for owner review
+- Текущее состояние: подготовлен первый черновик ответа
+- Следующий шаг: ${nextStep}
+- Повод для повторного контакта: клиент прислал сведения или владелец согласовал консультацию
+- Связанная смета: готовить черновик после уточнения объёма работ для проверки владельцем
 
-## Needs Owner Review
+## Проверка владельцем
 
-- Confirm the customer's name and project type
-- Confirm the incoming notes are represented accurately
-- Add approved scheduling details if the next step should be a consultation
-- Confirm the final message before sending
+- Проверьте имя клиента и тип проекта
+- Проверьте точность передачи заметок клиента
+- Добавьте согласованные условия записи, если нужна консультация
+- Согласуйте итоговый текст перед отправкой
 
-## Send Checklist
+## Чек-лист отправки
 
-- Confirm recipient and preferred channel
-- Remove any claim, price, date, or promise the owner has not approved
-- Add approved scheduling link, phone number, or availability only when ready
-- Send only after explicit owner approval
+- Проверьте получателя и удобный канал связи
+- Уберите утверждения, цены, даты и обещания, не согласованные владельцем
+- Добавьте только согласованные ссылку записи, телефон или доступное время
+- Отправляйте только после явного согласия владельца
 
-## Connector Handoff
+## Передача коннектору
 
-- Gmail: draft or send handoff only after owner approval
-- Google Drive: collect customer photos and project files when approved
-- Google Calendar: offer scheduling only after the consultation path is approved
+- Gmail: создание черновика или отправка только после согласия владельца
+- Google Drive: сбор фотографий и файлов проекта после согласования
+- Google Calendar: запись только после согласования консультации
 
-## Artifacts
+## Материалы
 
-- Reply draft: \`${displayPath(file)}\`
-- Business profile: \`${displayPath(businessPath("business.json"))}\`
+- Черновик ответа: \`${displayPath(file)}\`
+- Профиль бизнеса: \`${displayPath(businessPath("business.json"))}\`
 
-## Safety Boundary
+## Границы безопасности
 
-This Customer Desk draft is local-only. It does not send email, text the customer, create a calendar booking, upload files, or execute connected actions.
+Этот черновик хранится локально. Он не отправляет письма или сообщения, не создаёт записи в календаре, не загружает файлы и не выполняет внешние действия.
 `;
 }
 

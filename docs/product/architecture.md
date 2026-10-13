@@ -1,194 +1,194 @@
-# Architecture
+# Архитектура
 
-Frontsmith v1.0 has these layers.
+Frontsmith v1.0 состоит из следующих уровней.
 
 ```text
-Codex Interface
-  -> owner prompts, Frontsmith responses, workflow runbooks, and project instructions
+Интерфейс Codex
+  -> запросы владельца, ответы Frontsmith, рабочие инструкции и правила проекта
 
-Business Workspace
-  -> local JSON, Markdown, assets, drafts, and review notes
+Рабочая область компании
+  -> локальные JSON, Markdown, ресурсы, черновики и заметки для проверки
 
-Owner Brief
-  -> current state, blockers, approvals, and next actions
+Сводка владельца
+  -> текущее состояние, препятствия, согласования и следующие действия
 
-Customer Desk
-  -> ongoing inquiries, reply drafts, follow-ups, estimate paths, and approvals
+Работа с клиентами
+  -> регулярные обращения, черновики ответов, повторные контакты, подготовка смет и согласования
 
-Website
-  -> committed launchable site under website/
+Сайт
+  -> включённый в репозиторий сайт для публикации в website/
 
-Hosted Demo
-  -> hosted Control Panel with the website preview under /website
+Онлайн-демонстрация
+  -> Панель демонстрации с предпросмотром сайта по пути /website
 
-Automation Scripts
-  -> update website, reply drafts, estimate drafts, extension plans, launch checks
+Скрипты автоматизации
+  -> обновление сайта, черновики ответов и смет, планы расширений, проверки запуска
 
-Adapters
+Адаптеры
   -> Vercel, Gmail, Google Drive, Calendar, Neura
 ```
 
-The first public package should prove the kit model before adding heavier connected surfaces.
+Первый публичный комплект должен подтвердить полезность такого подхода до добавления более сложных интерфейсов подключённых сервисов.
 
-The current market pattern from small-business AI workflow bundles is useful validation, but Frontsmith stays narrower: Codex-native local records, ongoing front-office workflows, and owner approval for one local service business.
+Рыночный интерес к наборам ИИ-процессов для малого бизнеса подтверждает направление, но Frontsmith ограничен более узкой задачей: локальные записи, работа через Codex, регулярные процессы цифрового офиса и согласование владельцем для одной местной компании услуг.
 
-## Primary Interface
+## Основной интерфейс
 
-The primary Frontsmith interface is Codex chat operating against the repository.
+Основной интерфейс Frontsmith — чат Codex, работающий с репозиторием.
 
-The normal loop is:
+Обычный цикл:
 
 ```text
-owner prompt
-  -> local Frontsmith records and scripts
-  -> formatted Codex response
-  -> reviewable Markdown/JSON artifact
-  -> owner approval
-  -> file update, website update, draft export, or connected preflight
+запрос владельца
+  -> локальные записи и скрипты Frontsmith
+  -> оформленный ответ Codex
+  -> материал Markdown/JSON для проверки
+  -> согласование владельца
+  -> обновление файла или сайта, экспорт черновика либо предварительная проверка подключённого действия
 ```
 
-The hosted Control Panel should demonstrate this loop. It should not imply that Frontsmith is a traditional SaaS dashboard where the owner clicks through permanent panels to run the business.
+Онлайн-Панель демонстрации должна показывать этот цикл. Она не должна создавать впечатление, что Frontsmith — обычная SaaS-панель, в которой владелец управляет всем бизнесом, переходя между постоянными экранами.
 
-## Default Data Location
+## Хранение данных по умолчанию
 
-Private business data is written under:
+Приватные данные компании сохраняются в:
 
 ```text
 .frontsmith/business/
 ```
 
-This folder is gitignored so client-specific data and local operating history do not become part of the public repository by accident.
+Каталог исключён из Git, чтобы данные конкретного клиента и локальная история работы случайно не попали в публичный репозиторий.
 
-## Owner Brief
+## Сводка владельца
 
-The Owner Brief is the current-state summary for the selected business.
+Сводка владельца показывает текущее состояние выбранной компании.
 
-It should answer:
+Она должна отвечать на вопросы:
 
-- what changed;
-- what is waiting;
-- what is blocked;
-- what needs approval;
-- what the owner should do next.
+- что изменилось;
+- что ожидает проверки;
+- что заблокировано;
+- что требует согласования;
+- что владельцу делать дальше.
 
-The Owner Brief should read local Frontsmith records first: business profile, website review notes, customer inquiry drafts, estimate drafts, launch checklist, activity log, integration settings, and approval records. Connected-provider signals can enrich it later only after connected mode is approved.
+В первую очередь Сводка владельца читает локальные записи Frontsmith: профиль компании, заметки о проверке сайта, черновики обращений клиентов и смет, контрольный список запуска, журнал действий, настройки подключений и записи согласований. Данные внешних сервисов можно добавить позже, только после согласования подключённого режима.
 
-The local command is:
+Локальная команда:
 
 ```bash
 npm run owner:brief
 ```
 
-## Customer Desk
+## Работа с клиентами
 
-Customer Desk is the ongoing operations lane after setup.
+Модуль «Работа с клиентами» поддерживает регулярную работу после первичной настройки.
 
-It should answer:
+Он должен отвечать на вопросы:
 
-- what new customer requests came in;
-- what reply draft is ready;
-- what follow-up is waiting;
-- what estimate or proposal path should be prepared;
-- what owner approval is needed before any customer-facing action.
+- какие новые обращения поступили;
+- какой черновик ответа готов;
+- какой повторный контакт ожидает выполнения;
+- какой план подготовки сметы или предложения нужен;
+- что владелец должен согласовать перед действием для клиента.
 
-The local commands are:
+Локальные команды:
 
 ```bash
 npm run prepare:reply
 npm run prepare:estimate
 ```
 
-These commands write reviewable files under `.frontsmith/business/`. They do not send customer messages or execute connected actions.
+Команды сохраняют проверяемые файлы в `.frontsmith/business/`. Они не отправляют сообщения клиентам и не выполняют подключённые действия.
 
-## Extension Planning
+## Планирование расширений
 
-Frontsmith can prepare dry-run plans for new tools, skills, connectors, and workflows.
+Frontsmith может подготовить пробные планы для новых инструментов, навыков, подключений и рабочих процессов.
 
-The local command is:
+Локальная команда:
 
 ```bash
 npm run prepare:extension
 ```
 
-Extension plans are written under:
+Планы расширений сохраняются в:
 
 ```text
 .frontsmith/business/extensions/
 ```
 
-The plan should define the capability, workflow boundary, skill boundary, connector boundary, implementation checklist, owner review items, and safety boundary before any live provider work is added.
+До добавления действий во внешних сервисах план должен определить возможность, границы рабочего процесса, навыка и подключения, контрольный список реализации, пункты для проверки владельцем и границы безопасности.
 
-## Website
+## Сайт
 
-The committed website lives in:
+Исходный код сайта включён в репозиторий и находится в:
 
 ```text
 website/
 ```
 
-Bootstrap updates this single-page website from the local business profile. There is no second website folder in the operator path.
+Первичная настройка обновляет этот одностраничный сайт по локальному профилю компании. В рабочем процессе оператора используется один каталог сайта.
 
-The website is a static HTML/CSS/JavaScript surface, not a Next.js application. Local preview is handled by `npm run preview:website`, which serves the same folder.
+Сайт построен на статических HTML, CSS и JavaScript; Next.js не требуется. Локальный предпросмотр запускается через `npm run preview:website` и обслуживает тот же каталог.
 
-The website is the first customer-facing output of the workspace. It is not the whole product.
+Сайт — первый результат рабочей области, доступный клиентам. Он представляет лишь часть продукта.
 
-## Hosted Demo
+## Онлайн-демонстрация
 
-The `frontsmith.neurapath.ai` deployment target opens to the hosted Control Panel shell in:
+Развёртывание по адресу `frontsmith.neurapath.ai` открывает оболочку Панели демонстрации из:
 
 ```text
 demo/
 ```
 
-`npm run build:demo` copies the Control Panel shell and the committed website into:
+`npm run build:demo` копирует оболочку Панели демонстрации и сайт из репозитория в:
 
 ```text
 dist/frontsmith-demo/
 ```
 
-The root of that build explains the Frontsmith operator journey, including ongoing Customer Desk operations. The sample Acme website is available at `/website` as the customer-facing site inside the hosted Control Panel journey.
+Главная страница сборки объясняет рабочий путь оператора Frontsmith, включая регулярную работу с клиентами. Демонстрационный сайт Acme доступен по пути `/website` как клиентская часть этого пути.
 
-Design rule: the hosted surface can use a polished hero and navigation, but post-hero product sections preview the Codex-native operating experience: realistic prompts, formatted Frontsmith responses, generated artifacts, repo/file references, and approval states. Static dashboard cards are acceptable only when they clarify the workflow; they should not replace the chat-driven product model.
+Правило оформления: онлайн-страница может иметь тщательно оформленный первый экран и навигацию, но следующие продуктовые разделы должны показывать работу через Codex: реалистичные запросы, оформленные ответы Frontsmith, созданные материалы, ссылки на репозиторий и файлы, состояния согласования. Статические карточки панели допустимы, когда помогают объяснить процесс; они не должны заменять модель работы через чат.
 
-`npm run deploy:check` is the deployment readiness gate for this hosted Control Panel shape. It verifies the demo build, included website, clean URL behavior, SEO/social metadata, icons, local asset references, contact API wiring, and production contact-delivery environment variables without deploying or contacting providers.
+`npm run deploy:check` проверяет готовность этой Панели демонстрации к развёртыванию. Команда проверяет сборку демонстрации, включённый сайт, корректное поведение URL, поисковые метаданные и данные для соцсетей, иконки, ссылки на локальные ресурсы, подключение API контактной формы и переменные окружения для доставки заявок на рабочем сайте. Она не развёртывает сайт и не обращается к внешним сервисам.
 
-## Contact Delivery
+## Доставка заявок
 
-The public contact form posts to the server-side function at:
+Публичная контактная форма отправляет данные в серверную функцию:
 
 ```text
 api/contact.js
 ```
 
-The browser handles validation and user feedback. The function handles provider delivery, server-side validation, basic burst throttling, honeypot filtering, and Resend submission.
+Браузер проверяет поля и показывает результат пользователю. Серверная функция отвечает за доставку через сервис, серверную проверку данных, базовое ограничение частых запросов, фильтрацию ботов через скрытое поле-ловушку и отправку в Resend.
 
-The default model is bring-your-own-provider: each business deployment owns its Resend account, sending domain, API key, Vercel environment variables, and sender reputation. A NeuraPath-managed Resend account can support a managed service tier later, but shared delivery is not the default open-source architecture.
+По умолчанию компания использует собственный сервис: каждому развёрнутому сайту принадлежат аккаунт Resend, домен отправки, API-ключ, переменные окружения Vercel и репутация отправителя. Аккаунт Resend под управлением NeuraPath может позже стать основой отдельной управляемой услуги, но общая доставка не входит в стандартную архитектуру проекта с открытым исходным кодом.
 
-## Operator Tools
+## Инструменты оператора
 
-Frontsmith v1.0 includes local scripts for the core front-office loop:
+Frontsmith v1.0 включает локальные скрипты для основного рабочего цикла цифрового офиса:
 
 ```text
-bootstrap business
-review Owner Brief
-update website
-prepare customer reply draft
-prepare estimate draft
-prepare extension plan
-check launch status
-preview website locally
-check deployment readiness
-build and preview hosted Control Panel
+настроить компанию
+просмотреть Сводку владельца
+обновить сайт
+подготовить черновик ответа клиенту
+подготовить черновик сметы
+подготовить план расширения
+проверить состояние запуска
+открыть локальный предпросмотр сайта
+проверить готовность к развёртыванию
+собрать и открыть предпросмотр онлайн-Панели демонстрации
 ```
 
-These tools update `website/` and write private review files into `.frontsmith/business/`.
+Инструменты обновляют `website/` и сохраняют приватные файлы для проверки в `.frontsmith/business/`.
 
-## Consequential Actions
+## Действия с внешними последствиями
 
-Consequential actions include sending messages, publishing or deploying public pages, changing provider settings, or contacting customers.
+К таким действиям относятся отправка сообщений, публикация или развёртывание публичных страниц, изменение настроек сервисов и обращение к клиентам.
 
-Those actions follow:
+Порядок выполнения:
 
 ```text
-draft -> preview -> owner approval -> governed preflight -> execution -> activity record
+черновик -> предпросмотр -> согласование владельца -> проверка полномочий -> выполнение -> запись в журнале
 ```

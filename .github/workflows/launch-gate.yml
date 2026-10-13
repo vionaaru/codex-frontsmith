@@ -1,4 +1,4 @@
-name: Launch Gate
+name: Проверка готовности запуска
 
 on:
   pull_request:
@@ -11,27 +11,27 @@ permissions:
 
 jobs:
   launch-gate:
-    name: Frontsmith launch gate
+    name: Готовность запуска Frontsmith
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      - name: Checkout
+      - name: Получение исходников
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Настройка Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Install dependencies
+      - name: Установка зависимостей
         run: npm install
 
-      - name: Check package and content contract
+      - name: Проверка состава и содержания
         run: npm run check
 
-      - name: Build hosted demo
+      - name: Сборка демонстрации
         run: npm run build:demo
 
-      - name: Run tests
+      - name: Запуск тестов
         run: npm test

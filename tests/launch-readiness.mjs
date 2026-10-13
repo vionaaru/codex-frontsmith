@@ -2,7 +2,8 @@ import { access, readFile } from "node:fs/promises";
 
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 const config = JSON.parse(await readFile("frontsmith.config.json", "utf8"));
-const blueprint = JSON.parse(await readFile("blueprints/local-service/blueprint.json", "utf8"));
+const blueprint = JSON.parse(await readFile("blueprints/auto-service/blueprint.json", "utf8"));
+const sampleBusiness = JSON.parse(await readFile("blueprints/auto-service/business.example.json", "utf8"));
 const readme = await readFile("README.md", "utf8");
 const operatorGuide = await readFile("docs/operator/start-here.md", "utf8");
 const packageSpec = await readFile("docs/product/package-spec.md", "utf8");
@@ -47,6 +48,9 @@ const requiredScripts = {
 };
 
 const requiredFiles = [
+  "blueprints/auto-service/blueprint.json",
+  "blueprints/auto-service/business.example.json",
+  "website/assets/auto-workshop.png",
   "scripts/prepare-extension-plan.mjs",
   "scripts/prepare-connected-action-receipt.mjs",
   "workflows/prepare-extension-plan.md",
@@ -61,19 +65,19 @@ const requiredFiles = [
 ];
 
 const requiredScenarioLabels = [
-  "Business Setup",
-  "Owner Brief",
-  "Customer Desk",
-  "Estimates and Proposals",
-  "Website Update",
-  "Extension Planning",
-  "Relay Proof Map",
-  "Launch Status",
-  "Website Preview",
-  "Contact Form Dry Run",
-  "Hosted Control Panel Build",
-  "Deployment Readiness",
-  "Repo Contract"
+  "Настройка бизнеса",
+  "Сводка владельца",
+  "Работа с клиентами",
+  "Сметы и предложения",
+  "Обновление сайта",
+  "Планирование расширений",
+  "Карта подтверждений Relay",
+  "Статус запуска",
+  "Предпросмотр сайта",
+  "Пробная отправка формы",
+  "Сборка Панели демонстрации",
+  "Готовность к публикации",
+  "Соответствие репозитория обещаниям"
 ];
 
 for (const file of requiredFiles) {
@@ -89,6 +93,17 @@ for (const [script, command] of Object.entries(requiredScripts)) {
   assertEqual(packageJson.scripts?.[script], command, `npm script ${script}`);
 }
 
+assertEqual(config.defaultBlueprint, "auto-service", "стандартный шаблон автосервиса");
+assertEqual(sampleBusiness.businessName, "АвтоРитм", "название демонстрационного бизнеса");
+assertEqual(sampleBusiness.businessType, "Автосервис", "тип демонстрационного бизнеса");
+assertEqual(sampleBusiness.demoMode, true, "демонстрационный режим");
+assertEqual(sampleBusiness.services.length, 8, "восемь демонстрационных услуг");
+assertEqual(sampleBusiness.pricingPolicy.mode, "demo", "демонстрационные цены");
+assertEqual(sampleBusiness.pricingPolicy.ownerApprovedForLiveQuotes, false, "демоценами нельзя формировать реальные предложения");
+assertEqual(new URL(sampleBusiness.bookingUrl).origin, "https://example.com", "внешняя запись в Booking Flow");
+assertEqual(sampleBusiness.integrations.booking.localImportEnabled, false, "импорт заявок записи не включён");
+assertEqual(sampleBusiness.integrations.email.status, "disabled", "почта отключена по умолчанию");
+assertEqual(sampleBusiness.integrations.calendar.status, "not_connected", "календарь не подключён");
 assertEqual(config.primaryInterface, "codex", "primary interface");
 assertEqual(config.deployableOutput, "website", "deployable output");
 assertEqual(config.safety?.liveActionsDefault, "disabled", "live actions default");
@@ -135,53 +150,53 @@ for (const doc of [
   assertSafetyBoundary(doc[1], doc[0]);
 }
 
-assertIncludes(operatorGuide, "Prepare an extension plan", "operator extension prompt");
+assertIncludes(operatorGuide, "Подготовь план расширения", "operator extension prompt");
 assertIncludes(operatorGuide, "first-run-readiness.md", "operator first-run readiness output");
-assertIncludes(packageSpec, "Extension Requirement", "package extension requirement");
-assertIncludes(packageSpec, "Connected-Action Receipt Requirement", "package connected-action receipt requirement");
+assertIncludes(packageSpec, "Требования к расширениям", "package extension requirement");
+assertIncludes(packageSpec, "Требования к записи подключённого действия", "package connected-action receipt requirement");
 assertIncludes(packageSpec, "docs/product/relay-proof-map.md", "package Relay proof map");
 assertIncludes(architecture, ".frontsmith/business/extensions/", "architecture extension folder");
-assertIncludes(extensionGuide, "Extension Planning Workflow", "developer extension workflow");
-assertIncludes(extensionGuide, "Connected-Action Receipt Workflow", "developer connected-action workflow");
-assertIncludes(launchScenarios, "must not send email, publish a website, change DNS, connect providers", "launch gate safety");
-assertIncludes(launchScenarios, "Connected-Action Receipt", "connected-action launch scenario");
+assertIncludes(extensionGuide, "Планирование расширений", "developer extension workflow");
+assertIncludes(extensionGuide, "Запись действия через подключённый сервис", "developer connected-action workflow");
+assertIncludes(launchScenarios, "не должны отправлять письма, публиковать сайт, менять DNS, подключать провайдеров", "launch gate safety");
+assertIncludes(launchScenarios, "Квитанция подключённого действия", "connected-action launch scenario");
 for (const section of [
-  "Owner Brief",
-  "Customer Desk Reply Draft",
-  "Estimate Preparation",
-  "Website Update And Preview",
-  "Extension Planning And Connected-Action Receipt"
+  "Сводка владельца",
+  "Черновик ответа в модуле «Работа с клиентами»",
+  "Подготовка сметы",
+  "Обновление и предпросмотр сайта",
+  "Планирование расширения и квитанция подключённого действия"
 ]) {
   assertIncludes(codexWorkflowProof, section, `walkthrough section ${section}`);
 }
-assertIncludes(codexWorkflowProof, "Generated files", "walkthrough generated files");
-assertIncludes(codexWorkflowProof, "Approval boundary", "walkthrough approval boundary");
+assertIncludes(codexWorkflowProof, "Создаваемые файлы", "walkthrough generated files");
+assertIncludes(codexWorkflowProof, "Границы согласования", "walkthrough approval boundary");
 for (const phrase of [
-  "Can the workflow prove authority before the action executes?",
-  "Customer Desk reply",
-  "Estimate preparation",
-  "Website update",
-  "Connected-action receipt",
-  "Neura Relay Action Card reference placeholder",
-  "Frontsmith does not execute downstream actions by default"
+  "Может ли процесс подтвердить полномочия до выполнения действия?",
+  "Ответ в модуле «Работа с клиентами»",
+  "Подготовка сметы",
+  "Обновление сайта",
+  "Квитанция подключённого действия",
+  "заготовку ссылки Neura Relay Action Card",
+  "По умолчанию Frontsmith не выполняет дальнейшие внешние действия"
 ]) {
   assertIncludes(relayProofMap, phrase, `Relay proof map ${phrase}`);
 }
 assertSafetyBoundary(relayProofMap, "Relay proof map");
 
-console.log("Frontsmith launch-readiness contract passed.");
+console.log("Проверка требований готовности Frontsmith пройдена.");
 
 async function assertExists(file) {
   try {
     await access(file);
   } catch {
-    throw new Error(`Expected file to exist: ${file}`);
+    throw new Error(`Ожидался существующий файл: ${file}`);
   }
 }
 
 function assertEqual(actual, expected, label) {
   if (actual !== expected) {
-    throw new Error(`Expected ${label} to be ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`);
+    throw new Error(`Ожидалось ${label}: ${JSON.stringify(expected)}, получено ${JSON.stringify(actual)}`);
   }
 }
 
@@ -191,15 +206,19 @@ function assertIncludes(value, expected, label) {
     : String(value ?? "").includes(expected);
 
   if (!matches) {
-    throw new Error(`Expected ${label} to include ${expected}`);
+    throw new Error(`Ожидалось, что ${label} содержит ${expected}`);
   }
 }
 
 function assertSafetyBoundary(content, label) {
   const normalized = String(content).toLowerCase();
-  for (const token of ["approval", "send", "publish"]) {
-    if (!normalized.includes(token)) {
-      throw new Error(`${label} must document ${token} safety boundary`);
+  for (const [boundary, pattern] of [
+    ["согласование владельца", /соглас|одобр/],
+    ["отправка сообщений", /отправ/],
+    ["публикация", /публи/]
+  ]) {
+    if (!pattern.test(normalized)) {
+      throw new Error(`${label} должен описывать границу безопасности: ${boundary}`);
     }
   }
 }

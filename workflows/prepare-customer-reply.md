@@ -1,31 +1,31 @@
-# Workflow: Prepare Customer Reply
+# Процесс: ответ клиенту
 
-Use this workflow when a customer inquiry needs an owner-reviewed response.
+Используйте, когда обращению клиента нужен ответ с проверкой владельцем.
 
-## Output
+## Результат
 
-Create a Customer Desk reply draft that reads like a concise Codex response and gives the owner a clear review surface.
+Создайте черновик ответа клиенту как краткий ответ Codex, удобный для проверки владельцем.
 
-It should include:
+Включите:
 
-- acknowledges the request;
-- summarizes the customer's need;
-- asks only necessary clarifying questions;
-- proposes a practical next step;
-- tracks the follow-up state;
-- includes a send checklist;
-- shows the optional connector handoff after approval;
-- points to the generated `.frontsmith/business/customer-inquiries/...` artifact;
-- avoids making commitments the owner has not approved.
+- подтверждение обращения;
+- потребность клиента;
+- только необходимые уточняющие вопросы;
+- практический следующий шаг;
+- состояние повторного контакта;
+- чек-лист отправки;
+- необязательную передачу коннектору после согласования;
+- ссылку на созданный материал `.frontsmith/business/customer-inquiries/...` ;
+- никаких обещаний, не согласованных владельцем.
 
-The local command is:
+Локальная команда:
 
 ```bash
-npm run prepare:reply -- --name "Customer Name" --project "Kitchen Remodeling" --notes "Customer notes"
+npm run prepare:reply -- --name "Имя клиента" --project "Ремонт кухни" --notes "Заметки клиента"
 ```
 
-## Safety
+## Безопасность
 
-Do not send the email automatically. Prepare the draft for owner review.
+Не отправляйте письмо автоматически. Подготовьте черновик для проверки владельцем.
 
-The draft must stay local-only until the owner explicitly approves a send. Gmail, Google Drive, and Google Calendar are connector handoff options after approval, not automatic actions.
+Черновик остаётся локальным до явного согласия на отправку. Gmail, Google Drive и Google Calendar — варианты передачи после согласования.

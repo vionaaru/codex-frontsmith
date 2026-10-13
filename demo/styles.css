@@ -290,6 +290,7 @@ h2 {
   font-weight: 760;
   line-height: 1.02;
   letter-spacing: 0;
+  text-wrap: balance;
 }
 
 h3 {
@@ -306,7 +307,8 @@ h3 {
   font-size: clamp(21px, 1.7vw, 23px);
   font-weight: 680;
   line-height: 1.08;
-  white-space: nowrap;
+  white-space: normal;
+  text-wrap: balance;
 }
 
 .section-subhead {
@@ -314,7 +316,8 @@ h3 {
   font-size: 22px;
   font-weight: 650;
   line-height: 1.16;
-  white-space: nowrap;
+  white-space: normal;
+  text-wrap: balance;
 }
 
 .page-section p,
@@ -334,7 +337,7 @@ h3 {
 
 .hero-body-lines span {
   display: block;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .hero-actions {
@@ -388,7 +391,8 @@ h3 {
   margin-top: 0;
   font-size: 28px;
   line-height: 1.08;
-  white-space: nowrap;
+  white-space: normal;
+  text-wrap: balance;
 }
 
 .panel-top small {
@@ -532,14 +536,14 @@ h3 {
   display: block;
   margin-bottom: 6px;
   font-size: 18px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .panel-list p {
   margin-bottom: 0;
   font-size: 14px;
   line-height: 1.35;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -664,9 +668,7 @@ h3 {
   color: var(--muted);
   font-size: 13px;
   line-height: 20px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .video-meta a {
@@ -1008,7 +1010,7 @@ h3 {
 
 .section-body-lines span {
   display: block;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .start-body-lines {
@@ -1018,7 +1020,7 @@ h3 {
 
 .start-body-lines span {
   display: block;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .page-section,
@@ -1058,7 +1060,7 @@ h3 {
 
 .workflow-copy h2 {
   margin-bottom: 14px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .codex-bar strong {
@@ -1068,7 +1070,7 @@ h3 {
   letter-spacing: 0.1em;
   line-height: 1.2;
   text-transform: uppercase;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .codex-window {
@@ -2089,9 +2091,8 @@ h3 {
   }
 
   .video-section .section-subhead {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    white-space: normal;
   }
 
   .hero-body,
@@ -2379,6 +2380,10 @@ h3 {
 
   .button {
     width: 100%;
+    padding-block: 12px;
+    line-height: 1.2;
+    white-space: normal;
+    text-align: center;
   }
 
   .website-summary {

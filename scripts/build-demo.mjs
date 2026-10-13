@@ -8,7 +8,7 @@ const vercelAnalyticsSnippet = `    <script>
       window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
     </script>
     <script defer src="/_vercel/insights/script.js"></script>`;
-const rootAssets = ["frontsmith-mark.svg", "favicon.svg", "favicon.png", "apple-touch-icon.png"];
+const rootAssets = ["frontsmith-mark.svg", "avtoritm-mark.svg", "favicon.svg", "favicon.png", "apple-touch-icon.png"];
 const productAssets = [
   {
     source: "docs/assets/frontsmith-control-panel.png",
@@ -41,7 +41,7 @@ export async function buildDemo({ quiet = false } = {}) {
   }
 
   if (!quiet) {
-    console.log(`Frontsmith demo built: ${path.relative(process.cwd(), outputRoot)}`);
+    console.log(`Демонстрация Frontsmith собрана: ${path.relative(process.cwd(), outputRoot)}`);
   }
 
   return outputRoot;
@@ -53,12 +53,13 @@ async function rewriteWebsitePreviewAssets() {
   const rewritten = html
     .replace('href="./styles.css"', 'href="/website/styles.css"')
     .replace('src="./script.js"', 'src="/website/script.js"')
-    .replace('href="https://acme.com"', 'href="https://frontsmith.neurapath.ai/website"')
-    .replace('content="https://acme.com"', 'content="https://frontsmith.neurapath.ai/website"')
-    .replaceAll(
-      'content="https://acme.com/assets/acme-hero-remodel.jpg"',
-      'content="https://frontsmith.neurapath.ai/assets/acme-hero-remodel.jpg"'
-    );
+    .replace(/<(?:link|meta)\b[^>]*data-frontsmith-attrs="(?:href|content):canonicalUrl"[^>]*>/g,
+      (tag) => tag.replace(/\b(href|content)="[^"]*"/, '$1="https://frontsmith.neurapath.ai/website"'))
+    .replace(/<meta\b[^>]*data-frontsmith-attrs="content:ogImage"[^>]*>/g,
+      (tag) => tag.replace(/\bcontent="([^"]*)"/, (_, value) => {
+        const imagePath = new URL(value, "https://frontsmith.neurapath.ai").pathname;
+        return `content="https://frontsmith.neurapath.ai${imagePath}"`;
+      }));
 
   await writeFile(previewIndex, rewritten);
 }

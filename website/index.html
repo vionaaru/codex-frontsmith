@@ -1,416 +1,178 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title data-frontsmith-text="seoTitle">Acme | Kitchen, Bath, and Living Space Remodeling</title>
-    <meta name="description" data-frontsmith-attrs="content:seoDescription" content="Kitchens, baths, and living spaces from Acme with clear scope, practical guidance, project photos, timeline, and contact options from the start" />
+    <title data-frontsmith-text="seoTitle">АвтоРитм | Автосервис</title>
+    <meta name="description" data-frontsmith-attrs="content:seoDescription" content="Диагностика, техническое обслуживание и ремонт без лишних работ от АвтоРитм: понятный объём работ, практические рекомендации, сроки и удобная связь" />
     <meta name="robots" content="index, follow" />
-    <meta name="theme-color" content="#f7f6f0" />
-    <link rel="canonical" data-frontsmith-attrs="href:canonicalUrl" href="https://acme.com" />
-    <meta property="og:site_name" data-frontsmith-attrs="content:businessName" content="Acme" />
-    <meta property="og:title" data-frontsmith-attrs="content:ogTitle" content="Acme | Remodeling made clear" />
-    <meta property="og:description" data-frontsmith-attrs="content:seoDescription" content="Kitchens, baths, and living spaces from Acme with clear scope, practical guidance, project photos, timeline, and contact options from the start" />
+    <meta name="theme-color" content="#111820" />
+    <link rel="canonical" data-frontsmith-attrs="href:canonicalUrl" href="http://localhost:4173" />
+    <meta property="og:site_name" data-frontsmith-attrs="content:businessName" content="АвтоРитм" />
+    <meta property="og:title" data-frontsmith-attrs="content:ogTitle" content="АвтоРитм | Ваш автомобиль. Наше внимание" />
+    <meta property="og:description" data-frontsmith-attrs="content:seoDescription" content="Диагностика, техническое обслуживание и ремонт без лишних работ от АвтоРитм: понятный объём работ, практические рекомендации, сроки и удобная связь" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" data-frontsmith-attrs="content:canonicalUrl" content="https://acme.com" />
-    <meta property="og:image" data-frontsmith-attrs="content:ogImage" content="https://acme.com/assets/acme-hero-remodel.jpg" />
-    <meta property="og:image:alt" data-frontsmith-attrs="content:ogImageAlt" content="Acme finished remodeling interior preview" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:url" data-frontsmith-attrs="content:canonicalUrl" content="http://localhost:4173" />
+    <meta property="og:image" data-frontsmith-attrs="content:ogImage" content="http://localhost:4173/assets/auto-workshop.png" />
+    <meta property="og:image:alt" data-frontsmith-attrs="content:ogImageAlt" content="Иллюстрация современной мастерской автосервиса с автомобилем и механиком" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" data-frontsmith-attrs="content:ogTitle" content="Acme | Remodeling made clear" />
-    <meta name="twitter:description" data-frontsmith-attrs="content:seoDescription" content="Kitchens, baths, and living spaces from Acme with clear scope, practical guidance, project photos, timeline, and contact options from the start" />
-    <meta name="twitter:image" data-frontsmith-attrs="content:ogImage" content="https://acme.com/assets/acme-hero-remodel.jpg" />
-    <meta name="twitter:image:alt" data-frontsmith-attrs="content:ogImageAlt" content="Acme finished remodeling interior preview" />
+    <meta name="twitter:title" data-frontsmith-attrs="content:ogTitle" content="АвтоРитм | Ваш автомобиль. Наше внимание" />
+    <meta name="twitter:description" data-frontsmith-attrs="content:seoDescription" content="Диагностика, техническое обслуживание и ремонт без лишних работ от АвтоРитм: понятный объём работ, практические рекомендации, сроки и удобная связь" />
+    <meta name="twitter:image" data-frontsmith-attrs="content:ogImage" content="http://localhost:4173/assets/auto-workshop.png" />
+    <meta name="twitter:image:alt" data-frontsmith-attrs="content:ogImageAlt" content="Иллюстрация современной мастерской автосервиса с автомобилем и механиком" />
     <link rel="icon" href="/favicon.svg" sizes="any" type="image/svg+xml" />
     <link rel="icon" href="/favicon.png" sizes="64x64" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <svg class="icon-sprite" aria-hidden="true" focusable="false">
-      <symbol id="icon-clipboard-check" viewBox="0 0 24 24">
-        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-        <rect x="8" y="2" width="8" height="4" rx="1"></rect>
-        <path d="m9 14 2 2 4-4"></path>
-      </symbol>
-      <symbol id="icon-lightbulb" viewBox="0 0 24 24">
-        <path d="M15 14c.2-1 .7-1.7 1.5-2.5A5 5 0 1 0 8 11.5c.8.8 1.3 1.5 1.5 2.5"></path>
-        <path d="M9 18h6"></path>
-        <path d="M10 22h4"></path>
-        <path d="M10 14h4"></path>
-      </symbol>
-      <symbol id="icon-hammer" viewBox="0 0 24 24">
-        <path d="m15 12-8.5 8.5a2.1 2.1 0 1 1-3-3L12 9"></path>
-        <path d="m17.64 15 4.36-4.36"></path>
-        <path d="m20.91 11.7-6.61-6.61"></path>
-        <path d="m14.3 5.09 1.84-1.84a2 2 0 0 1 2.83 0l1.78 1.78a2 2 0 0 1 0 2.83L18.9 9.7"></path>
-        <path d="m7.5 15.5 2 2"></path>
-      </symbol>
-      <symbol id="icon-message" viewBox="0 0 24 24">
-        <path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
-      </symbol>
-      <symbol id="icon-chevron-down" viewBox="0 0 24 24">
-        <path d="m6 9 6 6 6-6"></path>
-      </symbol>
-    </svg>
-
     <header class="site-header" data-header>
       <div class="site-header-inner">
-        <a class="brand-mark" href="#top" aria-label="Go to top">
-          <img class="brand-logo" src="/frontsmith-mark.svg" alt="" />
-          <span class="brand-wordmark">
-            <strong data-frontsmith-text="businessName">Acme</strong>
-            <span data-frontsmith-text="brandTagline">Crafted Home Remodeling</span>
-          </span>
+        <a class="brand-mark" href="#top" aria-label="АвтоРитм — в начало страницы">
+          <img class="brand-logo" src="/avtoritm-mark.svg" alt="" width="40" height="40" />
+          <span class="brand-wordmark"><strong data-frontsmith-text="businessName">АвтоРитм</strong><small data-frontsmith-text="businessType">Автосервис</small></span>
         </a>
-        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open navigation" data-nav-toggle>
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-        <nav class="site-nav" id="site-nav" data-nav aria-label="Primary navigation">
-          <div class="drawer-head">
-            <a class="brand-mark" href="#top" aria-label="Go to top">
-              <img class="brand-logo" src="/frontsmith-mark.svg" alt="" />
-              <span class="brand-wordmark">
-                <strong data-frontsmith-text="businessName">Acme</strong>
-                <span data-frontsmith-text="brandTagline">Crafted Home Remodeling</span>
-              </span>
-            </a>
-            <button class="drawer-close" type="button" aria-label="Close navigation" data-nav-close>
-              <span></span>
-              <span></span>
-            </button>
-          </div>
-          <div class="drawer-body">
-            <section class="drawer-group" aria-labelledby="drawer-site-label">
-              <p id="drawer-site-label">Site</p>
-              <div class="drawer-links">
-                <a class="drawer-link" href="#services">
-                  <span class="drawer-link-icon"><svg><use href="#icon-hammer"></use></svg></span>
-                  Services
-                </a>
-                <a class="drawer-link" href="#craft">
-                  <span class="drawer-link-icon"><svg><use href="#icon-clipboard-check"></use></svg></span>
-                  Craft
-                </a>
-                <a class="drawer-link" href="#faq">
-                  <span class="drawer-link-icon"><svg><use href="#icon-message"></use></svg></span>
-                  FAQ
-                </a>
-              </div>
-            </section>
-            <div class="drawer-cta">
-              <a class="button primary" href="#contact">Contact</a>
-              <a class="button secondary" data-frontsmith-attrs="href:whatsappHref" href="https://wa.me/18001232263">Message on WhatsApp</a>
-            </div>
-          </div>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Открыть меню" data-nav-toggle><span></span><span></span></button>
+        <nav class="site-nav" id="site-nav" data-nav aria-label="Основная навигация">
+          <div class="drawer-head"><strong>Навигация</strong><button class="drawer-close" type="button" aria-label="Закрыть меню" data-nav-close>×</button></div>
+          <div class="drawer-links"><a href="#services">Услуги</a><a href="#approach">Подход</a><a href="#booking">Запись</a><a href="#faq">Вопросы</a></div>
+          <a class="button primary drawer-booking" data-frontsmith-attrs="href:bookingUrl" data-frontsmith-text="bookingLabel" href="https://example.com/booking" target="_blank" rel="noopener noreferrer">Записаться в сервис</a>
         </nav>
-        <a class="header-button" href="#contact">Contact</a>
+        <a class="header-button" data-frontsmith-attrs="href:bookingUrl" href="https://example.com/booking" target="_blank" rel="noopener noreferrer">Записаться <span aria-hidden="true">↗</span></a>
       </div>
-      <button class="nav-backdrop" type="button" aria-label="Close navigation" data-nav-backdrop></button>
+      <button class="nav-backdrop" type="button" aria-label="Закрыть меню" data-nav-backdrop></button>
     </header>
-    <div class="header-spacer" aria-hidden="true"></div>
-
     <main id="top">
-      <section class="hero section-green" aria-labelledby="hero-title">
-        <div class="page-container hero-grid">
-          <div class="hero-copy">
-            <h1 id="hero-title" data-frontsmith-text="tagline">Remodeling made clear</h1>
-            <p class="hero-subhead" data-frontsmith-text="summary">Kitchens, baths, and living spaces</p>
-            <p class="hero-body" data-frontsmith-text="frontOfficePromise">Acme helps homeowners turn early remodeling ideas into clear project requests with the right room, goals, photos, timeline, and contact path organized from the start.</p>
-            <div class="hero-actions" aria-label="Primary actions">
-              <a class="button primary" href="#contact">Request project review</a>
-              <a class="button secondary" data-frontsmith-attrs="href:whatsappHref" href="https://wa.me/18001232263">Message on WhatsApp</a>
-            </div>
-          </div>
-
-          <div class="hero-visual" aria-label="Remodeling visual preview">
-            <figure class="hero-photo hero-photo-main">
-              <img
-                data-frontsmith-attrs="src:heroImage"
-                src="/assets/acme-hero-remodel.jpg"
-                alt="Finished remodeled living space with warm neutral materials"
-              />
-            </figure>
-            <figure class="hero-photo hero-photo-kitchen">
-              <img
-                data-frontsmith-attrs="src:kitchenImage"
-                src="/assets/acme-kitchen-remodel.jpg"
-                alt="Finished kitchen remodel with bright cabinetry and counters"
-              />
-            </figure>
-            <figure class="hero-photo hero-photo-bath">
-              <img
-                data-frontsmith-attrs="src:bathroomImage"
-                src="/assets/acme-bathroom-remodel.jpg"
-                alt="Finished bathroom remodel with clean tile and fixtures"
-              />
-            </figure>
-            <div class="hero-note">
-              <strong><span>Thoughtful spaces</span><span>Clean execution</span><span>Clear scope</span></strong>
-            </div>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="container hero-copy">
+          <div class="eyebrow"><span class="eyebrow-line"></span><span data-frontsmith-text="brandTagline">Автосервис с понятным подходом</span><span class="demo-badge">Демо-проект</span></div>
+          <div class="hero-heading-row">
+            <h1 id="hero-title" data-frontsmith-text="tagline">Ваш автомобиль. Наше внимание</h1>
+            <div class="hero-aside"><p data-frontsmith-text="summary">Диагностика, техническое обслуживание и ремонт без лишних работ</p><a class="button primary" data-frontsmith-attrs="href:bookingUrl" href="https://example.com/booking" target="_blank" rel="noopener noreferrer"><span data-frontsmith-text="bookingLabel">Записаться в сервис</span><span aria-hidden="true">↗</span></a><a class="text-link light" href="#services">Посмотреть услуги и цены <span aria-hidden="true">↓</span></a></div>
           </div>
         </div>
+        <figure class="hero-image"><img data-frontsmith-attrs="src:heroImage" src="/assets/auto-workshop.png" alt="Иллюстрация современной мастерской автосервиса с автомобилем и механиком" fetchpriority="high" /><figcaption><span>Внимание к машине — уважение к владельцу</span><span>Изображение — иллюстрация</span></figcaption></figure>
+        <div class="container hero-bottom"><span>Сначала разобраться</span><span>Затем согласовать</span><span>После — выполнить</span></div>
       </section>
-
-      <section id="services" class="page-section section-white" aria-labelledby="services-title">
-        <div class="section-intro">
-          <h2 id="services-title">Kitchen, bath, and living spaces</h2>
-          <p class="section-subhead">Focused remodeling services with clear first steps</p>
-        </div>
-
-        <frontsmith-service-cards class="service-card-grid" data-frontsmith-html="serviceCards">
-          <article class="service-card">
-            <img src="/assets/acme-kitchen-remodel.jpg" alt="Finished kitchen remodel with bright cabinetry and counters" />
-            <div>
+      <section id="services" class="section services-section" aria-labelledby="services-title">
+        <div class="container">
+          <div class="section-heading"><div><p class="eyebrow section-number">01 / Услуги</p><h2 id="services-title">Что нужно<br>вашему автомобилю</h2></div><p class="section-lead">Плановое ТО или непонятный звук? Начните с подходящей услуги. Если сомневаетесь — обсудите симптомы перед визитом.</p></div>
+          <div class="service-toolbar"><div class="service-filters" aria-label="Категории услуг"><button class="filter-button active" type="button" data-service-filter="all" aria-pressed="true">Все услуги</button><button class="filter-button" type="button" data-service-filter="diagnostics" aria-pressed="false">Диагностика</button><button class="filter-button" type="button" data-service-filter="maintenance" aria-pressed="false">Обслуживание</button><button class="filter-button" type="button" data-service-filter="repair" aria-pressed="false">Ремонт</button></div><span class="catalog-note">Стоимость работы · ₽</span></div>
+          <frontsmith-service-cards class="service-card-grid" data-frontsmith-html="serviceCards">
+          <article class="service-card" data-service-category="diagnostics">
+            <header class="service-card-header">
               <span class="item-index">01</span>
-              <h3>Kitchen remodeling</h3>
-              <p>Layouts, cabinets, counters, lighting, fixtures, storage, and finishes planned around how the kitchen is used every day.</p>
-            </div>
+              <h3 class="service-name">Консультация по телефону</h3>
+            </header>
+            <p class="service-description">Обсудим симптомы, подскажем подходящую услугу и подготовку к визиту. Точный диагноз — после осмотра автомобиля.</p>
+            <footer class="service-meta"><strong class="service-price">Бесплатно</strong><span class="service-duration">30 мин</span></footer>
+            <a class="booking-link" data-booking-link href="https://example.com/booking" target="_blank" rel="noopener noreferrer">Записаться в сервис</a>
           </article>
-          <article class="service-card">
-            <img src="/assets/acme-bathroom-remodel.jpg" alt="Finished bathroom remodel with clean tile and fixtures" />
-            <div>
+          <article class="service-card" data-service-category="diagnostics">
+            <header class="service-card-header">
               <span class="item-index">02</span>
-              <h3>Bathroom remodeling</h3>
-              <p>Showers, vanities, tile, fixtures, lighting, ventilation, storage, and finish choices planned around comfort and durability.</p>
-            </div>
+              <h3 class="service-name">Компьютерная диагностика</h3>
+            </header>
+            <p class="service-description">Считываем ошибки электронных систем и объясняем, какие проверки нужны дальше. Не меняем детали по одному коду ошибки.</p>
+            <footer class="service-meta"><strong class="service-price">от 1 500 ₽</strong><span class="service-duration">45 мин</span></footer>
+            <a class="booking-link" data-booking-link href="https://example.com/booking" target="_blank" rel="noopener noreferrer">Записаться в сервис</a>
           </article>
-          <article class="service-card">
-            <img src="/assets/acme-living-remodel.jpg" alt="Finished living room remodel with built-in storage and soft seating" />
-            <div>
+          <article class="service-card" data-service-category="maintenance">
+            <header class="service-card-header">
               <span class="item-index">03</span>
-              <h3>Living spaces</h3>
-              <p>Family rooms, dining areas, entryways, built-ins, flooring, lighting, trim, and updates that make the home feel more connected.</p>
-            </div>
+              <h3 class="service-name">ТО: замена масла и фильтров</h3>
+            </header>
+            <p class="service-description">Плановое обслуживание с подбором масла и фильтров по требованиям автомобиля. Проверяем уровни основных технических жидкостей.</p>
+            <footer class="service-meta"><strong class="service-price">от 1 500 ₽</strong><span class="service-duration">60 мин</span></footer>
+            <a class="booking-link" data-booking-link href="https://example.com/booking" target="_blank" rel="noopener noreferrer">Записаться в сервис</a>
+          </article>
+          <article class="service-card" data-service-category="diagnostics">
+            <header class="service-card-header">
+              <span class="item-index">04</span>
+              <h3 class="service-name">Диагностика ходовой</h3>
+            </header>
+            <p class="service-description">Проверяем подвеску, рулевое управление и состояние узлов. Разделяем срочные замечания и то, за чем можно наблюдать.</p>
+            <footer class="service-meta"><strong class="service-price">от 1 200 ₽</strong><span class="service-duration">45 мин</span></footer>
+            <a class="booking-link" data-booking-link href="https://example.com/booking" target="_blank" rel="noopener noreferrer">Записаться в сервис</a>
+          </article>
+          <article class="service-card" data-service-category="repair">
+            <header class="service-card-header">
+              <span class="item-index">05</span>
+              <h3 class="service-name">Замена тормозных колодок</h3>
+            </header>
+            <p class="service-description">Меняем колодки на одной оси и проверяем сопряжённые элементы. Дополнительные работы обсуждаем отдельно.</p>
+            <footer class="service-meta"><strong class="service-price">от 1 800 ₽</strong><span class="service-duration">60 мин</span></footer>
+            <a class="booking-link" data-booking-link href="https://example.com/booking" target="_blank" rel="noopener noreferrer">Записаться в сервис</a>
+          </article>
+          <article class="service-card" data-service-category="maintenance">
+            <header class="service-card-header">
+              <span class="item-index">06</span>
+              <h3 class="service-name">Шиномонтаж</h3>
+            </header>
+            <p class="service-description">Сезонная смена шин и балансировка комплекта колёс. Стоимость зависит от диаметра, типа диска и состояния шин.</p>
+            <footer class="service-meta"><strong class="service-price">от 3 200 ₽</strong><span class="service-duration">60 мин</span></footer>
+            <a class="booking-link" data-booking-link href="https://example.com/booking" target="_blank" rel="noopener noreferrer">Записаться в сервис</a>
+          </article>
+          <article class="service-card" data-service-category="maintenance">
+            <header class="service-card-header">
+              <span class="item-index">07</span>
+              <h3 class="service-name">Развал-схождение</h3>
+            </header>
+            <p class="service-description">Проверяем углы установки колёс и выполняем доступные регулировки. Состояние подвески оцениваем до регулировки.</p>
+            <footer class="service-meta"><strong class="service-price">от 2 800 ₽</strong><span class="service-duration">60 мин</span></footer>
+            <a class="booking-link" data-booking-link href="https://example.com/booking" target="_blank" rel="noopener noreferrer">Записаться в сервис</a>
+          </article>
+          <article class="service-card" data-service-category="maintenance">
+            <header class="service-card-header">
+              <span class="item-index">08</span>
+              <h3 class="service-name">Заправка кондиционера</h3>
+            </header>
+            <p class="service-description">Проверяем работу системы и согласуем обслуживание. Хладагент и устранение неисправностей рассчитываются отдельно.</p>
+            <footer class="service-meta"><strong class="service-price">от 2 500 ₽</strong><span class="service-duration">60 мин</span></footer>
+            <a class="booking-link" data-booking-link href="https://example.com/booking" target="_blank" rel="noopener noreferrer">Записаться в сервис</a>
           </article>
         </frontsmith-service-cards>
-      </section>
-
-      <section id="craft" class="page-section section-green" aria-labelledby="craft-title">
-        <div class="craft-layout">
-          <div class="craft-media">
-            <img
-              data-frontsmith-attrs="src:craftImage"
-              src="/assets/acme-craft-detail.jpg"
-              alt="Remodeling craft detail with careful material work"
-            />
-          </div>
-          <div class="craft-copy">
-            <h2 id="craft-title">Built with care</h2>
-            <p class="section-subhead">Guidance, execution, communication</p>
-            <div class="craft-list">
-              <article>
-                <div class="box-heading"><span class="card-icon"><svg><use href="#icon-clipboard-check"></use></svg></span><h3>Scope before guesswork</h3></div>
-                <p><span>Scope is clarified before work </span><span>so price, timing, and tradeoffs </span><span>stay grounded from day one</span></p>
-              </article>
-              <article>
-                <div class="box-heading"><span class="card-icon"><svg><use href="#icon-lightbulb"></use></svg></span><h3>Practical guidance</h3></div>
-                <p><span>Materials, timing, and choices </span><span>are explained before work </span><span>starts in the actual home</span></p>
-              </article>
-              <article>
-                <div class="box-heading"><span class="card-icon"><svg><use href="#icon-hammer"></use></svg></span><h3>Careful execution</h3></div>
-                <p><span>Execution respects the home </span><span>schedule, details, and craft </span><span>behind approved decisions</span></p>
-              </article>
-              <article>
-                <div class="box-heading"><span class="card-icon"><svg><use href="#icon-message"></use></svg></span><h3>Clean communication</h3></div>
-                <p><span>Questions, changes, and next </span><span>steps stay clear for the owner </span><span>from first note to finish</span></p>
-              </article>
-            </div>
-          </div>
+          <p class="pricing-note" data-frontsmith-text="pricingNote">Цены — демонстрационные ориентиры за работу. Запчасти и расходные материалы оплачиваются отдельно. Итоговая стоимость согласуется до начала работ. Тарифы в Booking Flow могут отличаться.</p>
         </div>
       </section>
-
-      <section id="faq" class="page-section section-white" aria-labelledby="faq-title">
-        <div class="faq-layout">
-          <div class="faq-intro">
-            <h2 id="faq-title">Common questions</h2>
-            <p class="section-subhead">Answers before you start</p>
-            <img
-              data-frontsmith-attrs="src:faqImage"
-              src="/assets/acme-planning-faq.jpg"
-              alt="Project planning materials for a home remodel"
-            />
-          </div>
-
-          <div class="faq-list">
-            <details class="faq-item">
-              <summary><span>What projects do you handle?</span><span class="faq-toggle" aria-hidden="true"></span></summary>
-              <p>Kitchen, bath, and living space remodeling are the core service paths</p>
-            </details>
-            <details class="faq-item">
-              <summary><span>Do I need drawings first?</span><span class="faq-toggle" aria-hidden="true"></span></summary>
-              <p>No. Photos, notes, rough measurements, or a simple description are enough to begin</p>
-            </details>
-            <details class="faq-item">
-              <summary><span>What should I send first?</span><span class="faq-toggle" aria-hidden="true"></span></summary>
-              <p>Send the room, goals, location, timing, and any photos that show the current space</p>
-            </details>
-            <details class="faq-item">
-              <summary><span>Can I send photos by WhatsApp?</span><span class="faq-toggle" aria-hidden="true"></span></summary>
-              <p>Yes. Photos are often the quickest way to understand condition, scope, and direction</p>
-            </details>
-            <details class="faq-item">
-              <summary><span>When do we discuss price?</span><span class="faq-toggle" aria-hidden="true"></span></summary>
-              <p>Price makes sense after the basic scope is clear enough to review responsibly</p>
-            </details>
-            <details class="faq-item">
-              <summary><span>What changes price the most?</span><span class="faq-toggle" aria-hidden="true"></span></summary>
-              <p>Layout changes, plumbing, electrical, materials, structure, and existing conditions</p>
-            </details>
-            <details class="faq-item">
-              <summary><span>How long does a project take?</span><span class="faq-toggle" aria-hidden="true"></span></summary>
-              <p>Timing depends on scope, materials, permits, scheduling, and site conditions</p>
-            </details>
-            <details class="faq-item">
-              <summary><span>Do permits matter?</span><span class="faq-toggle" aria-hidden="true"></span></summary>
-              <p>Permit needs depend on the project location, project scope, and local code rules</p>
-            </details>
-            <details class="faq-item">
-              <summary><span>How are changes handled?</span><span class="faq-toggle" aria-hidden="true"></span></summary>
-              <p>Changes should be reviewed before work moves so cost, timing, and materials stay clear</p>
-            </details>
-          </div>
+      <section id="approach" class="section approach-section" aria-labelledby="approach-title">
+        <div class="container"><div class="section-heading"><div><p class="eyebrow section-number">02 / Подход</p><h2 id="approach-title">Не просто ремонт<br>Понятный порядок</h2></div><p class="section-lead">Вам не нужно разбираться в устройстве автомобиля, чтобы понимать, за что вы платите. Объясняем причины, варианты и следующий шаг.</p></div>
+          <div class="approach-grid"><article><span class="large-index">01</span><h3>Сначала диагностика</h3><p>Выслушиваем симптомы, смотрим автомобиль и проверяем гипотезы. Не подменяем проверку списком деталей на замену.</p></article><article><span class="large-index">02</span><h3>Решение вместе с вами</h3><p>Обсуждаем объём, запчасти и стоимость. Если появляются новые работы, возвращаемся к согласованию.</p></article><article><span class="large-index">03</span><h3>Результат без загадок</h3><p>Объясняем, что сделано и на что обращать внимание дальше. Сроки и условия обсуждаем для конкретной задачи.</p></article></div>
+          <div class="care-line"><span class="care-symbol" aria-hidden="true">↗</span><p>Ваш автомобиль — часть ваших планов.<br><strong>Поэтому важна каждая согласованная деталь.</strong></p></div>
         </div>
       </section>
-
-      <section id="contact" class="page-section contact-section section-green" aria-labelledby="contact-title">
-        <div class="section-intro">
-          <h2 id="contact-title">Send your project request</h2>
-          <p class="section-subhead" data-frontsmith-text="homepageContactText">Start with your room, timeline, photos, and best contact path</p>
-        </div>
-
-        <div class="contact-layout">
-          <div class="contact-panel">
-            <img
-              data-frontsmith-attrs="src:contactImage"
-              src="/assets/acme-contact-planning.jpg"
-              alt="Remodeling plans and notes prepared for a project request"
-            />
-            <div class="contact-methods" aria-label="Contact methods">
-              <a data-frontsmith-attrs="href:phoneTel" href="tel:18001232263">
-                <span>Phone</span>
-                <strong data-frontsmith-text="phone">1-800-123-ACME</strong>
-              </a>
-              <a data-frontsmith-attrs="href:emailMailto" href="mailto:projects@acme.com">
-                <span>Email</span>
-                <strong data-frontsmith-text="email">projects@acme.com</strong>
-              </a>
-              <a data-frontsmith-attrs="href:whatsappHref" href="https://wa.me/18001232263">
-                <span>WhatsApp</span>
-                <strong>Message on WhatsApp</strong>
-              </a>
-            </div>
-          </div>
-
-          <form class="intake-form" data-intake-form data-frontsmith-attrs="data-fallback-action:emailMailto" data-fallback-action="mailto:projects@acme.com" action="/api/contact" method="post" novalidate>
-            <p class="form-note full-span" id="contact-requirement"><span class="required-star" aria-hidden="true">*</span> Email or phone required</p>
-            <label class="form-trap" aria-hidden="true">
-              <span>Website</span>
-              <input name="website" tabindex="-1" autocomplete="off" />
-            </label>
-            <label>
-              <span class="field-label">Name</span>
-              <input name="name" autocomplete="name" />
-            </label>
-            <label>
-              <span class="field-label">Email <span class="required-star" aria-hidden="true">*</span></span>
-              <input name="email" type="email" autocomplete="email" aria-describedby="contact-requirement intake-error" data-contact-email />
-            </label>
-            <label>
-              <span class="field-label">Phone <span class="required-star" aria-hidden="true">*</span></span>
-              <input name="phone" autocomplete="tel" aria-describedby="contact-requirement intake-error" data-contact-phone />
-            </label>
-            <div class="custom-select-field">
-              <span class="field-label">Preferred contact method</span>
-              <input type="hidden" name="preferred_contact" value="Email" data-custom-select-value />
-              <div class="custom-select" data-custom-select>
-                <button class="custom-select-button" type="button" aria-haspopup="listbox" aria-expanded="false">
-                  <span data-custom-select-label>Email</span>
-                  <svg aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
-                </button>
-                <div class="custom-select-menu" role="listbox">
-                  <button class="custom-select-option" type="button" role="option" data-value="Email" aria-selected="true">Email</button>
-                  <button class="custom-select-option" type="button" role="option" data-value="Phone" aria-selected="false">Phone</button>
-                  <button class="custom-select-option" type="button" role="option" data-value="WhatsApp" aria-selected="false">WhatsApp</button>
-                </div>
-              </div>
-            </div>
-            <div class="custom-select-field">
-              <span class="field-label">Project type</span>
-              <input type="hidden" name="project_type" value="Kitchen remodeling" data-custom-select-value data-frontsmith-attrs="value:projectTypeDefault" />
-              <div class="custom-select" data-custom-select>
-                <button class="custom-select-button" type="button" aria-haspopup="listbox" aria-expanded="false">
-                  <span data-custom-select-label data-frontsmith-text="projectTypeDefault">Kitchen remodeling</span>
-                  <svg aria-hidden="true"><use href="#icon-chevron-down"></use></svg>
-                </button>
-                <div class="custom-select-menu" role="listbox" data-frontsmith-html="serviceOptions">
-              <button class="custom-select-option" type="button" role="option" data-value="Kitchen remodeling" aria-selected="true">Kitchen remodeling</button>
-                  <button class="custom-select-option" type="button" role="option" data-value="Bathroom remodeling" aria-selected="false">Bathroom remodeling</button>
-                  <button class="custom-select-option" type="button" role="option" data-value="Living spaces" aria-selected="false">Living spaces</button>
-                  <button class="custom-select-option" type="button" role="option" data-value="Other" aria-selected="false">Other</button>
-            </div>
-              </div>
-            </div>
-            <label>
-              <span>Project location</span>
-              <input name="project_location" autocomplete="street-address" />
-            </label>
-            <label>
-              <span>Ideal timeline</span>
-              <input name="ideal_timeline" placeholder="This season or planning ahead" />
-            </label>
-            <label>
-              <span>Budget range</span>
-              <input name="budget_comfort" placeholder="Optional range or not sure yet" />
-            </label>
-            <label class="full-span">
-              <span>Project notes</span>
-              <textarea name="project_notes" rows="6" placeholder="Room, goals, timing, constraints, and whether you can send photos"></textarea>
-            </label>
-            <p class="form-error full-span" id="intake-error" data-intake-error aria-live="polite" hidden></p>
-            <p class="form-status full-span" id="intake-status" data-intake-status aria-live="polite" hidden></p>
-            <button class="full-span" type="submit" data-intake-submit>Send project request</button>
+      <section id="booking" class="section booking-section" aria-labelledby="booking-title">
+        <div class="container booking-layout"><div><p class="eyebrow section-number">03 / Запись онлайн</p><h2 id="booking-title">Выберите услугу<br>и удобное время</h2><p class="section-lead">Расписание и свободные интервалы — на странице записи. Не нужно отправлять заявку и ждать, чтобы увидеть доступные варианты.</p><a class="button dark" data-frontsmith-attrs="href:bookingUrl" href="https://example.com/booking" target="_blank" rel="noopener noreferrer"><span data-frontsmith-text="bookingLabel">Записаться в сервис</span><span aria-hidden="true">↗</span></a><p class="booking-note">Откроется внешний сервис Booking Flow. Окончательные условия и подтверждение записи уточняйте на странице сервиса.</p></div><ol class="booking-steps"><li><span>01</span><div><h3>Выберите услугу</h3><p>Найдите нужное обслуживание или начните с консультации.</p></div></li><li><span>02</span><div><h3>Посмотрите время</h3><p>Сверьте свободные интервалы с вашим расписанием.</p></div></li><li><span>03</span><div><h3>Проверьте детали</h3><p>Ознакомьтесь с ценой и условиями перед подтверждением.</p></div></li></ol></div>
+      </section>
+      <section id="faq" class="section faq-section" aria-labelledby="faq-title">
+        <div class="container faq-layout"><div><p class="eyebrow section-number">04 / Вопросы</p><h2 id="faq-title">Перед визитом</h2><p class="section-lead">Ответы на то, что стоит уточнить заранее.</p></div><div class="faq-list">
+          <details><summary>Что входит в указанную цену?<span aria-hidden="true">+</span></summary><p>Показаны демонстрационные ориентиры за работу. Запчасти, масло и расходные материалы — отдельно. Итоговая стоимость зависит от автомобиля и согласованного объёма.</p></details>
+          <details><summary>Если я не знаю, какая услуга нужна?<span aria-hidden="true">+</span></summary><p>Начните с консультации: опишите симптомы, марку, модель и год автомобиля. Точный диагноз и объём ремонта определяются после проверки.</p></details>
+          <details><summary>Можно приехать со своими запчастями?<span aria-hidden="true">+</span></summary><p>Этот вопрос нужно согласовать с сервисом до визита. Уточните совместимость деталей и условия выполнения работ.</p></details>
+          <details><summary>Дополнительные работы выполнят без меня?<span aria-hidden="true">+</span></summary><p>Подход АвтоРитм — сначала объяснить необходимость, варианты и стоимость, затем согласовать решение с владельцем автомобиля.</p></details>
+          <details><summary>Сколько времени займёт ремонт?<span aria-hidden="true">+</span></summary><p>Длительность в каталоге — ориентир для планирования. Фактические сроки зависят от состояния автомобиля, доступности запчастей и результатов диагностики.</p></details>
+          <details><summary>Этот автосервис уже работает?<span aria-hidden="true">+</span></summary><p>Это демонстрационный сайт цифрового офиса. Название, контакты, расписание и цены — пример. Рабочие реквизиты и условия должен подтвердить владелец перед запуском.</p></details>
+        </div></div>
+      </section>
+      <section id="contact" class="section contact-section" aria-labelledby="contact-title"><div class="container"><div class="section-heading"><div><p class="eyebrow section-number">05 / Контакты</p><h2 id="contact-title">До встречи<br>в сервисе</h2></div><a class="button primary" data-frontsmith-attrs="href:bookingUrl" href="https://example.com/booking" target="_blank" rel="noopener noreferrer"><span data-frontsmith-text="bookingLabel">Записаться в сервис</span><span aria-hidden="true">↗</span></a></div>
+        <div class="contact-grid"><div><span class="contact-label">Город и адрес · пример</span><p data-frontsmith-text="cityState">Москва</p><p class="contact-muted" data-frontsmith-text="address">Адрес мастерской будет указан перед рабочим запуском</p></div><div><span class="contact-label">Режим работы · пример</span><p data-frontsmith-text="hoursLabel">Пн–Пт · 09:00–18:00</p><p class="contact-muted">Суббота и воскресенье — выходные</p></div><div><span class="contact-label">Контакты · нерабочие образцы</span><p data-frontsmith-text="phone">+7 (000) 000-00-00</p><p class="contact-muted" data-frontsmith-text="email">info@avtoritm.example</p></div></div>
+        <details class="question-panel"><summary>Задать вопрос <span aria-hidden="true">+</span></summary><p>Демонстрационная форма: проверяет заполнение локально, ничего не отправляет. Не вводите реальные персональные данные.</p>
+          <form class="intake-form" data-intake-form data-demo-mode="true" data-frontsmith-attrs="data-fallback-action:emailMailto" data-fallback-action="mailto:info@avtoritm.example" action="/api/contact" method="post" novalidate>
+            <label class="form-trap" aria-hidden="true">Сайт<input name="website" tabindex="-1" autocomplete="off" /></label>
+            <label>Имя<input name="name" autocomplete="off" placeholder="Пример: Алексей" /></label>
+            <label>Эл. почта<input name="email" type="email" autocomplete="off" placeholder="name@example.com" aria-describedby="intake-error" data-contact-email /></label>
+            <label>Телефон<input name="phone" type="tel" autocomplete="off" placeholder="+7 (000) 000-00-00" aria-describedby="intake-error" data-contact-phone /></label>
+            <label>Тема<select name="project_type"><option value="consultation">Консультация</option><option value="maintenance">Обслуживание</option><option value="repair">Ремонт</option></select></label>
+            <label class="full-span">Ваш вопрос<textarea name="project_notes" rows="3" placeholder="Марка, модель и симптомы — демонстрационный пример"></textarea></label>
+            <p class="form-error full-span" id="intake-error" data-intake-error aria-live="polite" hidden></p><p class="form-status full-span" id="intake-status" data-intake-status aria-live="polite" hidden></p>
+            <div class="full-span form-bottom"><p>Укажите эл. почту или телефон для проверки формы</p><button class="button primary" type="submit" data-intake-submit>Проверить вопрос</button></div>
           </form>
-        </div>
-      </section>
+        </details>
+        <p class="demo-notice" data-frontsmith-text="demoNotice">Учебная демонстрация. Контакты и цены — примеры. Запись открывается во внешнем сервисе; заявки не импортируются в Frontsmith.</p>
+      </div></section>
     </main>
-
-    <footer class="site-footer">
-      <div class="footer-inner">
-        <div>
-          <a class="footer-brand" href="#top" aria-label="Go to top">
-            <img class="footer-mark" src="/frontsmith-mark.svg" alt="" />
-            <h2 data-frontsmith-text="businessName">Acme</h2>
-          </a>
-          <p data-frontsmith-text="brandTagline">Crafted Home Remodeling</p>
-        </div>
-
-        <div class="footer-links">
-          <div>
-            <h3>Site</h3>
-            <ul>
-              <li><a href="#services">Services</a></li>
-              <li><a href="#craft">Craft</a></li>
-              <li><a href="#faq">FAQ</a></li>
-            </ul>
-          </div>
-          <div>
-            <h3>Contact</h3>
-            <ul>
-              <li><a data-frontsmith-attrs="href:phoneTel" href="tel:18001232263" data-frontsmith-text="phone">1-800-123-ACME</a></li>
-              <li><a data-frontsmith-attrs="href:emailMailto" href="mailto:projects@acme.com" data-frontsmith-text="email">projects@acme.com</a></li>
-              <li><a data-frontsmith-attrs="href:whatsappHref" href="https://wa.me/18001232263">Message on WhatsApp</a></li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div class="footer-bottom">
-        <p>&copy; <span data-frontsmith-text="currentYear">2026</span> <span data-frontsmith-text="businessName">Acme</span></p>
-      </div>
-    </footer>
-
+    <footer class="site-footer"><div class="container footer-inner"><a class="footer-brand" href="#top"><img src="/avtoritm-mark.svg" alt="" width="30" height="30" /><strong data-frontsmith-text="businessName">АвтоРитм</strong></a><span>Демонстрационный цифровой офис</span><span>© <span data-frontsmith-text="currentYear">2026</span></span></div></footer>
     <script src="./script.js"></script>
   </body>
 </html>

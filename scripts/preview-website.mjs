@@ -43,12 +43,12 @@ const server = createServer(async (req, res) => {
 
   try {
     const fileStat = await stat(filePath);
-    if (!fileStat.isFile()) throw new Error("Not a file");
+    if (!fileStat.isFile()) throw new Error("Это не файл");
     res.writeHead(200, { "content-type": contentType(filePath) });
     createReadStream(filePath).pipe(res);
   } catch {
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
-    res.end("Not found");
+    res.end("Не найдено");
   }
 });
 
@@ -60,7 +60,7 @@ async function handleContactApi(req, res) {
       "allow": "POST, OPTIONS",
       "content-type": "application/json; charset=utf-8"
     });
-    res.end(JSON.stringify({ ok: false, error: "Method not allowed" }));
+    res.end(JSON.stringify({ ok: false, error: "Метод не разрешён" }));
     return;
   }
 
@@ -78,9 +78,9 @@ async function handleContactApi(req, res) {
     res.writeHead(response.status, headers);
     res.end(body);
   } catch (error) {
-    console.error("Frontsmith contact preview failed", error);
+    console.error("Ошибка предпросмотра формы Frontsmith", error);
     res.writeHead(500, { "content-type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ ok: false, error: "Contact preview failed" }));
+    res.end(JSON.stringify({ ok: false, error: "Ошибка предпросмотра формы" }));
   }
 }
 
@@ -99,6 +99,6 @@ function requestHeaders(req) {
 }
 
 server.listen(port, () => {
-  console.log(`Frontsmith website preview: http://localhost:${port}`);
-  console.log(`Serving: ${root}`);
+  console.log(`Предпросмотр сайта Frontsmith: http://localhost:${port}`);
+  console.log(`Каталог сайта: ${root}`);
 });

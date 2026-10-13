@@ -19,7 +19,7 @@ function closeNav() {
   header.classList.remove("nav-active");
   nav.classList.remove("open");
   navToggle.setAttribute("aria-expanded", "false");
-  navToggle.setAttribute("aria-label", "Open navigation");
+  navToggle.setAttribute("aria-label", "Открыть меню");
 }
 
 function targetFromHash(hash) {
@@ -60,7 +60,7 @@ navToggle.addEventListener("click", () => {
   document.body.classList.toggle("nav-open", isOpen);
   header.classList.toggle("nav-active", isOpen);
   navToggle.setAttribute("aria-expanded", String(isOpen));
-  navToggle.setAttribute("aria-label", isOpen ? "Close navigation" : "Open navigation");
+  navToggle.setAttribute("aria-label", isOpen ? "Закрыть меню" : "Открыть меню");
 });
 
 document.addEventListener("click", (event) => {
@@ -180,12 +180,12 @@ function validateIntakeForm() {
   const phone = contactPhone.value.trim();
 
   if (!email && !phone) {
-    setIntakeError("Add an email or phone number so the team can respond", [contactEmail, contactPhone]);
+    setIntakeError("Укажите электронную почту или телефон, чтобы мы могли ответить", [contactEmail, contactPhone]);
     return false;
   }
 
   if (email && !contactEmail.validity.valid) {
-    setIntakeError("Enter a valid email address, or leave email blank and add a phone number", [contactEmail]);
+    setIntakeError("Укажите корректный адрес электронной почты или оставьте поле пустым и укажите телефон", [contactEmail]);
     return false;
   }
 
@@ -199,27 +199,27 @@ function intakePayload() {
 
 function fallbackMailto(payload) {
   const fallbackAction = intakeForm.dataset.fallbackAction || "mailto:";
-  const subject = `Project request${payload.name ? ` from ${payload.name}` : ""}`;
+  const subject = `Заявка на проект${payload.name ? ` от ${payload.name}` : ""}`;
   const body = [
-    "Project request",
+    "Заявка на проект",
     "",
-    fieldLine("Name", payload.name),
-    fieldLine("Email", payload.email),
-    fieldLine("Phone", payload.phone),
-    fieldLine("Preferred contact", payload.preferred_contact),
-    fieldLine("Project type", payload.project_type),
-    fieldLine("Project location", payload.project_location),
-    fieldLine("Ideal timeline", payload.ideal_timeline),
-    fieldLine("Budget range", payload.budget_comfort),
+    fieldLine("Имя", payload.name),
+    fieldLine("Электронная почта", payload.email),
+    fieldLine("Телефон", payload.phone),
+    fieldLine("Предпочтительный способ связи", displayOption(payload.preferred_contact)),
+    fieldLine("Тип проекта", displayOption(payload.project_type)),
+    fieldLine("Адрес объекта", payload.project_location),
+    fieldLine("Желаемые сроки", payload.ideal_timeline),
+    fieldLine("Бюджет", payload.budget_comfort),
     "",
-    "Project notes",
-    payload.project_notes || "Not provided"
+    "Описание проекта",
+    payload.project_notes || "Не указано"
   ]
     .filter((line) => line !== null)
     .join("\n");
   const separator = fallbackAction.includes("?") ? "&" : "?";
 
-  setIntakeStatus("Opening your email app to finish the request", "notice");
+  setIntakeStatus("Открываем почтовое приложение для отправки заявки", "notice");
   window.location.href = `${fallbackAction}${separator}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
@@ -227,10 +227,21 @@ function fieldLine(label, value) {
   return value ? `${label}: ${value}` : null;
 }
 
+function displayOption(value) {
+  return {
+    Email: "Электронная почта",
+    Phone: "Телефон",
+    "Kitchen remodeling": "Ремонт кухни",
+    "Bathroom remodeling": "Ремонт ванной",
+    "Living spaces": "Жилые помещения",
+    Other: "Другое"
+  }[value] || value;
+}
+
 function setSubmitting(isSubmitting) {
   intakeSubmit.disabled = isSubmitting;
   intakeForm.setAttribute("aria-busy", String(isSubmitting));
-  intakeSubmit.textContent = isSubmitting ? "Sending request" : "Send project request";
+  intakeSubmit.textContent = isSubmitting ? "Отправляем заявку" : intakeForm.dataset.demoMode === "true" ? "Проверить вопрос" : "Отправить заявку";
 }
 
 intakeForm.addEventListener("submit", async (event) => {
@@ -242,6 +253,10 @@ intakeForm.addEventListener("submit", async (event) => {
   }
 
   const payload = intakePayload();
+  if (intakeForm.dataset.demoMode === "true") {
+    setIntakeStatus("Учебный вопрос проверен. Данные никуда не отправлены и запись не создана. Для выбора времени откройте Booking Flow.", "success");
+    return;
+  }
   setSubmitting(true);
   setIntakeStatus("");
 
@@ -259,7 +274,7 @@ intakeForm.addEventListener("submit", async (event) => {
     if (response.ok && result?.ok) {
       intakeForm.reset();
       resetCustomSelects();
-      setIntakeStatus("Project request sent. The team will respond using your preferred contact path");
+      setIntakeStatus("Заявка отправлена. Мы ответим выбранным вами способом связи");
       return;
     }
 
@@ -268,7 +283,7 @@ intakeForm.addEventListener("submit", async (event) => {
       return;
     }
 
-    setIntakeError(result?.error || "The request could not be sent right now");
+    setIntakeError(result?.error || "Не удалось отправить заявку. Попробуйте позже");
   } catch {
     fallbackMailto(payload);
   } finally {
@@ -287,4 +302,23 @@ window.addEventListener("keydown", (event) => {
     closeNav();
     closeCustomSelects();
   }
+});
+
+const serviceFilters = [...document.querySelectorAll("[data-service-filter]")];
+serviceFilters.forEach((button) => {
+  button.addEventListener("click", () => {
+    const category = button.dataset.serviceFilter;
+    serviceFilters.forEach((filter) => {
+      const selected = filter === button;
+      filter.classList.toggle("is-active", selected);
+      filter.setAttribute("aria-pressed", String(selected));
+    });
+    let visibleCount = 0;
+    document.querySelectorAll("[data-service-category]").forEach((card) => {
+      card.hidden = category !== "all" && card.dataset.serviceCategory !== category;
+      if (!card.hidden) visibleCount++;
+    });
+    const status = document.querySelector("[data-service-filter-status]");
+    if (status) status.textContent = `Показано услуг: ${visibleCount}`;
+  });
 });

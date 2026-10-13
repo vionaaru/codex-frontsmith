@@ -1,32 +1,32 @@
-name: Bug report
-description: Report a setup, workflow, preview, or launch-readiness problem
-title: "[Bug]: "
+name: Сообщение об ошибке
+description: Сообщить о проблеме настройки, процесса, предпросмотра или готовности запуска
+title: "[Ошибка]: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting a Frontsmith issue. Do not include live credentials, customer data, API keys, or private business records.
+        Спасибо за сообщение о проблеме Frontsmith. Не включайте рабочие секреты, данные клиентов, API-ключи и приватные записи бизнеса.
   - type: textarea
     id: problem
     attributes:
-      label: What happened?
-      description: Describe the problem clearly.
-      placeholder: I ran npm run owner:brief and...
+      label: Что произошло?
+      description: Ясно опишите проблему.
+      placeholder: Я выполнил npm run owner:brief и...
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: What did you expect?
-      description: Tell us what should have happened.
+      label: Какой результат ожидался?
+      description: Опишите ожидаемый результат.
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
-      label: Steps to reproduce
-      description: Include the exact command or workflow.
+      label: Шаги воспроизведения
+      description: Укажите точную команду или процесс.
       placeholder: |
         1. npm install
         2. npm run check
@@ -36,19 +36,19 @@ body:
   - type: textarea
     id: output
     attributes:
-      label: Relevant output
-      description: Paste terminal output with private data removed.
+      label: Вывод по проблеме
+      description: Вставьте вывод терминала без приватных данных.
       render: shell
   - type: input
     id: node
     attributes:
-      label: Node.js version
+      label: Версия Node.js
       placeholder: "node -v"
   - type: checkboxes
     id: checks
     attributes:
-      label: Checks
+      label: Проверки
       options:
-        - label: I removed credentials, customer data, and private business records from this issue
+        - label: Я удалил секреты, данные клиентов и приватные записи бизнеса из обращения
           required: true
 

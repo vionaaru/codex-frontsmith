@@ -1,166 +1,170 @@
 # Frontsmith
 
-Frontsmith v1.0 is an open-source Codex-native front-office kit for local service businesses.
+Frontsmith v1.0 — цифровой офис с открытым исходным кодом для местных компаний, оказывающих услуги. Он создан для работы через Codex.
 
-It gives an operator a single Codex-ready workspace to set up a local service business once, then keep operating the digital front office: ongoing customer inquiries, reply drafts, follow-ups, estimates, proposals, website updates, launch checks, activity history, and approval-gated connections.
+Оператор получает единую рабочую область: один раз настраивает компанию, затем ведёт её цифровой офис — обращения клиентов, черновики ответов, повторные контакты, сметы, коммерческие предложения, обновления сайта, проверки запуска, историю действий и подключения с обязательным согласованием.
 
-The operator works through Codex: update the business details, review the Owner Brief, prepare customer replies and estimates, inspect the website and customer-facing drafts, approve what is ready, and keep improving the front office as the business changes.
+Оператор работает через Codex: обновляет сведения о компании, просматривает Сводку владельца, готовит ответы клиентам и сметы, проверяет сайт и черновики, согласует готовые материалы и совершенствует цифровой офис по мере изменений в бизнесе.
 
-Frontsmith's primary interface is chat-driven inside Codex, backed by repo files and local scripts. The expected loop is:
+Основной интерфейс Frontsmith — чат в Codex, за которым стоят файлы репозитория и локальные скрипты. Рабочий цикл:
 
 ```text
-owner prompt in Codex
-  -> Frontsmith reads local business records
-  -> Codex returns a formatted brief, draft, plan, or checklist
-  -> owner reviews the generated artifact
-  -> approved changes update files, website content, or connected action drafts
+владелец пишет запрос в Codex
+  -> Frontsmith читает локальные записи компании
+  -> Codex возвращает оформленную сводку, черновик, план или контрольный список
+  -> владелец проверяет созданный материал
+  -> согласованные изменения обновляют файлы, сайт или черновики действий в подключённых сервисах
 ```
 
-## Preview
+## Предпросмотр
 
-Hosted evaluator Control Panel:
+Панель демонстрации для знакомства с продуктом:
 
-![Frontsmith Control Panel](docs/assets/frontsmith-control-panel.png)
+![Панель демонстрации Frontsmith](docs/assets/frontsmith-control-panel.png)
 
-Included Acme website:
+Текущий учебный цифровой офис — автосервис «АвтоРитм». Восемь услуг, демонстрационные цены, расписание и политика согласования находятся в `blueprints/auto-service/business.example.json`. `npm run bootstrap` создаёт приватную рабочую копию в `.frontsmith/business/`; повторный запуск не заменяет существующий профиль без явного указания.
 
-![Acme sample website](docs/assets/frontsmith-acme-website.png)
+Сайт автосервиса запускается командой `npm run preview:website` по адресу `http://localhost:4173`. Кнопки записи открывают `https://example.com/booking`. Это внешняя ссылка, без импорта записей и синхронизации. Локальная форма только проверяет заполнение. Контакты, цены и изображение — учебные примеры, не подтверждённые сведения действующего бизнеса.
 
-AI-readable discovery:
+Включённый в проект сайт автосервиса:
 
-- Walkthrough: `https://frontsmith.neurapath.ai/#walkthrough`
-- Hosted summary: `https://frontsmith.neurapath.ai/llms.txt`
-- NeuraPath route: `https://neurapath.ai/frontsmith`
-- Relay first proof: `https://www.neurarelay.com/developers/first-proof?neura_source=frontsmith&neura_campaign=frontsmith_applied_proof&neura_surface=readme`
+![Демонстрационный сайт автосервиса](docs/assets/frontsmith-acme-website.png)
 
-## Try Frontsmith
+Материалы для знакомства с проектом, в том числе для ИИ:
 
-Frontsmith is ready for developer, agency, and operator feedback.
+- Демонстрация рабочего процесса: `https://frontsmith.neurapath.ai/#walkthrough`
+- Онлайн-сводка: `https://frontsmith.neurapath.ai/llms.txt`
+- Страница NeuraPath: `https://neurapath.ai/frontsmith`
+- Первый пример проверки Relay: `https://www.neurarelay.com/developers/first-proof?neura_source=frontsmith&neura_campaign=frontsmith_applied_proof&neura_surface=readme`
 
-The fastest useful test is:
+## Попробуйте Frontsmith
+
+Frontsmith готов к обратной связи от разработчиков, агентств и операторов.
+
+Быстрый практический тест:
 
 ```bash
 git clone https://github.com/neurarelay/frontsmith.git
 cd frontsmith
 npm install
 npm run check
-npm run bootstrap -- --business-name "Acme" --website-url "https://acme.com"
+npm run bootstrap
 npm run first-run:status
 npm run owner:brief
-npm run prepare:connected-action -- --action-type "email" --title "Send consultation follow-up" --target "Customer follow-up" --evidence "Owner-provided customer notes"
+npm run prepare:connected-action -- --action-type "email" --title "Отправить письмо после консультации" --target "Повторный контакт с клиентом" --evidence "Заметки о клиенте, предоставленные владельцем"
 ```
 
-Then open a GitHub issue with what happened:
+Затем расскажите о результате в обсуждении GitHub:
 
-- [first-run feedback from a developer trying the repo](https://github.com/neurarelay/frontsmith/issues/5);
-- [agency/operator feedback about whether this would fit a real local-service client](https://github.com/neurarelay/frontsmith/issues/6);
-- [one narrow improvement that would make the kit easier to adopt](https://github.com/neurarelay/frontsmith/issues/7).
+- [Обратная связь разработчика после первого запуска](https://github.com/neurarelay/frontsmith/issues/5).
+- [Мнение агентства или оператора: подходит ли проект реальному бизнесу услуг](https://github.com/neurarelay/frontsmith/issues/6).
+- [Одно конкретное улучшение, которое упростит внедрение](https://github.com/neurarelay/frontsmith/issues/7).
 
-Start here:
+Начните здесь:
 
-- [Activation sprint guide](docs/community/activation-sprint.md)
-- [Operator start guide](docs/operator/start-here.md)
-- [Contributing guide](CONTRIBUTING.md)
+- [Руководство по пробному запуску](docs/community/activation-sprint.md)
+- [Начало работы для оператора](docs/operator/start-here.md)
+- [Как участвовать в разработке](CONTRIBUTING.md)
 
-## Product Shape
+## Как устроен продукт
 
 ```text
-GitHub repo
-  -> open in Codex
-  -> set up the business workspace
-  -> operate customer communications
-  -> review the Owner Brief
-  -> customize the included website
-  -> prepare estimates and proposals
-  -> preview locally
-  -> review the hosted Control Panel when needed
-  -> connect integrations when approved
-  -> deploy the approved website
-  -> keep operating through Codex workflows
+репозиторий GitHub
+  -> открыть в Codex
+  -> настроить рабочую область компании
+  -> вести общение с клиентами
+  -> просмотреть Сводку владельца
+  -> настроить включённый в проект сайт
+  -> подготовить сметы и предложения
+  -> открыть локальный предпросмотр
+  -> при необходимости изучить онлайн-Панель демонстрации
+  -> подключить согласованные интеграции
+  -> опубликовать согласованный сайт
+  -> продолжить работу через процессы Codex
 ```
 
-Frontsmith keeps operating data separate from the public website: use `.frontsmith/business/` for private business records and `website/` for the launchable site.
+Frontsmith хранит рабочие данные отдельно от публичного сайта: `.frontsmith/business/` предназначен для приватных записей компании, а `website/` — для сайта, готового к публикации.
 
-The `frontsmith.neurapath.ai` target opens as a hosted Frontsmith Control Panel for Acme. It includes the Acme website at `/website` as the customer-facing site inside the wider front-office flow.
+По адресу `frontsmith.neurapath.ai` открывается Панель демонстрации Frontsmith для Acme. Сайт Acme доступен по пути `/website` как клиентская часть общего рабочего процесса цифрового офиса.
 
-The hosted Control Panel is an evaluator preview of the Codex-native workflow, not the operating interface itself. It helps a cold visitor understand what they will actually see in Codex: prompts, Frontsmith responses, generated Markdown artifacts, local file updates, previews, and owner approval before live action.
+Онлайн-Панель демонстрации знакомит с работой через Codex; сама работа происходит в Codex. Панель показывает посетителю запросы, ответы Frontsmith, созданные Markdown-материалы, изменения локальных файлов, предпросмотры и согласование владельцем перед действиями во внешних сервисах.
 
-## Out Of The Box
+## Что входит в комплект
 
-Frontsmith v1.0 includes the essential digital front office for a local service business:
+Frontsmith v1.0 включает основные возможности цифрового офиса компании услуг:
 
-- Business Setup
-- Owner Brief
-- Website
-- Customer Desk
-- Ongoing customer communication
-- Estimates and Proposals
-- Activity Log
-- Settings and Integrations
-- Extension Planning
+- Настройка компании
+- Сводка владельца
+- Сайт
+- Работа с клиентами
+- Постоянное общение с клиентами
+- Сметы и коммерческие предложения
+- Журнал действий
+- Настройки и подключения
+- Планирование расширений
 
-## Quick Start
+## Быстрый старт
 
-Open this repository in Codex and start with:
+Откройте репозиторий в Codex и напишите:
 
 ```text
-Set up Frontsmith for my local service business.
+Настрой Frontsmith для моей компании, оказывающей услуги в нашем регионе.
 ```
 
-Codex will set up a local business workspace, prepare the Owner Brief, update the included website, and start the ongoing front-office loop: customer reply drafts, follow-up notes, estimate and proposal drafts, launch checks, and approval-gated connection steps for publishing, email, file storage, and scheduling tools.
+Codex создаст локальную рабочую область компании, подготовит Сводку владельца, обновит включённый в проект сайт и запустит регулярный рабочий цикл цифрового офиса: черновики ответов клиентам, заметки о повторных контактах, сметы и предложения, проверки запуска и согласуемые шаги подключения публикации, почты, файлового хранилища и инструментов записи.
 
-For a real business replacing the Acme defaults, ask Codex to run:
+При замене демонстрационных данных Acme данными реальной компании попросите Codex выполнить:
 
 ```bash
 npm run first-run:status
 ```
 
-This writes `.frontsmith/business/launch/first-run-readiness.md`, showing which business profile fields are customized, which still look like placeholders, which workspace files exist, and what remains owner-approval-gated before launch.
+Команда создаёт `.frontsmith/business/launch/first-run-readiness.md`. В нём видно, какие поля профиля компании настроены, какие ещё похожи на заглушки, какие рабочие файлы существуют и какие действия перед запуском требуют согласования владельца.
 
-The Owner Brief is Frontsmith's current-state view for one business. It summarizes what changed, what is waiting, what is blocked, what needs approval, and what the owner should do next.
+Сводка владельца показывает текущее состояние одной компании: что изменилось, что ожидает проверки, что заблокировано, что требует согласования и что делать дальше.
 
-The Customer Desk is the ongoing communication lane. It keeps customer requests, reply drafts, follow-up notes, estimate next steps, and owner approvals together after the website is launched.
+Модуль «Работа с клиентами» поддерживает постоянное общение. После публикации сайта он объединяет обращения, черновики ответов, заметки о повторных контактах, следующие шаги по сметам и согласования владельца.
 
-Connection and deployment steps stay approval-gated. Frontsmith prepares the path; it does not connect accounts, publish the site, or send customer messages without explicit owner approval.
+Подключения и развёртывание требуют согласования. Frontsmith готовит необходимые материалы, но подключает аккаунты, публикует сайт и отправляет сообщения клиентам только после явного согласования владельца.
 
-The Codex workflow walkthrough proof is available at `docs/walkthroughs/codex-workflow-proof.md`. It shows the Owner Brief, Customer Desk reply draft, estimate preparation, website update/preview, extension planning, connected-action receipt, generated files, preview links, and approval boundaries.
+Пример работы через Codex находится в `docs/walkthroughs/codex-workflow-proof.md`. Он показывает Сводку владельца, черновик ответа клиенту, подготовку сметы, обновление и предпросмотр сайта, планирование расширений, запись подключённого действия, созданные файлы, ссылки предпросмотра и границы согласования.
 
-The Frontsmith Relay proof map is available at `docs/product/relay-proof-map.md`. It maps Customer Desk replies, estimates, website updates, launch status, extension planning, and connected-action receipts to the authority-before-action boundary that Neura Relay governs in connected client mode.
+Карта проверок Frontsmith Relay находится в `docs/product/relay-proof-map.md`. Она связывает ответы клиентам, сметы, обновления сайта, состояние запуска, планы расширений и записи подключённых действий с принципом проверки полномочий до действия, который обеспечивает Neura Relay в режиме подключённого клиента.
 
-For proposed live actions, Frontsmith can prepare a dry-run connected-action receipt before any adapter runs:
+Перед выполнением предлагаемого действия Frontsmith может подготовить запись пробного прогона, ещё до запуска адаптера:
 
 ```bash
-npm run prepare:connected-action -- --action-type "email" --title "Send consultation follow-up" --target "Customer follow-up" --evidence "Owner-provided customer notes"
+npm run prepare:connected-action -- --action-type "email" --title "Отправить письмо после консультации" --target "Повторный контакт с клиентом" --evidence "Заметки о клиенте, предоставленные владельцем"
 ```
 
-This writes `.frontsmith/business/connected-actions/...` Markdown and JSON records with the proposed action, approval gate, Neura Registry/Relay reference placeholders, blocked adapters, and no-live-action safety boundary.
+Команда сохраняет в `.frontsmith/business/connected-actions/...` записи Markdown и JSON: предлагаемое действие, требование согласования, поля для ссылок на Neura Registry и Relay, заблокированные адаптеры и границу, исключающую выполнение реального действия.
 
-Frontsmith already includes the launchable website here:
+Готовый к публикации сайт уже включён в Frontsmith:
 
 ```text
 website/
 ```
 
-This is a static website folder, not a Next.js app. `website/` is the business website source: HTML, CSS, JavaScript, favicon files, logo files, and any future local image assets belong there.
+Это каталог статического сайта. В `website/` находятся HTML, CSS, JavaScript, значки сайта, логотипы и будущие локальные изображения. Приложение Next.js не требуется.
 
-During setup, Codex applies the business name, website URL, core services, contact details, branding, images, and search/social metadata to that single-page website. Changing the business name updates the business profile and website content; the website folder stays stable.
+При настройке Codex переносит на одностраничный сайт название компании, адрес сайта, основные услуги, контакты, оформление, изображения, поисковые метаданные и данные для соцсетей. Изменение названия компании обновляет профиль и содержимое сайта; путь к каталогу сайта остаётся прежним.
 
-The default photos currently come from the business profile's `media` URLs. A business can replace them with local files under `website/assets/` and point the media fields to `/assets/...` paths.
+По умолчанию фотографии загружаются по URL из поля `media` профиля компании. Их можно заменить локальными файлами в `website/assets/`, указав в полях медиа пути `/assets/...`.
 
-The hosted Frontsmith Control Panel uses `demo/` as its entry point and copies `website/` into the built demo at `/website`.
+Онлайн-Панель демонстрации Frontsmith использует `demo/` как точку входа и копирует `website/` в собранную демонстрацию по пути `/website`.
 
-## Developer Commands
+## Команды для разработчиков
 
-Operators can let Codex run the commands. Developers can run them directly:
+Оператор может поручить выполнение команд Codex. Разработчик может запускать их самостоятельно:
 
 ```bash
 npm run check
 npm run bootstrap -- --business-name "Acme" --website-url "https://acme.com"
 npm run owner:brief
-npm run prepare:reply -- --name "Customer" --project "Kitchen Remodeling" --notes "Customer wants help planning the next step."
-npm run prepare:estimate -- --project "Kitchen Remodeling" --scope "Cabinets, counters, lighting, and layout clarification."
-npm run prepare:extension -- --capability "Consultation scheduling" --connector "Google Calendar" --goal "Prepare an owner-reviewed workflow for approved consultation requests."
-npm run prepare:connected-action -- --action-type "email" --title "Send consultation follow-up" --target "Customer follow-up" --evidence "Owner-provided customer notes"
+npm run prepare:reply -- --name "Клиент" --project "Ремонт кухни" --notes "Клиенту нужна помощь с планированием следующего шага."
+npm run prepare:estimate -- --project "Ремонт кухни" --scope "Шкафы, столешницы, освещение и уточнение планировки."
+npm run prepare:extension -- --capability "Запись на консультации" --connector "Google Calendar" --goal "Подготовить процесс записи по согласованным заявкам с проверкой владельцем."
+npm run prepare:connected-action -- --action-type "email" --title "Отправить письмо после консультации" --target "Повторный контакт с клиентом" --evidence "Заметки о клиенте, предоставленные владельцем"
 npm run first-run:status
 npm run update:website
 npm run launch:status
@@ -170,91 +174,93 @@ npm run deploy:check
 npm run preview:website
 ```
 
-The root `vercel.json` keeps Vercel in static-site mode and builds the hosted Frontsmith Control Panel into `dist/frontsmith-demo`. Frontsmith does not require `next.config`, `src/app`, or a Next.js build for the hosted target.
+Корневой `vercel.json` задаёт Vercel режим статического сайта и сборку онлайн-Панели демонстрации Frontsmith в `dist/frontsmith-demo`. Для этой публикации Frontsmith не требует `next.config`, `src/app` или сборки Next.js.
 
-`npm run deploy:check` is a preflight gate, not a deployment command. It verifies the demo build, included website, Vercel static-site configuration, clean URLs, SEO/social metadata, icons, referenced assets, contact form API wiring, and required production email-delivery environment variables. It exits with blockers until the Resend and contact variables are configured, and it never sends email or deploys the site.
+`npm run deploy:check` проверяет готовность к развёртыванию, но не публикует сайт. Команда проверяет сборку демонстрации, включённый сайт, настройки статического сайта Vercel, корректные URL, поисковые метаданные и данные для соцсетей, иконки, используемые ресурсы, подключение API контактной формы и обязательные переменные окружения для доставки писем на рабочем сайте. Пока Resend и переменные контактной формы не настроены, команда завершается со списком препятствий. Она не отправляет письма и не развёртывает сайт.
 
-## Launch Gate
+## Автоматическая проверка запуска
 
-Pull requests and pushes to `main` run the GitHub Actions launch gate in `.github/workflows/launch-gate.yml`.
+Запросы на слияние и отправки изменений в `main` запускают проверку GitHub Actions из `.github/workflows/launch-gate.yml`.
 
-The launch gate installs Node.js 20 dependencies, runs `npm run check`, builds the hosted demo with `npm run build:demo`, and runs `npm test`.
+Проверка устанавливает зависимости с Node.js 20, запускает `npm run check`, собирает онлайн-демонстрацию командой `npm run build:demo` и выполняет `npm test`.
 
-`npm run deploy:check` remains a local/manual preflight because it intentionally verifies production contact-delivery configuration. It should run only when safe placeholder environment variables or the approved business-owned delivery variables are available. The GitHub Actions gate does not deploy, send email, change DNS, call providers, or execute customer-facing actions.
+`npm run deploy:check` остаётся локальной ручной проверкой, поскольку проверяет настройки доставки заявок на рабочем сайте. Запускайте её с безопасными демонстрационными переменными окружения либо с согласованными настройками доставки, принадлежащими компании. Проверка GitHub Actions не развёртывает сайт, не отправляет письма, не меняет DNS, не обращается к поставщикам услуг и не выполняет действия для клиентов.
 
-## Contact Form Delivery
+## Доставка заявок из контактной формы
 
-The website contact form posts to:
+Контактная форма сайта отправляет данные на:
 
 ```text
 /api/contact
 ```
 
-That server-side function sends the project request through Resend when delivery is configured. Browser JavaScript handles validation and the success state, but the email provider key stays in Vercel environment variables and is never exposed to the public website.
+При настроенной доставке серверная функция отправляет заявку через Resend. JavaScript в браузере отвечает за проверку формы и сообщение об успешной отправке, а ключ почтового сервиса хранится в переменных окружения Vercel и не попадает в публичный сайт.
 
-The default ownership model is business-owned email delivery: each business uses its own Resend account, verified sending domain, API key, and Vercel environment variables. NeuraPath-managed delivery can be offered later as a managed setup tier, but it is not the open-source default.
+По умолчанию доставкой писем владеет сама компания: она использует собственный аккаунт Resend, подтверждённый домен отправки, API-ключ и переменные окружения Vercel. Управляемую NeuraPath доставку можно предложить позже как отдельную услугу настройки; она не входит в стандартный вариант с открытым исходным кодом.
 
-Required production variables:
+Обязательные переменные для рабочего сайта:
 
 ```text
 CONTACT_DELIVERY_MODE=resend
 CONTACT_TO_EMAIL=projects@acme.com
 CONTACT_FROM_EMAIL="Acme <hello@acme.com>"
-CONTACT_SUBJECT_PREFIX=Website project request
+CONTACT_SUBJECT_PREFIX=Заявка с сайта
 FRONTSMITH_TENANT_ID=acme
 RESEND_API_KEY=re_xxxxxxxxx
 ```
 
-If `/api/contact` is not configured, the browser falls back to a prefilled email draft through the business email address.
+Если `/api/contact` не настроен, браузер открывает заполненный черновик письма на адрес компании.
 
-Useful daily front-office commands:
+Полезные ежедневные команды цифрового офиса:
 
 ```bash
-npm run prepare:reply -- --name "Customer" --project "Kitchen Remodeling" --notes "Customer wants help planning the next step."
-npm run prepare:estimate -- --project "Kitchen Remodeling" --scope "Cabinets, counters, lighting, and layout clarification."
-npm run prepare:extension -- --capability "Consultation scheduling" --connector "Google Calendar" --goal "Prepare an owner-reviewed workflow for approved consultation requests."
-npm run prepare:connected-action -- --action-type "calendar" --title "Create consultation hold" --target "Approved consultation request" --evidence "Owner-approved scheduling notes"
+npm run prepare:reply -- --name "Клиент" --project "Ремонт кухни" --notes "Клиенту нужна помощь с планированием следующего шага."
+npm run prepare:estimate -- --project "Ремонт кухни" --scope "Шкафы, столешницы, освещение и уточнение планировки."
+npm run prepare:extension -- --capability "Запись на консультации" --connector "Google Calendar" --goal "Подготовить процесс записи по согласованным заявкам с проверкой владельцем."
+npm run prepare:connected-action -- --action-type "calendar" --title "Зарезервировать время консультации" --target "Согласованная заявка на консультацию" --evidence "Согласованные владельцем заметки о записи"
 npm run owner:brief
 npm run deploy:check
 npm test
 ```
 
-## Repository Map
+## Карта репозитория
 
 ```text
-Operator path
-  docs/operator/start-here.md          first-run guidance for business operators
-  workflows/                           Codex runbooks for setup, website, replies, estimates, and launch
-  .frontsmith/business/                local business workspace created on first run, gitignored
-  Owner Brief                          current-state summary prepared from local records
-  website/                             launchable website that gets customized and deployed
-  demo/                                hosted Frontsmith Control Panel for frontsmith.neurapath.ai
+Работа оператора
+  docs/operator/start-here.md          руководство по первому запуску
+  workflows/                          инструкции Codex: настройка, сайт, ответы, сметы и запуск
+  .frontsmith/business/               локальная рабочая область компании; создаётся при первом запуске, исключена из Git
+  Сводка владельца                    текущее состояние по локальным записям
+  website/                            настраиваемый сайт для публикации
+  demo/                               онлайн-Панель демонстрации Frontsmith для frontsmith.neurapath.ai
 
-Product and development
-  AGENTS.md                            Codex operating rules for this repository
-  frontsmith.config.json               v1.0 kit configuration
-  blueprints/local-service/            default local service business blueprint
-  docs/product/architecture.md         product architecture and data flow
-  docs/product/package-spec.md         v1.0 package scope
-  docs/developer/extension-guide.md    extension guidance for developers
-  DEVELOPERS.md                        developer rules
-  scripts/                             local bootstrap, website updates, front-office tools, extension plans, preview, demo build, and checks
-  tests/                               launch readiness and regression tests for the promised workflows
-  docs/assets/                         README screenshots
-  packages/core/                       shared business workspace model
-  packages/adapters/                   integration adapter boundary
-  packages/neura/                      governed-action boundary
+Продукт и разработка
+  AGENTS.md                           правила работы Codex в репозитории
+  frontsmith.config.json              конфигурация комплекта v1.0
+  blueprints/local-service/           базовый шаблон компании услуг
+  docs/product/architecture.md        архитектура продукта и потоки данных
+  docs/product/package-spec.md        состав и границы комплекта v1.0
+  docs/developer/extension-guide.md    руководство по расширениям для разработчиков
+  DEVELOPERS.md                       правила для разработчиков
+  scripts/                            настройка, обновление сайта, инструменты офиса, расширения, предпросмотр, сборка и проверки
+  tests/                              проверки готовности к запуску и регрессий рабочих процессов
+  docs/assets/                        снимки экрана для README
+  packages/core/                      общая модель рабочей области компании
+  packages/adapters/                  граница адаптеров интеграций
+  packages/neura/                     граница действий с проверкой полномочий
 ```
 
-## Safety Boundary
+## Границы безопасности
 
-Frontsmith prepares, drafts, previews, and exports by default.
+По умолчанию Frontsmith готовит материалы, черновики, предпросмотры и экспорт.
 
-It does not silently send emails, publish websites, change DNS, contact customers, submit provider updates, or execute customer-facing actions. Consequential actions require explicit owner approval. In connected client mode, those actions should pass through Neura Registry and Neura Relay before execution.
+Он не отправляет письма, не публикует сайты, не меняет DNS, не связывается с клиентами, не передаёт обновления поставщикам услуг и не выполняет действия для клиентов без согласования. Действия с внешними последствиями требуют явного согласования владельца. В режиме подключённого клиента перед выполнением они должны пройти через Neura Registry и Neura Relay.
 
-## Project Resources
+## Материалы проекта
 
-- [Changelog](CHANGELOG.md)
-- [Contributing](CONTRIBUTING.md)
-- [Support](SUPPORT.md)
-- [Security policy](SECURITY.md)
+- [История изменений](CHANGELOG.md)
+- [Участие в разработке](CONTRIBUTING.md)
+- [Поддержка](SUPPORT.md)
+- [Политика безопасности](SECURITY.md)
+- [Справочник настроек](docs/operator/settings.md)
+- [Лицензия: русский перевод](LICENSE.ru.md), [исходный текст MIT](LICENSE)

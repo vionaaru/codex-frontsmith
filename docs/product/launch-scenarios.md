@@ -1,32 +1,32 @@
-# Launch Scenarios
+# Сценарии запуска
 
-This document maps the public Frontsmith promise to runnable repo workflows. If a capability is claimed in the README or hosted Control Panel, it must have a local command, reviewable output, and regression coverage.
+Документ связывает публичные обещания Frontsmith с рабочими сценариями репозитория. Каждая возможность, заявленная в README или опубликованной Панели демонстрации, должна иметь локальную команду, результат для проверки и регрессионные тесты.
 
-## Launch Gate
+## Условия выпуска
 
-Frontsmith is acceptable for public GitHub release only when these checks pass:
+Frontsmith готов к публичному выпуску на GitHub только после успешного прохождения следующих проверок:
 
-## Connected-Action Receipt
+## Квитанция подключённого действия
 
-Scenario: the owner wants to review a proposed live action before any provider adapter runs.
+Сценарий: владелец хочет проверить предложенное внешнее действие до запуска любого адаптера провайдера.
 
-Command:
+Команда:
 
 ```bash
-npm run prepare:connected-action -- --action-type "email" --title "Send consultation follow-up" --target "Customer follow-up" --evidence "Owner-provided customer notes"
+npm run prepare:connected-action -- --action-type "email" --title "Отправить сообщение после консультации" --target "Повторный контакт с клиентом" --evidence "Заметки о клиенте от владельца"
 ```
 
-Expected output:
+Ожидаемый результат:
 
-- local Markdown receipt under `.frontsmith/business/connected-actions/`;
-- local JSON receipt under `.frontsmith/business/connected-actions/`;
-- proposed action ref;
-- Neura Registry and Relay placeholder refs;
-- approval gate;
-- blocked adapters;
-- no live provider action.
+- локальная квитанция Markdown в `.frontsmith/business/connected-actions/`;
+- локальная квитанция JSON в `.frontsmith/business/connected-actions/`;
+- ссылка на предложенное действие;
+- заготовки ссылок Neura Registry и Relay;
+- обязательное согласование;
+- заблокированные адаптеры;
+- отсутствие внешних действий через провайдера.
 
-Safety: this scenario must not send email, publish a website, change DNS, create calendar events, upload files, export data, configure providers, or execute connected actions.
+Безопасность: сценарий не должен отправлять письма, публиковать сайт, менять DNS, создавать события календаря, загружать файлы, экспортировать данные, настраивать провайдеров или выполнять подключённые действия.
 
 ```bash
 npm run check
@@ -36,40 +36,40 @@ npm test
 git diff --check
 ```
 
-These commands must not send email, publish a website, change DNS, connect providers, upload files, schedule calendar events, or change repository visibility.
+Эти команды не должны отправлять письма, публиковать сайт, менять DNS, подключать провайдеров, загружать файлы, создавать события календаря или менять видимость репозитория.
 
-## Required Scenarios
+## Обязательные сценарии
 
-| Scenario | User intent | Command | Reviewable output | Test coverage |
+| Сценарий | Задача пользователя | Команда | Результат для проверки | Тестовое покрытие |
 | --- | --- | --- | --- | --- |
-| Business Setup | Create the local business workspace | `npm run bootstrap` | `.frontsmith/business/business.json`, launch checklist, integration settings, website update | `tests/regression.mjs` |
-| Owner Brief | See what changed, what is waiting, what is blocked, and what needs approval | `npm run owner:brief` | `.frontsmith/business/activity/owner-brief.md` | `tests/regression.mjs` |
-| Customer Desk | Prepare an owner-reviewed customer reply and follow-up state | `npm run prepare:reply` | `.frontsmith/business/customer-inquiries/*-reply-draft.md` | `tests/regression.mjs` |
-| Estimates and Proposals | Prepare scope, missing information, questions, and proposal outline | `npm run prepare:estimate` | `.frontsmith/business/estimates/*-estimate-draft.md` | `tests/regression.mjs` |
-| Website Update | Update the committed website from the business profile | `npm run update:website` | `website/index.html`, website review note, latest website update note | `tests/regression.mjs` |
-| Extension Planning | Plan a new tool, skill, connector, or workflow before live behavior | `npm run prepare:extension` | `.frontsmith/business/extensions/*-extension-plan.md` | `tests/regression.mjs` |
-| Relay Proof Map | Explain how Frontsmith workflows map to approval-before-action receipts | `docs/product/relay-proof-map.md` | Static proof map | `tests/launch-readiness.mjs` |
-| Launch Status | Summarize readiness and owner blockers | `npm run launch:status` | `.frontsmith/business/launch/launch-status.md` | `tests/regression.mjs` |
-| Website Preview | Serve the included website locally | `npm run preview:website` | Local HTTP preview of `website/` | `tests/regression.mjs` |
-| Contact Form Dry Run | Validate the deployed contact route without sending email | `CONTACT_DELIVERY_MODE=dry-run npm run preview:website` | `/api/contact` accepts valid dry-run submissions | `tests/regression.mjs` |
-| Hosted Control Panel Build | Build the evaluator Control Panel with `/website` included | `npm run build:demo` | `dist/frontsmith-demo/` | `tests/regression.mjs` |
-| Deployment Readiness | Verify deployment shape and contact environment without deploying | `npm run deploy:check` | CLI readiness report | `tests/regression.mjs` |
-| Repo Contract | Ensure the package, docs, scripts, workflows, and blueprint match the public promise | `npm run test:launch` | CLI launch-readiness pass | `tests/launch-readiness.mjs` |
+| Настройка бизнеса | Создать локальное рабочее пространство бизнеса | `npm run bootstrap` | `.frontsmith/business/business.json`, список проверки запуска, настройки интеграций, обновление сайта | `tests/regression.mjs` |
+| Сводка владельца | Увидеть изменения, ожидающие задачи, блокировки и необходимые согласования | `npm run owner:brief` | `.frontsmith/business/activity/owner-brief.md` | `tests/regression.mjs` |
+| Работа с клиентами | Подготовить ответ клиенту для проверки владельцем и зафиксировать дальнейшие шаги | `npm run prepare:reply` | `.frontsmith/business/customer-inquiries/*-reply-draft.md` | `tests/regression.mjs` |
+| Сметы и предложения | Подготовить объём работ, список недостающих данных, вопросы и структуру предложения | `npm run prepare:estimate` | `.frontsmith/business/estimates/*-estimate-draft.md` | `tests/regression.mjs` |
+| Обновление сайта | Обновить версионируемый сайт по профилю бизнеса | `npm run update:website` | `website/index.html`, заметка для проверки сайта, запись о последнем обновлении | `tests/regression.mjs` |
+| Планирование расширений | Спланировать новый инструмент, навык, подключение или процесс до внешних действий | `npm run prepare:extension` | `.frontsmith/business/extensions/*-extension-plan.md` | `tests/regression.mjs` |
+| Карта подтверждений Relay | Объяснить связь процессов Frontsmith с квитанциями согласования до выполнения | `docs/product/relay-proof-map.md` | Статическая карта подтверждений | `tests/launch-readiness.mjs` |
+| Статус запуска | Свести готовность и вопросы, требующие решения владельца | `npm run launch:status` | `.frontsmith/business/launch/launch-status.md` | `tests/regression.mjs` |
+| Предпросмотр сайта | Запустить встроенный сайт локально | `npm run preview:website` | Локальный HTTP-предпросмотр `website/` | `tests/regression.mjs` |
+| Пробная отправка формы | Проверить развёрнутый маршрут формы без отправки письма | `CONTACT_DELIVERY_MODE=dry-run npm run preview:website` | `/api/contact` принимает корректные пробные заявки | `tests/regression.mjs` |
+| Сборка Панели демонстрации | Собрать Панель демонстрации для оценки продукта со встроенным `/website` | `npm run build:demo` | `dist/frontsmith-demo/` | `tests/regression.mjs` |
+| Готовность к публикации | Проверить структуру публикации и окружение формы без развёртывания | `npm run deploy:check` | Отчёт о готовности в терминале | `tests/regression.mjs` |
+| Соответствие репозитория обещаниям | Проверить согласованность пакета, документации, скриптов, процессов и шаблона с публичными обещаниями | `npm run test:launch` | Успешная проверка готовности в терминале | `tests/launch-readiness.mjs` |
 
-## Claims Covered
+## Подтверждённые возможности
 
-- Set up one local service business.
-- Keep private business data under `.frontsmith/business/`.
-- Keep the launchable website under `website/`.
-- Review an Owner Brief before lower-level work.
-- Prepare ongoing Customer Desk replies and follow-up state.
-- Prepare estimate and proposal drafts without inventing pricing.
-- Update and preview the included website.
-- Validate contact delivery without exposing provider secrets.
-- Keep live sends, publishing, provider setup, uploads, scheduling, exports, and connected actions approval-gated.
-- Plan extensions for tools, skills, connectors, and workflows before adding live behavior.
-- Build the hosted Frontsmith Control Panel with the Acme website available at `/website`.
+- Настроить один небольшой бизнес в сфере услуг.
+- Хранить приватные данные бизнеса в `.frontsmith/business/`.
+- Хранить готовый к публикации сайт в `website/`.
+- Проверять Сводку владельца перед отдельными задачами.
+- Готовить ответы в модуле «Работа с клиентами» и фиксировать дальнейшие шаги.
+- Готовить черновики смет и предложений без выдуманных цен.
+- Обновлять и просматривать встроенный сайт.
+- Проверять доставку заявок без раскрытия секретов провайдера.
+- Требовать согласования для отправки, публикации, настройки провайдеров, загрузки файлов, записи в календарь, экспорта и подключённых действий.
+- Планировать расширения инструментов, навыков, подключений и процессов до добавления внешних действий.
+- Собирать опубликованную Панель демонстрации Frontsmith с сайтом Acme по адресу `/website`.
 
-## Explicit Non-Goals For v1.0
+## Что не входит в v1.0
 
-Frontsmith v1.0 does not include automatic sends, automatic deployment, DNS changes, payment collection, invoices, accounting, social posting, a generic connector marketplace, or a full CRM. Those belong behind extension boundaries after the core front-office kit is stable.
+Frontsmith v1.0 не включает автоматическую отправку, автоматическое развёртывание, изменения DNS, приём платежей, счета, бухгалтерию, публикации в соцсетях, универсальный магазин подключений или полноценную CRM. Эти функции относятся к расширениям после стабилизации основного цифрового офиса.

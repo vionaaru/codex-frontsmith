@@ -1,32 +1,32 @@
-# Workflow: Prepare Connected-Action Receipt
+# Процесс: запись подключаемого действия
 
-Use this workflow when the operator wants to review a proposed live action before any provider adapter is allowed to run.
+Используйте для проверки предлагаемого внешнего действия до разрешения запуска адаптеров.
 
-## Output
+## Результат
 
-Create a local connected-action receipt that gives the owner a clear review surface.
+Создайте локальную запись подключаемого действия, удобную для проверки владельцем.
 
-It should include:
+Включите:
 
-- proposed action type, title, target, and evidence;
-- local action ref;
-- Neura Registry ref placeholder;
-- Neura Relay Action Card ref placeholder;
-- Neura Relay Decision Receipt state;
-- trace ref;
-- required approval checks;
-- blocked adapter list;
-- generated `.frontsmith/business/connected-actions/...` artifact paths;
-- safety boundary.
+- тип, название, цель и основание предлагаемого действия;
+- локальную ссылку действия;
+- заготовку ссылки Neura Registry;
+- заготовку ссылки Neura Relay Action Card;
+- состояние Neura Relay Decision Receipt;
+- ссылку трассировки;
+- обязательные проверки согласования;
+- список заблокированных адаптеров;
+- пути `.frontsmith/business/connected-actions/...`;
+- границы безопасности.
 
-The local command is:
+Локальная команда:
 
 ```bash
-npm run prepare:connected-action -- --action-type "email" --title "Send consultation follow-up" --target "Customer follow-up" --evidence "Owner-provided customer notes"
+npm run prepare:connected-action -- --action-type "email" --title "Отправить сообщение после консультации" --target "Повторный контакт с клиентом" --evidence "Заметки о клиенте от владельца"
 ```
 
-## Safety
+## Безопасность
 
-Do not send email, publish a website, change DNS, create calendar events, upload files, export data, configure providers, or execute a connected action from this workflow.
+Этот процесс не отправляет письма, не публикует сайт, не меняет DNS, не создаёт встречи, не загружает файлы, не экспортирует данные, не настраивает сервисы и не выполняет внешние действия.
 
-The receipt is a dry-run review artifact. Live behavior can be added only after the owner approves the exact action, connector, payload, target, account, and connected-mode Neura Relay preflight.
+Запись — материал проверки пробного режима. Внешние действия возможны после согласования точного действия, коннектора, содержимого, цели, аккаунта и предварительной проверки Neura Relay в подключённом режиме.

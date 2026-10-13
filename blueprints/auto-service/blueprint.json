@@ -1,0 +1,10 @@
+{
+  "id": "auto-service",
+  "name": "Цифровой офис автосервиса",
+  "version": "1.0.0",
+  "description": "Локальный демонстрационный офис автосервиса с каталогом услуг, ориентировочными ценами и внешней онлайн-записью.",
+  "exampleProfile": "blueprints/auto-service/business.example.json",
+  "requiredProfileFields": ["businessName", "businessType", "services", "contact", "bookingUrl", "pricingPolicy", "timeZone"],
+  "defaultPages": ["home"],
+  "capabilities": ["business-setup", "owner-brief", "website", "customer-desk", "ongoing-customer-communication", "estimates-proposals", "launch-plan", "activity-log", "settings-integrations", "extension-planning", "connected-action-receipts"]
+}

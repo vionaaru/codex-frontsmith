@@ -1,24 +1,24 @@
-# Workflow: Launch Plan
+# Процесс: план запуска
 
-Use this workflow to show what is ready and what still needs owner review.
+Покажите готовые части и то, что ещё должен проверить владелец.
 
-## Launch Checklist
+## Чек-лист запуска
 
-- Business profile complete
-- Website updated
-- Contact details reviewed
-- Services reviewed
-- Service areas reviewed
-- Customer reply workflow tested with a draft inquiry
-- Estimate draft workflow tested with draft scope notes
-- Deployment path reviewed if launching through Vercel
-- Live actions still disabled unless approved
+- Профиль бизнеса заполнен
+- Сайт обновлён
+- Контакты проверены
+- Услуги проверены
+- Территория обслуживания проверена
+- Ответ клиенту проверен на пробном обращении
+- Смета проверена на черновом описании работ
+- Путь публикации проверен, если используется Vercel
+- Внешние действия отключены до согласования
 
-## Output
+## Результат
 
-Write a concise launch summary under the local business activity folder.
+Сохраните краткую сводку запуска в локальных данных бизнеса (`launch/launch-status.md`).
 
-The local command is:
+Локальная команда:
 
 ```bash
 npm run launch:status

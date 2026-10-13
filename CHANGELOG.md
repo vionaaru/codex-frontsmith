@@ -1,33 +1,37 @@
-# Changelog
+# История изменений
 
-## Unreleased
+## Следующий выпуск
 
-### Added
+### Добавлено
 
-- Activation sprint guide for developers, agencies, and operators.
-- First-run feedback and agency/operator feedback issue templates.
-- README activation path that routes visitors from discovery into a public feedback loop.
+- Русская документация, настройки, интерфейсы и создаваемые материалы для демонстраций и обучения.
+- Поддержка кириллицы в именах черновиков и проверка существующих английских примеров профиля.
+- Исправлен запуск регрессионных тестов в Windows.
+
+- Руководство знакомства для разработчиков, агентств и операторов.
+- Шаблоны отзывов о первом запуске и применении агентством или оператором.
+- Путь первого знакомства в README с переходом к публичной обратной связи.
 
 ## v1.0.0 - 2026-05-24
 
-Initial public release of Frontsmith.
+Первый публичный выпуск Frontsmith.
 
-### Included
+### Состав
 
-- Codex-native local service business setup
-- Owner Brief workflow
-- Customer Desk reply drafting
-- estimate and proposal preparation
-- website update and preview workflow
-- extension planning for tools, skills, connectors, and workflows
-- launch-readiness checks
-- hosted evaluator Control Panel at `frontsmith.neurapath.ai`
-- included Acme website at `/website`
-- approval-first safety boundary for customer-facing and connected actions
+- Настройка местного сервисного бизнеса через Codex
+- Процесс сводки владельца
+- Черновики ответов клиентам
+- Подготовка смет и предложений
+- Обновление и предпросмотр сайта
+- Планирование инструментов, навыков, коннекторов и процессов
+- Проверки готовности запуска
+- Панель демонстрации на `frontsmith.neurapath.ai`
+- Сайт Acme по адресу `/website`
+- Согласование до клиентских и подключённых действий
 
-### Verification
+### Проверка
 
-The public release passed:
+Публичный выпуск прошёл:
 
 ```bash
 npm run check
@@ -35,4 +39,4 @@ npm run build:demo
 npm test
 ```
 
-The release was also verified from a fresh public clone.
+Выпуск также проверили из свежей публичной копии репозитория.

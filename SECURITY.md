@@ -1,20 +1,20 @@
-# Security Policy
+# Политика безопасности
 
-## Supported Version
+## Поддерживаемая версия
 
-Frontsmith v1.0 is the current supported public release.
+Frontsmith v1.0 — текущая поддерживаемая публичная версия.
 
-## Reporting Security Issues
+## Сообщения о проблемах безопасности
 
-Please report security issues through GitHub private vulnerability reporting when available, or open a minimal issue that avoids exposing secrets, customer data, or exploit details.
+Сообщайте о проблемах безопасности через закрытые сообщения об уязвимостях GitHub, если эта возможность доступна, либо создайте краткую задачу без раскрытия секретов, данных клиентов и подробностей эксплуатации уязвимости.
 
-Do not post API keys, customer records, business data, contact-form submissions, or provider credentials in a public issue.
+Не публикуйте в открытой задаче ключи API, записи о клиентах, данные бизнеса, заявки из контактной формы или учётные данные провайдеров.
 
-## Security Boundary
+## Границы безопасности
 
-Frontsmith prepares drafts, previews, plans, and local files by default.
+По умолчанию Frontsmith готовит черновики, предварительные просмотры, планы и локальные файлы.
 
-It must not silently send emails, publish websites, change DNS, contact customers, submit provider updates, schedule calendar events, or execute connected provider actions. Those actions require explicit owner approval, and connected client mode should route consequential actions through the Neura authority rail before execution.
+Он не должен незаметно отправлять письма, публиковать сайты, менять DNS, связываться с клиентами, передавать обновления провайдерам, назначать события в календаре или выполнять действия через подключённых провайдеров. Для этих действий требуется явное одобрение владельца. В подключённом клиентском режиме значимые действия перед выполнением должны проходить через контур полномочий Neura.
 
-`.frontsmith/business/` is gitignored and should remain local. Treat it as private business memory, not public project content.
+Каталог `.frontsmith/business/` исключён из Git и должен оставаться локальным. Считайте его приватной памятью бизнеса, а не публичными материалами проекта.
 

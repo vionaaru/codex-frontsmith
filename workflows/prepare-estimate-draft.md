@@ -1,32 +1,32 @@
-# Workflow: Prepare Estimate Draft
+# Процесс: заготовка сметы
 
-Use this workflow to turn inquiry notes into an estimate or proposal preparation draft.
+Преобразуйте заметки обращения в заготовку сметы или предложения.
 
-## Output
+## Результат
 
-Create an estimate preparation draft that reads like a concise Codex response and gives the owner a clear review surface.
+Создайте заготовку сметы как краткий ответ Codex, удобный для проверки владельцем.
 
-It should include:
+Включите:
 
-- scope summary;
-- assumptions;
-- missing information before pricing;
-- owner questions;
-- recommended next step;
-- proposal outline;
-- optional pricing-rule slot without inventing pricing;
-- connector handoff options after approval;
-- generated `.frontsmith/business/estimates/...` artifact path;
-- related Customer Desk reply draft when available.
+- описание объёма работ;
+- допущения;
+- недостающие для расчёта сведения;
+- вопросы владельцу;
+- рекомендуемый следующий шаг;
+- структуру предложения;
+- место для правил расчёта без выдуманных цен;
+- варианты передачи коннекторам после согласования;
+- путь `.frontsmith/business/estimates/...`;
+- связанный черновик ответа клиенту, если есть.
 
-The local command is:
+Локальная команда:
 
 ```bash
-npm run prepare:estimate -- --project "Kitchen Remodeling" --scope "Scope notes"
+npm run prepare:estimate -- --project "Ремонт кухни" --scope "Описание объёма работ"
 ```
 
-## Safety
+## Безопасность
 
-Do not produce a final price unless the owner provides pricing rules or approves the estimate.
+Не указывайте итоговую цену без правил владельца или согласования сметы.
 
-The draft must stay local-only until the owner explicitly approves customer delivery. Google Drive, Google Calendar, Gmail, and future pricing skills are connector handoff options after approval, not automatic actions.
+Черновик остаётся локальным до явного согласия на передачу клиенту. Google Drive, Google Calendar, Gmail и будущие навыки расчёта — варианты действий после согласования.

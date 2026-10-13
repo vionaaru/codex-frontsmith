@@ -1,11 +1,11 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Frontsmith activation sprint
+  - name: Первое знакомство с Frontsmith
     url: https://github.com/neurarelay/frontsmith/blob/main/docs/community/activation-sprint.md
-    about: Run the 10 minute test and open a feedback issue.
-  - name: Frontsmith hosted Control Panel
+    about: Пройдите десятиминутную проверку и оставьте отзыв.
+  - name: Панель демонстрации Frontsmith
     url: https://frontsmith.neurapath.ai/
-    about: Review the hosted evaluator Control Panel and included Acme website.
+    about: Посмотрите панель демонстрации и включённый сайт Acme.
   - name: NeuraPath
     url: https://neurapath.ai/
-    about: Learn about the authority layer behind connected client mode.
+    about: Узнайте о контроле полномочий в подключённом режиме.

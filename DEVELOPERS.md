@@ -1,34 +1,34 @@
-# Frontsmith Developer Guide
+# Руководство разработчика Frontsmith
 
-Frontsmith is intended to become a public open-source kit. Developer work should improve the Codex-native business kit, not turn it into a generic SaaS dashboard.
+Frontsmith предназначен для публичного распространения как комплект с открытым исходным кодом. Работа разработчиков должна улучшать набор инструментов для бизнеса, работающий через Codex, а не превращать его в универсальную SaaS-панель.
 
-## Product Rules
+## Правила продукта
 
-- Keep the default use case focused on local service businesses.
-- Keep the v1.0 default capabilities essential.
-- Put nonessential capabilities behind extension boundaries.
-- Keep operator-facing language clear for a small business owner.
-- Keep developer-facing architecture explicit and easy to extend.
-- Do not add live external actions without owner approval and a governed action path.
+- Сохраняйте основной сценарий: местная компания услуг.
+- Оставляйте в стандартных возможностях v1.0 только необходимое.
+- Выносите дополнительные возможности в расширения.
+- Пишите для оператора языком, понятным владельцу малого бизнеса.
+- Делайте архитектуру для разработчиков явной и удобной для расширения.
+- Не добавляйте реальные внешние действия без согласования владельца и процесса проверки полномочий.
 
-## Developer Areas
+## Направления разработки
 
-- Business blueprints
-- Website updates
-- Customer reply workflows
-- Estimate and proposal workflows
-- Extension planning workflows
-- Integration adapters
-- Neura connected-mode support
-- Documentation and onboarding
+- Шаблоны компаний
+- Обновления сайта
+- Процессы подготовки ответов клиентам
+- Процессы подготовки смет и коммерческих предложений
+- Процессы планирования расширений
+- Адаптеры интеграций
+- Поддержка подключённого режима Neura
+- Документация и ввод в работу
 
-## Before Opening A Pull Request
+## Перед запросом на слияние
 
-Run:
+Выполните:
 
 ```bash
 npm run check
 npm test
 ```
 
-Include a short explanation of the operator value, the files changed, and any safety boundary affected.
+Кратко объясните пользу для оператора, перечислите изменённые файлы и укажите затронутые границы безопасности.

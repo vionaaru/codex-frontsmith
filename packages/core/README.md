@@ -1,5 +1,5 @@
-# Core Package
+# Основной пакет
 
-Shared business workspace model and website update logic belong here as Frontsmith grows.
+По мере развития Frontsmith здесь будут общая модель данных бизнеса и логика обновления сайта.
 
-Keep this package small until the kit needs reusable code across scripts and adapters.
+Сохраняйте пакет небольшим, пока не понадобится общий код для скриптов и адаптеров.

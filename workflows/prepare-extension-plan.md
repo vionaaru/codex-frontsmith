@@ -1,30 +1,30 @@
-# Workflow: Prepare Extension Plan
+# Процесс: план расширения
 
-Use this workflow when the operator wants to add a tool, skill, connector, or new front-office workflow without turning on live behavior too early.
+Используйте при добавлении инструмента, навыка, коннектора или процесса до включения внешних действий.
 
-## Output
+## Результат
 
-Create an extension plan that reads like a concise Codex response and gives the owner a clear review surface.
+Создайте план расширения как краткий ответ Codex, удобный для проверки владельцем.
 
-It should include:
+Включите:
 
-- requested capability;
-- workflow boundary;
-- skill boundary;
-- connector boundary;
-- owner review items;
-- implementation checklist;
-- generated `.frontsmith/business/extensions/...` artifact path;
-- safety boundary.
+- запрашиваемую возможность;
+- границы процесса;
+- границы навыка;
+- границы коннектора;
+- вопросы проверки владельцем;
+- чек-лист внедрения;
+- путь `.frontsmith/business/extensions/...`;
+- границы безопасности.
 
-The local command is:
+Локальная команда:
 
 ```bash
-npm run prepare:extension -- --capability "Consultation scheduling" --connector "Google Calendar" --goal "Prepare an owner-reviewed workflow for approved consultation requests."
+npm run prepare:extension -- --capability "Запись на консультацию" --connector "Google Calendar" --goal "Подготовить согласуемый владельцем процесс записи на консультации."
 ```
 
-## Safety
+## Безопасность
 
-Do not connect a provider, send a message, publish, schedule, upload, export, or execute a connected action from this workflow.
+Этот процесс не подключает сервисы, не отправляет сообщения, не публикует, не назначает встречи, не загружает файлы, не экспортирует данные и не выполняет внешние действия.
 
-The extension plan is a dry-run planning artifact. Live connector behavior can be added only after the owner approves the workflow, data fields, action boundary, and review gate.
+План — материал пробного режима. Реальные действия коннектора добавляются после согласования процесса, полей данных, границ действия и проверки владельцем.

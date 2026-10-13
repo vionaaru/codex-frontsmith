@@ -1,33 +1,33 @@
-# Workflow: Owner Brief
+# Процесс: сводка владельца
 
-Use this workflow to summarize the current state of one local service business before the owner reviews lower-level work.
+Сначала покажите состояние одного местного бизнеса услуг, затем переходите к отдельным задачам.
 
-## Output
+## Результат
 
-Create an Owner Brief that reads like a concise Codex response for the owner, not a raw script report.
+Создайте сводку владельца как краткий ответ Codex, удобный для проверки.
 
-It should include:
+Включите:
 
-- executive summary;
-- what changed;
-- what is waiting;
-- what is blocked;
-- what needs approval;
-- what the owner should do next;
-- reviewable artifacts and file paths;
-- safety boundary.
+- краткую сводку;
+- изменения;
+- ожидающие задачи;
+- препятствия;
+- необходимые согласования;
+- следующие действия владельца;
+- материалы для проверки и пути файлов;
+- границы безопасности.
 
-Use clean Frontsmith workspace paths such as `.frontsmith/business/activity/owner-brief.md`. Do not expose temporary local test paths in the owner-facing output.
+Используйте понятные пути Frontsmith, например `.frontsmith/business/activity/owner-brief.md`. Не показывайте владельцу временные пути тестов.
 
-The local command is:
+Локальная команда:
 
 ```bash
 npm run owner:brief
 ```
 
-## Inputs
+## Входные данные
 
-Read local Frontsmith records first:
+Сначала прочитайте локальные записи Frontsmith:
 
 - `.frontsmith/business/business.json`;
 - `.frontsmith/business/activity/`;
@@ -37,6 +37,6 @@ Read local Frontsmith records first:
 - `.frontsmith/business/settings/integrations.md`;
 - `website/`.
 
-## Safety
+## Безопасность
 
-Keep the Owner Brief local. Do not send emails, publish the website, connect providers, or execute connected actions from this workflow.
+Сводка остаётся локальной. Этот процесс не отправляет письма, не публикует сайт, не подключает сервисы и не выполняет внешние действия.

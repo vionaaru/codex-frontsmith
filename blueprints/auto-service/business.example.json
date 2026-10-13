@@ -1,0 +1,135 @@
+{
+  "businessName": "АвтоРитм",
+  "businessType": "Автосервис",
+  "demoMode": true,
+  "blueprint": "auto-service",
+  "brandTagline": "Автосервис с понятным подходом",
+  "tagline": "Ваш автомобиль. Наше внимание.",
+  "summary": "Диагностика, техническое обслуживание и ремонт без лишних работ",
+  "websiteUrl": "http://localhost:4173",
+  "bookingUrl": "https://example.com/booking",
+  "bookingLabel": "Записаться в сервис",
+  "currency": "RUB",
+  "timeZone": "Europe/Moscow",
+  "serviceAreas": ["Москва", "Ближайшие районы"],
+  "contact": {
+    "phone": "+7 (000) 000-00-00",
+    "email": "info@avtoritm.example",
+    "city": "Москва",
+    "state": "Москва",
+    "address": "Адрес мастерской будет указан перед рабочим запуском"
+  },
+  "hours": {
+    "label": "Пн–Пт · 09:00–18:00",
+    "days": [1, 2, 3, 4, 5],
+    "start": "09:00",
+    "end": "18:00",
+    "weekend": "Суббота и воскресенье — выходные"
+  },
+  "brandVoice": "Спокойно, конкретно и уважительно. Объяснять причины и варианты простым языком. Не обещать диагноз, итоговую цену, сроки и гарантию без согласования.",
+  "pricingPolicy": {
+    "mode": "demo",
+    "note": "Цены — демонстрационные ориентиры за работу. Запчасти и расходные материалы оплачиваются отдельно. Итоговая стоимость согласуется до начала работ. Тарифы в Booking Flow могут отличаться.",
+    "ownerApprovedForLiveQuotes": false
+  },
+  "services": [
+    {
+      "id": "consultation",
+      "name": "Консультация по телефону",
+      "category": "diagnostics",
+      "description": "Обсудим симптомы, подскажем подходящую услугу и подготовку к визиту. Точный диагноз — после осмотра автомобиля.",
+      "priceFrom": 0,
+      "durationMinutes": 30,
+      "includes": ["Первичный разговор", "Выбор следующего шага"],
+      "image": "/assets/auto-workshop.png"
+    },
+    {
+      "id": "computer-diagnostics",
+      "name": "Компьютерная диагностика",
+      "category": "diagnostics",
+      "description": "Считываем ошибки электронных систем и объясняем, какие проверки нужны дальше. Не меняем детали по одному коду ошибки.",
+      "priceFrom": 1500,
+      "durationMinutes": 45,
+      "includes": ["Считывание кодов", "Пояснение результатов", "Рекомендации"],
+      "image": "/assets/auto-workshop.png"
+    },
+    {
+      "id": "oil-service",
+      "name": "ТО: замена масла и фильтров",
+      "category": "maintenance",
+      "description": "Плановое обслуживание с подбором масла и фильтров по требованиям автомобиля. Проверяем уровни основных технических жидкостей.",
+      "priceFrom": 1500,
+      "durationMinutes": 60,
+      "includes": ["Замена масла", "Замена согласованных фильтров", "Проверка жидкостей"],
+      "image": "/assets/auto-workshop.png"
+    },
+    {
+      "id": "suspension-diagnostics",
+      "name": "Диагностика ходовой",
+      "category": "diagnostics",
+      "description": "Проверяем подвеску, рулевое управление и состояние узлов. Разделяем срочные замечания и то, за чем можно наблюдать.",
+      "priceFrom": 1200,
+      "durationMinutes": 45,
+      "includes": ["Осмотр подвески", "Проверка люфтов", "Список замечаний"],
+      "image": "/assets/auto-workshop.png"
+    },
+    {
+      "id": "brake-pads",
+      "name": "Замена тормозных колодок",
+      "category": "repair",
+      "description": "Меняем колодки на одной оси и проверяем сопряжённые элементы. Дополнительные работы обсуждаем отдельно.",
+      "priceFrom": 1800,
+      "durationMinutes": 60,
+      "includes": ["Работа на одной оси", "Осмотр дисков и суппортов", "Контроль после замены"],
+      "image": "/assets/auto-workshop.png"
+    },
+    {
+      "id": "tire-service",
+      "name": "Шиномонтаж",
+      "category": "maintenance",
+      "description": "Сезонная смена шин и балансировка комплекта колёс. Стоимость зависит от диаметра, типа диска и состояния шин.",
+      "priceFrom": 3200,
+      "durationMinutes": 60,
+      "includes": ["Комплект из четырёх колёс", "Монтаж и балансировка", "Контроль давления"],
+      "image": "/assets/auto-workshop.png"
+    },
+    {
+      "id": "wheel-alignment",
+      "name": "Развал-схождение",
+      "category": "maintenance",
+      "description": "Проверяем углы установки колёс и выполняем доступные регулировки. Состояние подвески оцениваем до регулировки.",
+      "priceFrom": 2800,
+      "durationMinutes": 60,
+      "includes": ["Проверка геометрии", "Согласованная регулировка", "Результаты замеров"],
+      "image": "/assets/auto-workshop.png"
+    },
+    {
+      "id": "air-conditioning",
+      "name": "Заправка кондиционера",
+      "category": "maintenance",
+      "description": "Проверяем работу системы и согласуем обслуживание. Хладагент и устранение неисправностей рассчитываются отдельно.",
+      "priceFrom": 2500,
+      "durationMinutes": 60,
+      "includes": ["Первичная проверка", "Обслуживание по согласованию", "Контроль охлаждения"],
+      "image": "/assets/auto-workshop.png"
+    }
+  ],
+  "media": {
+    "heroImage": "/assets/auto-workshop.png",
+    "heroImageAlt": "Иллюстрация современной мастерской автосервиса с автомобилем и механиком",
+    "socialImage": "/assets/auto-workshop.png",
+    "craftImage": "/assets/auto-workshop.png",
+    "faqImage": "/assets/auto-workshop.png",
+    "contactImage": "/assets/auto-workshop.png"
+  },
+  "approvalPolicy": {
+    "ownerApprovalRequiredForLiveActions": true,
+    "liveActionsDefault": "disabled"
+  },
+  "integrations": {
+    "booking": { "status": "external_link", "url": "https://example.com/booking", "localImportEnabled": false },
+    "email": { "status": "disabled" },
+    "calendar": { "status": "not_connected" },
+    "neura": { "status": "not_connected" }
+  }
+}

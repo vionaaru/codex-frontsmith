@@ -1,8 +1,8 @@
 {
   "id": "local-service",
-  "name": "Local Service Business",
+  "name": "Местный сервисный бизнес",
   "version": "1.0.0",
-  "description": "Default Frontsmith v1.0 blueprint for a local service business.",
+  "description": "Базовый сценарий Frontsmith v1.0 для местного бизнеса услуг.",
   "requiredProfileFields": [
     "businessName",
     "businessType",

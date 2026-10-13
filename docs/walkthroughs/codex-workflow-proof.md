@@ -1,187 +1,187 @@
-# Codex Workflow Walkthrough Proof
+# Демонстрация рабочих процессов Codex
 
-This proof shows the real Frontsmith operating loop inside Codex. It is a static walkthrough for reviewers and operators; it does not expose private business records, credentials, or live customer data.
+Материал показывает реальный рабочий цикл Frontsmith в Codex. Это статическая демонстрация для проверяющих и операторов без раскрытия приватных записей бизнеса, учётных данных и реальных данных клиентов.
 
-## 1. Owner Brief
+## 1. Сводка владельца
 
-Owner prompt:
+Запрос владельца:
 
 ```text
-Run today's Owner Brief for Acme.
+Подготовь сегодняшнюю Сводку владельца для Acme.
 ```
 
-Local command:
+Локальная команда:
 
 ```bash
 npm run owner:brief
 ```
 
-Expected Frontsmith response:
+Ожидаемый ответ Frontsmith:
 
-- summarizes current business state;
-- points to waiting customer reply drafts;
-- points to waiting estimate drafts;
-- shows launch status and integration blockers;
-- names the next owner decisions.
+- кратко описывает текущее состояние бизнеса;
+- указывает ожидающие проверки черновики ответов клиентам;
+- указывает ожидающие проверки черновики смет;
+- показывает статус запуска и препятствия для интеграций;
+- перечисляет следующие решения владельца.
 
-Generated files:
+Создаваемые файлы:
 
-- `.frontsmith/business/activity/owner-brief.md`
-- `.frontsmith/business/launch/launch-status.md`
-- `.frontsmith/business/settings/integrations.md`
+- `.frontsmith/business/activity/owner-brief.md` — Сводка владельца;
+- `.frontsmith/business/launch/launch-status.md` — статус запуска;
+- `.frontsmith/business/settings/integrations.md` — настройки интеграций.
 
-Approval boundary:
+Границы согласования:
 
-- local-only summary;
-- no email sent;
-- no website deployed;
-- no provider connected;
-- no connected action executed.
+- только локальная сводка;
+- письма не отправляются;
+- сайт не развёртывается;
+- провайдеры не подключаются;
+- подключённые действия не выполняются.
 
-## 2. Customer Desk Reply Draft
+## 2. Черновик ответа в модуле «Работа с клиентами»
 
-Owner prompt:
+Запрос владельца:
 
 ```text
-Prepare a reply for Jamie's kitchen remodeling request. The customer wants a better layout, new cabinets, and clearer next steps.
+Подготовь ответ на заявку Джейми о ремонте кухни. Клиент хочет улучшить планировку, заменить шкафы и понять дальнейшие шаги.
 ```
 
-Local command:
+Локальная команда:
 
 ```bash
-npm run prepare:reply -- --name "Jamie" --project "Kitchen Remodeling" --notes "Customer wants a better layout, new cabinets, and clearer next steps."
+npm run prepare:reply -- --name "Джейми" --project "Ремонт кухни" --notes "Клиент хочет улучшить планировку, заменить шкафы и понять дальнейшие шаги."
 ```
 
-Expected Frontsmith response:
+Ожидаемый ответ Frontsmith:
 
-- prepares a customer-ready reply draft;
-- summarizes customer context;
-- lists follow-up tracking items;
-- identifies send checklist items;
-- names the exact approval needed before sending.
+- готовит черновик ответа для клиента;
+- кратко описывает контекст клиента;
+- перечисляет дальнейшие шаги для отслеживания;
+- определяет пункты проверки перед отправкой;
+- указывает точное согласование, необходимое перед отправкой.
 
-Generated files:
+Создаваемые файлы:
 
-- `.frontsmith/business/customer-inquiries/kitchen-remodeling-reply-draft.md`
+- `.frontsmith/business/customer-inquiries/ремонт-кухни-reply-draft.md` — черновик ответа клиенту.
 
-Approval boundary:
+Границы согласования:
 
-- draft only;
-- nothing sent to the customer;
-- no Gmail, CRM, or provider action runs.
+- только черновик;
+- клиенту ничего не отправляется;
+- действия через Gmail, CRM и провайдеров не выполняются.
 
-## 3. Estimate Preparation
+## 3. Подготовка сметы
 
-Owner prompt:
+Запрос владельца:
 
 ```text
-Draft the estimate path for the kitchen remodeling request and show what still needs owner approval.
+Подготовь план расчёта сметы по заявке на ремонт кухни и покажи, что ещё требует согласования владельцем.
 ```
 
-Local command:
+Локальная команда:
 
 ```bash
-npm run prepare:estimate -- --project "Kitchen Remodeling" --scope "Cabinet replacement, counter update, lighting review, and layout clarification."
+npm run prepare:estimate -- --project "Ремонт кухни" --scope "Замена шкафов и столешницы, проверка освещения и уточнение планировки."
 ```
 
-Expected Frontsmith response:
+Ожидаемый ответ Frontsmith:
 
-- prepares estimate assumptions;
-- lists captured scope;
-- lists missing pricing inputs;
-- prepares proposal outline;
-- links the related customer reply draft.
+- готовит допущения для сметы;
+- перечисляет зафиксированный объём работ;
+- перечисляет недостающие данные для расчёта цены;
+- готовит структуру предложения;
+- ссылается на связанный черновик ответа клиенту.
 
-Generated files:
+Создаваемые файлы:
 
-- `.frontsmith/business/estimates/kitchen-remodeling-estimate-draft.md`
+- `.frontsmith/business/estimates/ремонт-кухни-estimate-draft.md` — черновик подготовки сметы.
 
-Approval boundary:
+Границы согласования:
 
-- estimate preparation only;
-- no final price is created unless owner rules are provided;
-- no proposal is sent.
+- только подготовка сметы;
+- итоговая цена не формируется без правил владельца;
+- предложение не отправляется.
 
-## 4. Website Update And Preview
+## 4. Обновление и предпросмотр сайта
 
-Owner prompt:
+Запрос владельца:
 
 ```text
-Update the website from the current business profile and show me the changed files.
+Обнови сайт по текущему профилю бизнеса и покажи изменённые файлы.
 ```
 
-Local command:
+Локальные команды:
 
 ```bash
 npm run update:website
 npm run preview:website
 ```
 
-Expected Frontsmith response:
+Ожидаемый ответ Frontsmith:
 
-- updates `website/` from the business profile;
-- writes a website review artifact;
-- names changed files;
-- gives a local preview path.
+- обновляет `website/` по профилю бизнеса;
+- создаёт материал для проверки сайта;
+- перечисляет изменённые файлы;
+- указывает адрес локального предпросмотра.
 
-Generated files:
+Создаваемые файлы:
 
-- `website/index.html`
-- `website/styles.css`
-- `website/script.js`
-- `.frontsmith/business/launch/website-review.md`
-- `.frontsmith/business/activity/latest-website-update.md`
+- `website/index.html` — страница сайта;
+- `website/styles.css` — стили сайта;
+- `website/script.js` — поведение сайта;
+- `.frontsmith/business/launch/website-review.md` — проверка сайта;
+- `.frontsmith/business/activity/latest-website-update.md` — последнее обновление сайта.
 
-Preview links:
+Адреса предпросмотра:
 
-- local website preview: `http://127.0.0.1:4183/`
-- hosted Frontsmith demo: `https://frontsmith.neurapath.ai/`
-- hosted sample website path: `https://frontsmith.neurapath.ai/website`
+- локальный сайт: `http://127.0.0.1:4183/`;
+- опубликованная демонстрация Frontsmith: `https://frontsmith.neurapath.ai/`;
+- опубликованный пример сайта: `https://frontsmith.neurapath.ai/website`.
 
-Approval boundary:
+Границы согласования:
 
-- local preview only;
-- no deployment;
-- no DNS change;
-- no production contact-form test send.
+- только локальный предпросмотр;
+- без развёртывания;
+- без изменений DNS;
+- без тестовой отправки через форму рабочего сайта.
 
-## 5. Extension Planning And Connected-Action Receipt
+## 5. Планирование расширения и квитанция подключённого действия
 
-Owner prompt:
+Запрос владельца:
 
 ```text
-Prepare an extension plan for consultation scheduling, then prepare a dry-run connected-action receipt for the proposed calendar action.
+Подготовь план расширения для записи на консультации, затем создай пробную квитанцию подключённого действия для предлагаемого действия в календаре.
 ```
 
-Local commands:
+Локальные команды:
 
 ```bash
-npm run prepare:extension -- --capability "Consultation scheduling" --connector "Google Calendar" --goal "Prepare an owner-reviewed workflow for approved consultation requests."
-npm run prepare:connected-action -- --action-type "calendar" --title "Create consultation hold" --target "Approved consultation request" --evidence "Owner-approved scheduling notes"
+npm run prepare:extension -- --capability "Запись на консультацию" --connector "Google Calendar" --goal "Подготовить процесс для согласованных заявок на консультацию с проверкой владельцем."
+npm run prepare:connected-action -- --action-type "calendar" --title "Создать предварительную запись на консультацию" --target "Согласованная заявка на консультацию" --evidence "Заметки о записи, согласованные владельцем"
 ```
 
-Expected Frontsmith response:
+Ожидаемый ответ Frontsmith:
 
-- creates an extension plan before implementation;
-- creates a dry-run connected-action receipt;
-- records Neura Registry and Relay placeholder refs;
-- lists blocked adapters;
-- names approval requirements before connected mode.
+- создаёт план расширения до реализации;
+- создаёт пробную квитанцию подключённого действия;
+- записывает заготовки ссылок Neura Registry и Relay;
+- перечисляет заблокированные адаптеры;
+- указывает требования к согласованию перед подключённым режимом.
 
-Generated files:
+Создаваемые файлы:
 
-- `.frontsmith/business/extensions/consultation-scheduling-extension-plan.md`
-- `.frontsmith/business/connected-actions/calendar-create-consultation-hold-receipt.md`
-- `.frontsmith/business/connected-actions/calendar-create-consultation-hold-receipt.json`
+- `.frontsmith/business/extensions/запись-на-консультацию-extension-plan.md` — план расширения записи на консультации;
+- `.frontsmith/business/connected-actions/calendar-создать-предварительную-запись-на-консультацию-receipt.md` — квитанция действия календаря;
+- `.frontsmith/business/connected-actions/calendar-создать-предварительную-запись-на-консультацию-receipt.json` — данные квитанции в JSON.
 
-Approval boundary:
+Границы согласования:
 
-- no Google Calendar action;
-- no provider setup;
-- no email, file upload, publishing, export, or external action;
-- connected-mode Neura Relay preflight remains pending until the owner approves it.
+- действия Google Calendar не выполняются;
+- провайдеры не настраиваются;
+- без отправки писем, загрузки файлов, публикации, экспорта и внешних действий;
+- предварительная проверка Neura Relay в подключённом режиме ожидает согласования владельцем.
 
-## Verification Commands
+## Команды проверки
 
 ```bash
 npm run check
@@ -189,4 +189,4 @@ npm run build:demo
 npm test
 ```
 
-These commands verify the repo contract, hosted demo build, workflow scripts, regression proof, and local-only approval boundaries.
+Команды проверяют соответствие репозитория заявленным возможностям, сборку опубликованной демонстрации, скрипты процессов, регрессионные проверки и локальные границы согласования.

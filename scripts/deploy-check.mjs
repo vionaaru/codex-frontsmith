@@ -35,34 +35,34 @@ async function checkWebsiteFiles() {
   for (const file of requiredDemoFiles) {
     const fullPath = path.join(demoRoot, file);
     if (await exists(fullPath)) {
-      pass(`Demo source present: ${fullPath}`);
+      pass(`Исходный файл демонстрации найден: ${fullPath}`);
     } else {
-      block(`Missing demo source: ${fullPath}`);
+      block(`Отсутствует исходный файл демонстрации: ${fullPath}`);
     }
   }
 
   for (const file of requiredWebsiteFiles) {
     const fullPath = path.join(websiteRoot, file);
     if (await exists(fullPath)) {
-      pass(`Website asset present: ${fullPath}`);
+      pass(`Ресурс сайта найден: ${fullPath}`);
     } else {
-      block(`Missing website asset: ${fullPath}`);
+      block(`Отсутствует ресурс сайта: ${fullPath}`);
     }
   }
 
   for (const file of ["index.html", "styles.css", "script.js", "robots.txt", "sitemap.xml", "llms.txt", "frontsmith-mark.svg", "favicon.svg", "favicon.png", "apple-touch-icon.png", "website/index.html", "website/styles.css", "website/script.js"]) {
     const fullPath = path.join(outputRoot, file);
     if (await exists(fullPath)) {
-      pass(`Demo build asset present: ${fullPath}`);
+      pass(`Ресурс сборки демонстрации найден: ${fullPath}`);
     } else {
-      block(`Missing demo build asset: ${fullPath}`);
+      block(`Отсутствует ресурс сборки демонстрации: ${fullPath}`);
     }
   }
 
   if (await exists("api/contact.js")) {
-    pass("Contact form function present: api/contact.js");
+    pass("Обработчик контактной формы найден: api/contact.js");
   } else {
-    block("Missing contact form function: api/contact.js");
+    block("Отсутствует обработчик контактной формы: api/contact.js");
   }
 }
 
@@ -71,38 +71,38 @@ async function checkVercelConfig() {
 
   try {
     config = JSON.parse(await readFile("vercel.json", "utf8"));
-    pass("vercel.json parses");
+    pass("vercel.json корректно читается");
   } catch (error) {
-    block(`vercel.json must parse as JSON: ${error.message}`);
+    block(`vercel.json должен содержать корректный JSON: ${error.message}`);
     return;
   }
 
-  expectEqual(config.framework, null, "Vercel framework preset is Other");
-  expectEqual(config.buildCommand, "npm run build:demo", "Vercel build command prepares the demo instance");
-  expectEqual(config.outputDirectory, outputRoot, "Vercel output directory is the demo build");
-  expectEqual(config.cleanUrls, true, "Vercel clean URLs are enabled");
-  expectEqual(config.trailingSlash, false, "Vercel trailing slashes are disabled");
-  expectEqual(config.functions?.["api/contact.js"]?.maxDuration, 10, "Contact function max duration is set");
-  expectEqual(config.redirects?.[0]?.source, "/", "Default Vercel host redirect covers root");
-  expectEqual(config.redirects?.[0]?.has?.[0]?.type, "host", "Default Vercel root redirect uses host match");
-  expectEqual(config.redirects?.[0]?.has?.[0]?.value, "frontsmith.vercel.app", "Default Vercel root redirect source host");
+  expectEqual(config.framework, null, "В Vercel выбран вариант фреймворка Other");
+  expectEqual(config.buildCommand, "npm run build:demo", "Команда сборки Vercel готовит демонстрацию");
+  expectEqual(config.outputDirectory, outputRoot, "Каталог результата Vercel содержит сборку демонстрации");
+  expectEqual(config.cleanUrls, true, "В Vercel включены чистые URL");
+  expectEqual(config.trailingSlash, false, "В Vercel отключены завершающие косые черты");
+  expectEqual(config.functions?.["api/contact.js"]?.maxDuration, 10, "Задана максимальная длительность выполнения обработчика заявок");
+  expectEqual(config.redirects?.[0]?.source, "/", "Перенаправление стандартного хоста Vercel охватывает корень");
+  expectEqual(config.redirects?.[0]?.has?.[0]?.type, "host", "Перенаправление корня Vercel использует проверку хоста");
+  expectEqual(config.redirects?.[0]?.has?.[0]?.value, "frontsmith.vercel.app", "Исходный хост перенаправления корня Vercel");
   expectEqual(
     config.redirects?.[0]?.destination,
     "https://frontsmith.neurapath.ai/",
-    "Default Vercel host redirects root to canonical Frontsmith domain"
+    "Стандартный хост Vercel перенаправляет корень на основной домен Frontsmith"
   );
-  expectEqual(config.redirects?.[0]?.permanent, true, "Default Vercel root redirect is permanent");
-  expectEqual(config.redirects?.[1]?.source, "/:path*", "Default Vercel host redirect covers non-root paths");
-  expectEqual(config.redirects?.[1]?.has?.[0]?.type, "host", "Default Vercel path redirect uses host match");
-  expectEqual(config.redirects?.[1]?.has?.[0]?.value, "frontsmith.vercel.app", "Default Vercel path redirect source host");
+  expectEqual(config.redirects?.[0]?.permanent, true, "Перенаправление корня Vercel постоянное");
+  expectEqual(config.redirects?.[1]?.source, "/:path*", "Перенаправление стандартного хоста Vercel охватывает остальные пути");
+  expectEqual(config.redirects?.[1]?.has?.[0]?.type, "host", "Перенаправление путей Vercel использует проверку хоста");
+  expectEqual(config.redirects?.[1]?.has?.[0]?.value, "frontsmith.vercel.app", "Исходный хост перенаправления путей Vercel");
   expectEqual(
     config.redirects?.[1]?.destination,
     "https://frontsmith.neurapath.ai/:path*",
-    "Default Vercel host redirects paths to canonical Frontsmith domain"
+    "Стандартный хост Vercel перенаправляет пути на основной домен Frontsmith"
   );
-  expectEqual(config.redirects?.[1]?.permanent, true, "Default Vercel path redirect is permanent");
+  expectEqual(config.redirects?.[1]?.permanent, true, "Перенаправление путей Vercel постоянное");
 
-  review.push("Confirm the frontsmith.neurapath.ai Vercel project, production domain, and Git integration before any live deployment");
+  review.push("Перед реальным развёртыванием проверьте проект Vercel frontsmith.neurapath.ai, рабочий домен и интеграцию с Git");
 }
 
 async function checkWebsiteMarkup() {
@@ -117,66 +117,66 @@ async function checkWebsiteMarkup() {
     html = await readFile(path.join(websiteRoot, "index.html"), "utf8");
     script = await readFile(path.join(websiteRoot, "script.js"), "utf8");
   } catch (error) {
-    block(`Could not read website files: ${error.message}`);
+    block(`Не удалось прочитать файлы сайта: ${error.message}`);
     return;
   }
 
   if (/\{\{[a-zA-Z0-9]+\}\}/.test(`${demoHtml}\n${html}`)) {
-    block("Website contains unresolved template tokens");
+    block("Сайт содержит неподставленные маркеры шаблона");
   } else {
-    pass("Demo and website have no unresolved template tokens");
+    pass("Демонстрация и сайт не содержат неподставленных маркеров шаблона");
   }
 
   if (/\bhref=["'][^"']+\.html(?:[#?][^"']*)?["']/.test(`${demoHtml}\n${html}`)) {
-    block("Demo and website navigation must not link to .html routes");
+    block("Навигация демонстрации и сайта не должна ссылаться на маршруты .html");
   } else {
-    pass("Demo and website navigation use clean routes");
+    pass("Навигация демонстрации и сайта использует чистые маршруты");
   }
 
-  requireHtml(demoHtml, "<title", "Demo SEO title is present");
-  requireHtml(demoHtml, 'name="description"', "Demo SEO description is present");
-  requireHtml(demoHtml, 'rel="canonical"', "Demo canonical URL is present");
-  requireHtml(demoHtml, 'href="/llms.txt"', "Demo exposes AI-readable llms.txt discovery");
-  requireHtml(demoHtml, 'property="og:title"', "Demo Open Graph title is present");
-  requireHtml(demoHtml, 'property="og:image"', "Demo Open Graph image is present");
-  requireHtml(demoHtml, 'name="twitter:card"', "Demo Twitter card metadata is present");
-  requireHtml(demoHtml, 'href="/favicon.svg"', "Demo SVG favicon is declared");
-  requireHtml(demoHtml, 'href="/favicon.png"', "Demo PNG favicon fallback is declared");
-  requireHtml(demoHtml, 'href="/apple-touch-icon.png"', "Demo Apple touch icon is declared");
-  requireHtml(demoHtml, 'href="/website"', "Demo links to the sample website preview");
-requireText(demoHtml, "Set up your front office in Codex", "Demo explains the Frontsmith control panel");
-  requireHtml(demoHtml, "What Frontsmith Runs", "Demo opens with the front-office module list");
-  requireHtml(demoHtml, "Customer Desk", "Demo opens with ongoing customer work");
-  requireHtml(demoHtml, "https://github.com/neurarelay/frontsmith", "Demo includes the GitHub setup path");
-  requireScript(demoScript, "data-nav-toggle", "Demo mobile navigation script is present");
+  requireHtml(demoHtml, "<title", "SEO-заголовок демонстрации найден");
+  requireHtml(demoHtml, 'name="description"', "SEO-описание демонстрации найдено");
+  requireHtml(demoHtml, 'rel="canonical"', "Основной URL демонстрации найден");
+  requireHtml(demoHtml, 'href="/llms.txt"', "Демонстрация содержит ссылку на llms.txt для ИИ");
+  requireHtml(demoHtml, 'property="og:title"', "Заголовок Open Graph демонстрации найден");
+  requireHtml(demoHtml, 'property="og:image"', "Изображение Open Graph демонстрации найдено");
+  requireHtml(demoHtml, 'name="twitter:card"', "Метаданные карточки Twitter демонстрации найдены");
+  requireHtml(demoHtml, 'href="/favicon.svg"', "Значок SVG демонстрации объявлен");
+  requireHtml(demoHtml, 'href="/favicon.png"', "Резервный значок PNG демонстрации объявлен");
+  requireHtml(demoHtml, 'href="/apple-touch-icon.png"', "Значок Apple touch демонстрации объявлен");
+  requireHtml(demoHtml, 'href="/website"', "Демонстрация содержит ссылку на предварительный просмотр сайта-примера");
+  requireText(demoHtml, "Настройте цифровой офис в Codex", "Демонстрация объясняет панель управления Frontsmith");
+  requireHtml(demoHtml, "Что делает Frontsmith", "Демонстрация начинается со списка модулей цифрового офиса");
+  requireHtml(demoHtml, "Работа с клиентами", "Демонстрация показывает текущую работу с клиентами");
+  requireHtml(demoHtml, "https://github.com/neurarelay/frontsmith", "Демонстрация содержит путь настройки через GitHub");
+  requireScript(demoScript, "data-nav-toggle", "Скрипт мобильной навигации демонстрации найден");
 
-  requireHtml(html, "<title", "SEO title is present");
-  requireHtml(html, 'name="description"', "SEO description is present");
-  requireHtml(html, 'name="robots"', "Robots metadata is present");
-  requireHtml(html, 'rel="canonical"', "Canonical URL is present");
-  requireHtml(html, 'property="og:title"', "Open Graph title is present");
-  requireHtml(html, 'property="og:description"', "Open Graph description is present");
-  requireHtml(html, 'property="og:url"', "Open Graph URL is present");
-  requireHtml(html, 'property="og:image"', "Open Graph image is present");
-  requireHtml(html, 'property="og:image:alt"', "Open Graph image alt text is present");
-  requireHtml(html, 'name="twitter:card"', "Twitter card metadata is present");
-  requireHtml(html, 'name="twitter:title"', "Twitter title is present");
-  requireHtml(html, 'name="twitter:description"', "Twitter description is present");
-  requireHtml(html, 'name="twitter:image"', "Twitter image is present");
-  requireHtml(html, 'name="twitter:image:alt"', "Twitter image alt text is present");
-  requireHtml(html, 'href="/favicon.svg"', "SVG favicon is declared");
-  requireHtml(html, 'href="/favicon.png"', "PNG favicon fallback is declared");
-  requireHtml(html, 'href="/apple-touch-icon.png"', "Apple touch icon is declared");
-  requireHtml(html, 'data-intake-form', "Contact form marker is present");
-  requireHtml(html, 'action="/api/contact"', "Contact form posts to /api/contact");
-  requireHtml(html, 'data-fallback-action="mailto:', "Contact form has mailto fallback");
-  requireHtml(html, 'data-intake-status', "Contact form status region is present");
-  requireHtml(html, 'name="website"', "Contact form honeypot is present");
-  requireHtml(html, 'data-contact-email', "Contact form email validation field is present");
-  requireHtml(html, 'data-contact-phone', "Contact form phone validation field is present");
-  requireScript(script, "fetch(intakeForm.action", "Contact form submits through the configured action");
-  requireScript(script, "fallbackMailto", "Contact form has email fallback logic");
-  requireScript(script, "validateIntakeForm", "Contact form client validation is present");
+  requireHtml(html, "<title", "SEO-заголовок найден");
+  requireHtml(html, 'name="description"', "SEO-описание найдено");
+  requireHtml(html, 'name="robots"', "Метаданные robots найдены");
+  requireHtml(html, 'rel="canonical"', "Основной URL найден");
+  requireHtml(html, 'property="og:title"', "Заголовок Open Graph найден");
+  requireHtml(html, 'property="og:description"', "Описание Open Graph найдено");
+  requireHtml(html, 'property="og:url"', "URL Open Graph найден");
+  requireHtml(html, 'property="og:image"', "Изображение Open Graph найдено");
+  requireHtml(html, 'property="og:image:alt"', "Альтернативный текст изображения Open Graph найден");
+  requireHtml(html, 'name="twitter:card"', "Метаданные карточки Twitter найдены");
+  requireHtml(html, 'name="twitter:title"', "Заголовок Twitter найден");
+  requireHtml(html, 'name="twitter:description"', "Описание Twitter найдено");
+  requireHtml(html, 'name="twitter:image"', "Изображение Twitter найдено");
+  requireHtml(html, 'name="twitter:image:alt"', "Альтернативный текст изображения Twitter найден");
+  requireHtml(html, 'href="/favicon.svg"', "Значок SVG объявлен");
+  requireHtml(html, 'href="/favicon.png"', "Резервный значок PNG объявлен");
+  requireHtml(html, 'href="/apple-touch-icon.png"', "Значок Apple touch объявлен");
+  requireHtml(html, 'data-intake-form', "Маркер контактной формы найден");
+  requireHtml(html, 'action="/api/contact"', "Контактная форма отправляет данные на /api/contact");
+  requireHtml(html, 'data-fallback-action="mailto:', "Контактная форма содержит резервную отправку через mailto");
+  requireHtml(html, 'data-intake-status', "Область статуса контактной формы найдена");
+  requireHtml(html, 'name="website"', "Поле-ловушка контактной формы найдено");
+  requireHtml(html, 'data-contact-email', "Поле проверки электронной почты в контактной форме найдено");
+  requireHtml(html, 'data-contact-phone', "Поле проверки телефона в контактной форме найдено");
+  requireScript(script, "fetch(intakeForm.action", "Контактная форма отправляет данные через настроенный обработчик");
+  requireScript(script, "fallbackMailto", "Контактная форма содержит резервную отправку по почте");
+  requireScript(script, "validateIntakeForm", "Клиентская проверка контактной формы найдена");
 
   await checkBuiltWebsitePreviewAssets();
   await checkBuiltAnalyticsInstrumentation();
@@ -192,27 +192,27 @@ async function checkBuiltWebsitePreviewAssets() {
   try {
     builtWebsiteHtml = await readFile(path.join(outputRoot, "website", "index.html"), "utf8");
   } catch (error) {
-    block(`Could not read built website preview: ${error.message}`);
+    block(`Не удалось прочитать собранный предварительный просмотр сайта: ${error.message}`);
     return;
   }
 
-  requireHtml(builtWebsiteHtml, 'href="/website/styles.css"', "Built website preview loads scoped stylesheet");
-  requireHtml(builtWebsiteHtml, 'src="/website/script.js"', "Built website preview loads scoped script");
+  requireHtml(builtWebsiteHtml, 'href="/website/styles.css"', "Собранный предварительный просмотр сайта загружает собственную таблицу стилей");
+  requireHtml(builtWebsiteHtml, 'src="/website/script.js"', "Собранный предварительный просмотр сайта загружает собственный скрипт");
   requireHtml(
     builtWebsiteHtml,
     'href="https://frontsmith.neurapath.ai/website"',
-    "Built website preview uses Frontsmith preview canonical"
+    "Собранный предварительный просмотр сайта использует основной URL просмотра Frontsmith"
   );
   requireHtml(
     builtWebsiteHtml,
     'content="https://frontsmith.neurapath.ai/website"',
-    "Built website preview uses Frontsmith preview Open Graph URL"
+    "Собранный предварительный просмотр сайта использует URL просмотра Frontsmith в Open Graph"
   );
 
   if (builtWebsiteHtml.includes('href="./styles.css"') || builtWebsiteHtml.includes('src="./script.js"')) {
-    block("Built website preview must not load root demo assets through relative paths");
+    block("Собранный предварительный просмотр сайта не должен загружать корневые ресурсы демонстрации по относительным путям");
   } else {
-    pass("Built website preview avoids clean-URL relative asset leakage");
+    pass("Собранный предварительный просмотр сайта исключает подмену ресурсов при разрешении относительных путей с чистыми URL");
   }
 }
 
@@ -226,12 +226,12 @@ async function checkBuiltAnalyticsInstrumentation() {
     try {
       html = await readFile(path.join(outputRoot, file), "utf8");
     } catch (error) {
-      block(`Could not read built analytics target: ${error.message}`);
+      block(`Не удалось прочитать собранный файл для проверки аналитики: ${error.message}`);
       continue;
     }
 
-    requireHtml(html, analyticsQueue, `Built ${file} initializes Vercel analytics queue`);
-    requireHtml(html, analyticsScript, `Built ${file} loads Vercel analytics script`);
+    requireHtml(html, analyticsQueue, `Собранный ${file} инициализирует очередь аналитики Vercel`);
+    requireHtml(html, analyticsScript, `Собранный ${file} загружает скрипт аналитики Vercel`);
   }
 }
 
@@ -245,9 +245,9 @@ async function checkRootAssetReferences(html) {
 
     const file = path.join(outputRoot, ref.slice(1));
     if (await exists(file)) {
-      pass(`Root asset resolves: ${ref}`);
+      pass(`Корневой ресурс найден: ${ref}`);
     } else {
-      block(`Root asset does not resolve inside website/: ${ref}`);
+      block(`Корневой ресурс не найден внутри website/: ${ref}`);
     }
   }
 }
@@ -260,20 +260,20 @@ async function checkImageReferences(html) {
 
   for (const ref of imageRefs) {
     if (/^https?:\/\//i.test(ref)) {
-      pass(`Image reference is absolute: ${trimUrl(ref)}`);
+      pass(`Ссылка на изображение абсолютная: ${trimUrl(ref)}`);
       continue;
     }
 
     if (!ref.startsWith("/")) {
-      block(`Image reference must be absolute or root-relative: ${ref}`);
+      block(`Ссылка на изображение должна быть абсолютной или относительной от корня: ${ref}`);
       continue;
     }
 
     const file = path.join(outputRoot, ref.replace(/[?#].*$/, "").slice(1));
     if (await exists(file)) {
-      pass(`Image reference resolves locally: ${ref}`);
+      pass(`Изображение найдено локально: ${ref}`);
     } else {
-      block(`Image reference does not resolve inside website/: ${ref}`);
+      block(`Изображение по ссылке не найдено внутри website/: ${ref}`);
     }
   }
 }
@@ -283,17 +283,17 @@ async function checkContactDelivery() {
 
   try {
     envExample = await readFile(".env.example", "utf8");
-    pass(".env.example is present");
+    pass(".env.example найден");
   } catch (error) {
-    block(`Missing .env.example: ${error.message}`);
+    block(`Отсутствует .env.example: ${error.message}`);
     return;
   }
 
   for (const key of ["CONTACT_DELIVERY_MODE", "CONTACT_TO_EMAIL", "CONTACT_FROM_EMAIL", "CONTACT_SUBJECT_PREFIX", "FRONTSMITH_TENANT_ID", "RESEND_API_KEY"]) {
     if (envExample.includes(`${key}=`)) {
-      pass(`Documented environment variable: ${key}`);
+      pass(`Переменная окружения описана: ${key}`);
     } else {
-      block(`.env.example must document ${key}`);
+      block(`.env.example должен описывать ${key}`);
     }
   }
 
@@ -303,30 +303,30 @@ async function checkContactDelivery() {
   ].filter(Boolean);
 
   if (missing.length > 0) {
-    block(`Contact delivery is not production-ready. Configure ${missing.join(", ")}`);
+    block(`Отправка заявок не готова к работе. Настройте ${missing.join(", ")}`);
     return;
   }
 
   if (!emailLike(process.env.CONTACT_TO_EMAIL)) {
-    block("CONTACT_TO_EMAIL must be an email address");
+    block("CONTACT_TO_EMAIL должен содержать адрес электронной почты");
   } else {
-    pass("CONTACT_TO_EMAIL looks valid");
+    pass("CONTACT_TO_EMAIL выглядит корректно");
   }
 
   if (!emailLike(process.env.CONTACT_FROM_EMAIL)) {
-    block("CONTACT_FROM_EMAIL must include a sender email address");
+    block("CONTACT_FROM_EMAIL должен содержать адрес электронной почты отправителя");
   } else {
-    pass("CONTACT_FROM_EMAIL looks valid");
+    pass("CONTACT_FROM_EMAIL выглядит корректно");
   }
 
   if (process.env.RESEND_API_KEY === "re_xxxxxxxxx") {
-    block("RESEND_API_KEY still uses the example placeholder");
+    block("В RESEND_API_KEY осталась заготовка из примера");
   } else {
-    pass("RESEND_API_KEY is present and not the example placeholder");
+    pass("RESEND_API_KEY задан и отличается от заготовки в примере");
   }
 
-  pass("Contact delivery mode is set to resend");
-  review.push("Send one approved test submission after Vercel environment variables are configured");
+  pass("Режим отправки заявок установлен в resend");
+  review.push("После настройки переменных окружения Vercel отправьте одну одобренную тестовую заявку");
 }
 
 function requireHtml(html, token, label) {
@@ -355,7 +355,7 @@ function expectEqual(actual, expected, label) {
   if (actual === expected) {
     pass(label);
   } else {
-    block(`${label}: expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`);
+    block(`${label}: ожидалось ${JSON.stringify(expected)}, получено ${JSON.stringify(actual)}`);
   }
 }
 
@@ -385,23 +385,23 @@ function block(message) {
 }
 
 function printReport() {
-  console.log("Frontsmith deploy readiness check");
+  console.log("Проверка готовности Frontsmith к развёртыванию");
   console.log("");
-  console.log("Ready");
+  console.log("Готово");
   for (const item of ready) console.log(`- ${item}`);
 
   if (blockers.length > 0) {
     console.log("");
-    console.log("Blockers");
+    console.log("Блокирующие проблемы");
     for (const item of blockers) console.log(`- ${item}`);
   }
 
   if (review.length > 0) {
     console.log("");
-    console.log("Review before deployment");
+    console.log("Проверить перед развёртыванием");
     for (const item of review) console.log(`- ${item}`);
   }
 
   console.log("");
-  console.log("No deployment, DNS change, provider change, or email send was performed.");
+  console.log("Развёртывание, изменение DNS, изменение провайдера и отправка писем не выполнялись.");
 }
