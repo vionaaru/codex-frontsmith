@@ -54,11 +54,11 @@ async function rewriteWebsitePreviewAssets() {
     .replace('href="./styles.css"', 'href="/website/styles.css"')
     .replace('src="./script.js"', 'src="/website/script.js"')
     .replace(/<(?:link|meta)\b[^>]*data-frontsmith-attrs="(?:href|content):canonicalUrl"[^>]*>/g,
-      (tag) => tag.replace(/\b(href|content)="[^"]*"/, '$1="https://frontsmith.neurapath.ai/website"'))
+      (tag) => tag.replace(/\b(href|content)="[^"]*"/, '$1="https://codex-frontsmith.example/website"'))
     .replace(/<meta\b[^>]*data-frontsmith-attrs="content:ogImage"[^>]*>/g,
       (tag) => tag.replace(/\bcontent="([^"]*)"/, (_, value) => {
-        const imagePath = new URL(value, "https://frontsmith.neurapath.ai").pathname;
-        return `content="https://frontsmith.neurapath.ai${imagePath}"`;
+        const imagePath = new URL(value, "https://codex-frontsmith.example").pathname;
+        return `content="https://codex-frontsmith.example${imagePath}"`;
       }));
 
   await writeFile(previewIndex, rewritten);

@@ -134,9 +134,9 @@ npm run preview:website
 
 Адреса предпросмотра:
 
-- локальный сайт: `http://127.0.0.1:4183/`;
-- опубликованная демонстрация Frontsmith: `https://frontsmith.neurapath.ai/`;
-- опубликованный пример сайта: `https://frontsmith.neurapath.ai/website`.
+- локальный сайт: `http://localhost:4173/` после `npm run preview:website`;
+- локальная демонстрация: `http://localhost:4174/` после `npm run preview:demo`;
+- пример сайта в демонстрации: `http://localhost:4174/website`.
 
 Границы согласования:
 

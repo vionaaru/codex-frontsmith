@@ -83,26 +83,9 @@ async function checkVercelConfig() {
   expectEqual(config.cleanUrls, true, "В Vercel включены чистые URL");
   expectEqual(config.trailingSlash, false, "В Vercel отключены завершающие косые черты");
   expectEqual(config.functions?.["api/contact.js"]?.maxDuration, 10, "Задана максимальная длительность выполнения обработчика заявок");
-  expectEqual(config.redirects?.[0]?.source, "/", "Перенаправление стандартного хоста Vercel охватывает корень");
-  expectEqual(config.redirects?.[0]?.has?.[0]?.type, "host", "Перенаправление корня Vercel использует проверку хоста");
-  expectEqual(config.redirects?.[0]?.has?.[0]?.value, "frontsmith.vercel.app", "Исходный хост перенаправления корня Vercel");
-  expectEqual(
-    config.redirects?.[0]?.destination,
-    "https://frontsmith.neurapath.ai/",
-    "Стандартный хост Vercel перенаправляет корень на основной домен Frontsmith"
-  );
-  expectEqual(config.redirects?.[0]?.permanent, true, "Перенаправление корня Vercel постоянное");
-  expectEqual(config.redirects?.[1]?.source, "/:path*", "Перенаправление стандартного хоста Vercel охватывает остальные пути");
-  expectEqual(config.redirects?.[1]?.has?.[0]?.type, "host", "Перенаправление путей Vercel использует проверку хоста");
-  expectEqual(config.redirects?.[1]?.has?.[0]?.value, "frontsmith.vercel.app", "Исходный хост перенаправления путей Vercel");
-  expectEqual(
-    config.redirects?.[1]?.destination,
-    "https://frontsmith.neurapath.ai/:path*",
-    "Стандартный хост Vercel перенаправляет пути на основной домен Frontsmith"
-  );
-  expectEqual(config.redirects?.[1]?.permanent, true, "Перенаправление путей Vercel постоянное");
+  expectEqual(config.redirects?.length ?? 0, 0, "Перенаправления на внешний сайт по умолчанию отключены");
 
-  review.push("Перед реальным развёртыванием проверьте проект Vercel frontsmith.neurapath.ai, рабочий домен и интеграцию с Git");
+  review.push("Перед публикацией замените заглушку codex-frontsmith.example выбранным доменом в метаданных, сборке, robots.txt и sitemap.xml; проверьте проект Vercel и интеграцию с Git");
 }
 
 async function checkWebsiteMarkup() {
@@ -147,7 +130,7 @@ async function checkWebsiteMarkup() {
   requireText(demoHtml, "Настройте цифровой офис в Codex", "Демонстрация объясняет панель управления Frontsmith");
   requireHtml(demoHtml, "Что делает Frontsmith", "Демонстрация начинается со списка модулей цифрового офиса");
   requireHtml(demoHtml, "Работа с клиентами", "Демонстрация показывает текущую работу с клиентами");
-  requireHtml(demoHtml, "https://github.com/neurarelay/frontsmith", "Демонстрация содержит путь настройки через GitHub");
+  requireHtml(demoHtml, "https://github.com/vionaaru/codex-frontsmith", "Демонстрация содержит путь настройки через GitHub");
   requireScript(demoScript, "data-nav-toggle", "Скрипт мобильной навигации демонстрации найден");
 
   requireHtml(html, "<title", "SEO-заголовок найден");
@@ -200,12 +183,12 @@ async function checkBuiltWebsitePreviewAssets() {
   requireHtml(builtWebsiteHtml, 'src="/website/script.js"', "Собранный предварительный просмотр сайта загружает собственный скрипт");
   requireHtml(
     builtWebsiteHtml,
-    'href="https://frontsmith.neurapath.ai/website"',
+    'href="https://codex-frontsmith.example/website"',
     "Собранный предварительный просмотр сайта использует основной URL просмотра Frontsmith"
   );
   requireHtml(
     builtWebsiteHtml,
-    'content="https://frontsmith.neurapath.ai/website"',
+    'content="https://codex-frontsmith.example/website"',
     "Собранный предварительный просмотр сайта использует URL просмотра Frontsmith в Open Graph"
   );
 

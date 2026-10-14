@@ -31,7 +31,7 @@ function buildFindings(profile) {
   const checks = [
     field("Название бизнеса", profile.businessName, ["Acme", ""]),
     field("Тип бизнеса", profile.businessType, ["Местный сервисный бизнес", "Local Service Business", ""]),
-    field("URL сайта", profile.websiteUrl, ["https://acme.com", ""]),
+    field("URL сайта", profile.websiteUrl, ["https://business.example", ""]),
     field("Телефон", profile.contact?.phone, ["1-800-123-ACME", "(000) 000-0000", ""]),
     field("Email", profile.contact?.email, ["projects@acme.com", "hello@example.com", ""]),
     field("Город", profile.contact?.city, ["Ваш город", "Local", ""]),

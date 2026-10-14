@@ -6,11 +6,11 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/neurarelay/frontsmith.git"
+    "url": "git+https://github.com/vionaaru/codex-frontsmith.git"
   },
-  "homepage": "https://frontsmith.neurapath.ai/",
+  "homepage": "https://codex-frontsmith.example/",
   "bugs": {
-    "url": "https://github.com/neurarelay/frontsmith/issues"
+    "url": "https://github.com/vionaaru/codex-frontsmith/issues"
   },
   "keywords": [
     "codex",

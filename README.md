@@ -32,10 +32,14 @@ Frontsmith v1.0 — цифровой офис с открытым исходны
 
 Материалы для знакомства с проектом, в том числе для ИИ:
 
-- Демонстрация рабочего процесса: `https://frontsmith.neurapath.ai/#walkthrough`
-- Онлайн-сводка: `https://frontsmith.neurapath.ai/llms.txt`
-- Страница NeuraPath: `https://neurapath.ai/frontsmith`
-- Первый пример проверки Relay: `https://www.neurarelay.com/developers/first-proof?neura_source=frontsmith&neura_campaign=frontsmith_applied_proof&neura_surface=readme`
+- [Демонстрация рабочих процессов](docs/walkthroughs/codex-workflow-proof.md) — запросы, команды и результаты работы цифрового офиса
+- [Краткая сводка для ИИ](demo/llms.txt) — назначение проекта, структура и запуск
+- [Архитектура Frontsmith](docs/product/architecture.md) — устройство проекта и границы модулей
+- [Локальная карта согласований и Relay](docs/product/relay-proof-map.md) — подготовка и проверка внешних действий
+
+Интерактивная демонстрация тоже включена в репозиторий: выполните `npm run preview:demo` и откройте [локальный обзор](http://localhost:4174/#walkthrough). Исходное видео на английском, русские субтитры включены. Будущие русскоязычные материалы на домене проекта пока не опубликованы; перечисленные документы доступны локально и на GitHub.
+
+В метаданных, сборке, `robots.txt` и `sitemap.xml` используется `https://codex-frontsmith.example/` — заглушка будущего русскоязычного сайта, а не действующий адрес. Перед публикацией замените её на выбранный домен. Редиректы на сайт исходного проекта отключены.
 
 ## Попробуйте Frontsmith
 
@@ -44,8 +48,8 @@ Frontsmith готов к обратной связи от разработчик
 Быстрый практический тест:
 
 ```bash
-git clone https://github.com/neurarelay/frontsmith.git
-cd frontsmith
+git clone https://github.com/vionaaru/codex-frontsmith.git
+cd codex-frontsmith
 npm install
 npm run check
 npm run bootstrap
@@ -56,9 +60,9 @@ npm run prepare:connected-action -- --action-type "email" --title "Отправ�
 
 Затем расскажите о результате в обсуждении GitHub:
 
-- [Обратная связь разработчика после первого запуска](https://github.com/neurarelay/frontsmith/issues/5).
-- [Мнение агентства или оператора: подходит ли проект реальному бизнесу услуг](https://github.com/neurarelay/frontsmith/issues/6).
-- [Одно конкретное улучшение, которое упростит внедрение](https://github.com/neurarelay/frontsmith/issues/7).
+- [Обратная связь разработчика после первого запуска](https://github.com/vionaaru/codex-frontsmith/issues/5).
+- [Мнение агентства или оператора: подходит ли проект реальному бизнесу услуг](https://github.com/vionaaru/codex-frontsmith/issues/6).
+- [Одно конкретное улучшение, которое упростит внедрение](https://github.com/vionaaru/codex-frontsmith/issues/7).
 
 Начните здесь:
 
@@ -85,7 +89,7 @@ npm run prepare:connected-action -- --action-type "email" --title "Отправ�
 
 Frontsmith хранит рабочие данные отдельно от публичного сайта: `.frontsmith/business/` предназначен для приватных записей компании, а `website/` — для сайта, готового к публикации.
 
-По адресу `frontsmith.neurapath.ai` открывается Панель демонстрации Frontsmith для Acme. Сайт Acme доступен по пути `/website` как клиентская часть общего рабочего процесса цифрового офиса.
+Локальная Панель демонстрации Frontsmith для АвтоРитм открывается по адресу `http://localhost:4174` после `npm run preview:demo`. Сайт автосервиса доступен по пути `/website` как клиентская часть общего рабочего процесса цифрового офиса.
 
 Онлайн-Панель демонстрации знакомит с работой через Codex; сама работа происходит в Codex. Панель показывает посетителю запросы, ответы Frontsmith, созданные Markdown-материалы, изменения локальных файлов, предпросмотры и согласование владельцем перед действиями во внешних сервисах.
 
@@ -159,7 +163,7 @@ website/
 
 ```bash
 npm run check
-npm run bootstrap -- --business-name "Acme" --website-url "https://acme.com"
+npm run bootstrap -- --business-name "Acme" --website-url "https://business.example"
 npm run owner:brief
 npm run prepare:reply -- --name "Клиент" --project "Ремонт кухни" --notes "Клиенту нужна помощь с планированием следующего шага."
 npm run prepare:estimate -- --project "Ремонт кухни" --scope "Шкафы, столешницы, освещение и уточнение планировки."
@@ -232,7 +236,7 @@ npm test
   .frontsmith/business/               локальная рабочая область компании; создаётся при первом запуске, исключена из Git
   Сводка владельца                    текущее состояние по локальным записям
   website/                            настраиваемый сайт для публикации
-  demo/                               онлайн-Панель демонстрации Frontsmith для frontsmith.neurapath.ai
+  demo/                               локальная демонстрация, заготовка для будущей публикации
 
 Продукт и разработка
   AGENTS.md                           правила работы Codex в репозитории

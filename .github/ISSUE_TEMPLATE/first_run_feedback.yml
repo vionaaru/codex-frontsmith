@@ -24,7 +24,7 @@ body:
       placeholder: |
         npm install
         npm run check
-        npm run bootstrap -- --business-name "Acme" --website-url "https://acme.com"
+        npm run bootstrap -- --business-name "Acme" --website-url "https://business.example"
         npm run first-run:status
         npm run owner:brief
     validations:

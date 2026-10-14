@@ -1,11 +1,11 @@
 blank_issues_enabled: true
 contact_links:
   - name: Первое знакомство с Frontsmith
-    url: https://github.com/neurarelay/frontsmith/blob/main/docs/community/activation-sprint.md
+    url: https://github.com/vionaaru/codex-frontsmith/blob/main/docs/community/activation-sprint.md
     about: Пройдите десятиминутную проверку и оставьте отзыв.
-  - name: Панель демонстрации Frontsmith
-    url: https://frontsmith.neurapath.ai/
-    about: Посмотрите панель демонстрации и включённый сайт Acme.
-  - name: NeuraPath
-    url: https://neurapath.ai/
-    about: Узнайте о контроле полномочий в подключённом режиме.
+  - name: Локальная демонстрация Frontsmith
+    url: https://github.com/vionaaru/codex-frontsmith/blob/main/README.md
+    about: Запустите русскоязычную демонстрацию и сайт автосервиса по инструкции.
+  - name: Согласования и подключения
+    url: https://github.com/vionaaru/codex-frontsmith/blob/main/docs/product/relay-proof-map.md
+    about: Узнайте о локальной подготовке и проверке внешних действий.

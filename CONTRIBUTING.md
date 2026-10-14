@@ -32,7 +32,7 @@ npm test
 Полезные проверки процессов:
 
 ```bash
-npm run bootstrap -- --business-name "Acme" --website-url "https://acme.com"
+npm run bootstrap -- --business-name "Acme" --website-url "https://business.example"
 npm run owner:brief
 npm run prepare:reply -- --name "Клиент" --project "Ремонт кухни" --notes "Клиент просит помочь спланировать следующий шаг."
 npm run prepare:estimate -- --project "Ремонт кухни" --scope "Шкафы, столешницы, освещение и уточнение планировки."

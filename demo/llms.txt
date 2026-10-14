@@ -8,15 +8,18 @@ Frontsmith — цифровой офис с открытым кодом для �
 
 Frontsmith обладает самостоятельной ценностью для бизнеса. Для полезной работы ему не требуется Neura.
 
-## Основные адреса
+## Локальные материалы и адреса
 
-- Панель демонстрации Frontsmith: https://frontsmith.neurapath.ai/
-- Предпросмотр встроенного сайта: https://frontsmith.neurapath.ai/website
-- Видео рабочего процесса Codex: https://frontsmith.neurapath.ai/#walkthrough
-- Обзор на YouTube: https://youtu.be/4B4Gal-I-I0
-- Карта сайта: https://frontsmith.neurapath.ai/sitemap.xml
-- Правила поисковой индексации: https://frontsmith.neurapath.ai/robots.txt
-- Публичный репозиторий: https://github.com/neurarelay/frontsmith
+- Панель демонстрации: http://localhost:4174/ после npm run preview:demo
+- Предпросмотр встроенного сайта: http://localhost:4174/website
+- Видео рабочего процесса: http://localhost:4174/#walkthrough (исходное видео на английском с русскими субтитрами)
+- Описание рабочих процессов: docs/walkthroughs/codex-workflow-proof.md
+- Архитектура: docs/product/architecture.md
+- Карта согласований и Relay: docs/product/relay-proof-map.md
+- Карта сайта и правила индексации: demo/sitemap.xml и demo/robots.txt (заготовки для будущей публикации)
+- Публичный репозиторий: https://github.com/vionaaru/codex-frontsmith
+
+Пути файлов указаны от корня репозитория. Русскоязычные материалы на отдельном домене проекта пока не опубликованы. Внешние страницы исходного проекта не являются документацией этой версии.
 
 ## Учебный сценарий
 
@@ -27,8 +30,8 @@ Frontsmith обладает самостоятельной ценностью д
 ## Как оценить продукт
 
 ```bash
-git clone https://github.com/neurarelay/frontsmith.git
-cd frontsmith
+git clone https://github.com/vionaaru/codex-frontsmith.git
+cd codex-frontsmith
 npm install
 npm run bootstrap
 npm run first-run:status
@@ -44,13 +47,13 @@ npm run prepare:connected-action -- --action-type "email" --title "Отправ�
 
 Neura Relay возвращает ссылки Decision Receipt до выполнения под контролем разработчика. Frontsmith не отправляет сообщения, не публикует изменения, не подключает аккаунты, не направляет действия провайдерам и не выполняет действия для клиентов без явного согласования владельцем.
 
-## Связанные ресурсы Neura
+## Локальные материалы о подключениях
 
-- Neura Relay: https://www.neurarelay.com/
-- Первое подтверждение Relay: https://www.neurarelay.com/developers/first-proof?neura_source=frontsmith&neura_campaign=frontsmith_applied_proof&neura_surface=demo_llms_txt
-- Описание Relay для ИИ: https://www.neurarelay.com/llms.txt
-- Карточка агента Relay: https://www.neurarelay.com/.well-known/agent-card.json
-- Страница NeuraPath: https://neurapath.ai/frontsmith
+- Карта согласований и Relay: docs/product/relay-proof-map.md
+- Границы и устройство интеграций: docs/product/architecture.md
+- Подготовка действия для проверки: workflows/prepare-connected-action.md
+
+Публичная русскоязычная версия: https://codex-frontsmith.example/ — зарезервированная заглушка, сайт пока не опубликован. Перед публикацией заменить этот адрес в метаданных, сборке, robots.txt и sitemap.xml на согласованный домен.
 
 ## Границы заявлений
 

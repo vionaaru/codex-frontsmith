@@ -23,7 +23,7 @@ for (const [label, file] of checks) {
 
 const defaultPhones = new Set(["(000) 000-0000", "1-800-123-ACME"]);
 const defaultEmails = new Set(["hello@example.com", "projects@acme.com"]);
-const defaultWebsiteUrls = new Set(["https://acme.com"]);
+const defaultWebsiteUrls = new Set(["https://business.example"]);
 
 const placeholders = [
   defaultPhones.has(business.contact.phone) ? "номер телефона" : null,

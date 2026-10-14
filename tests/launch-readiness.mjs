@@ -86,8 +86,8 @@ for (const file of requiredFiles) {
 
 assertEqual(packageJson.private ?? false, false, "package metadata is ready for public GitHub release");
 assertEqual(packageJson.license, "MIT", "package license");
-assertIncludes(packageJson.repository?.url ?? "", "github.com/neurarelay/frontsmith", "repository URL");
-assertIncludes(packageJson.homepage ?? "", "frontsmith.neurapath.ai", "homepage URL");
+assertIncludes(packageJson.repository?.url ?? "", "github.com/vionaaru/codex-frontsmith", "repository URL");
+assertIncludes(packageJson.homepage ?? "", "codex-frontsmith.example", "homepage URL");
 
 for (const [script, command] of Object.entries(requiredScripts)) {
   assertEqual(packageJson.scripts?.[script], command, `npm script ${script}`);

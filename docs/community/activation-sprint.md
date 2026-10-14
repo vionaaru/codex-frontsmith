@@ -13,11 +13,11 @@ Frontsmith v1.0 опубликован. Следующая цель — реал
 Запустите публичный репозиторий локально:
 
 ```bash
-git clone https://github.com/neurarelay/frontsmith.git
-cd frontsmith
+git clone https://github.com/vionaaru/codex-frontsmith.git
+cd codex-frontsmith
 npm install
 npm run check
-npm run bootstrap -- --business-name "Acme" --website-url "https://acme.com"
+npm run bootstrap -- --business-name "Acme" --website-url "https://business.example"
 npm run first-run:status
 npm run owner:brief
 ```
@@ -44,9 +44,9 @@ Frontsmith должен подготовить файлы для проверк�
 
 Текущие задачи для обратной связи:
 
-- [Попробуйте Frontsmith и опубликуйте результат первого запуска](https://github.com/neurarelay/frontsmith/issues/5)
-- [Обратная связь агентств: подходит ли Frontsmith для цифрового офиса клиента?](https://github.com/neurarelay/frontsmith/issues/6)
-- [Задача для первого вклада: улучшите один рабочий процесс или путь по документации](https://github.com/neurarelay/frontsmith/issues/7)
+- [Попробуйте Frontsmith и опубликуйте результат первого запуска](https://github.com/vionaaru/codex-frontsmith/issues/5)
+- [Обратная связь агентств: подходит ли Frontsmith для цифрового офиса клиента?](https://github.com/vionaaru/codex-frontsmith/issues/6)
+- [Задача для первого вклада: улучшите один рабочий процесс или путь по документации](https://github.com/vionaaru/codex-frontsmith/issues/7)
 
 ## Направления участия
 

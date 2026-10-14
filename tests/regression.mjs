@@ -77,7 +77,7 @@ try {
     businessName: "Acme",
     businessType: "Local Service Business",
     demoMode: false,
-    websiteUrl: "https://acme.com",
+    websiteUrl: "https://business.example",
     contact: { ...defaultProfile.contact, phone: "1-800-123-ACME", email: "projects@acme.com", city: "Local", state: "ST" },
     serviceAreas: ["Your City", "Nearby Communities", "Surrounding Service Area"],
     services: ["Kitchen Remodeling", "Bathroom Remodeling", "Living Spaces"].map(name => ({ name })),
@@ -123,24 +123,7 @@ try {
   assertEqual(vercelConfig.framework, null, "Vercel framework");
   assertEqual(vercelConfig.buildCommand, "npm run build:demo", "Vercel build command");
   assertEqual(vercelConfig.functions["api/contact.js"].maxDuration, 10, "contact function duration");
-  assertEqual(vercelConfig.redirects?.[0]?.source, "/", "Vercel default host root redirect source");
-  assertEqual(vercelConfig.redirects?.[0]?.has?.[0]?.type, "host", "Vercel default host root redirect match type");
-  assertEqual(vercelConfig.redirects?.[0]?.has?.[0]?.value, "frontsmith.vercel.app", "Vercel default host root redirect source host");
-  assertEqual(
-    vercelConfig.redirects?.[0]?.destination,
-    "https://frontsmith.neurapath.ai/",
-    "Vercel default host root redirect destination"
-  );
-  assertEqual(vercelConfig.redirects?.[0]?.permanent, true, "Vercel default host root redirect permanence");
-  assertEqual(vercelConfig.redirects?.[1]?.source, "/:path*", "Vercel default host path redirect source");
-  assertEqual(vercelConfig.redirects?.[1]?.has?.[0]?.type, "host", "Vercel default host path redirect match type");
-  assertEqual(vercelConfig.redirects?.[1]?.has?.[0]?.value, "frontsmith.vercel.app", "Vercel default host path redirect source host");
-  assertEqual(
-    vercelConfig.redirects?.[1]?.destination,
-    "https://frontsmith.neurapath.ai/:path*",
-    "Vercel default host path redirect destination"
-  );
-  assertEqual(vercelConfig.redirects?.[1]?.permanent, true, "Vercel default host path redirect permanence");
+  assertEqual(vercelConfig.redirects?.length ?? 0, 0, "нет перенаправлений на сторонний сайт");
 
   const homepage = await readFile(path.join(websiteRoot, "index.html"), "utf8");
   assertIncludes(homepage, "АвтоРитм", "homepage business name");
@@ -367,7 +350,7 @@ try {
   assertIncludes(demoHomepage, "Что делает Frontsmith", "demo module list");
   assertIncludes(demoHomepage, "Работа с клиентами", "demo customer desk");
   assertIncludes(demoHomepage, 'href="/website"', "demo website preview link");
-  assertIncludes(demoHomepage, "https://github.com/neurarelay/frontsmith", "demo GitHub setup path");
+  assertIncludes(demoHomepage, "https://github.com/vionaaru/codex-frontsmith", "demo GitHub setup path");
 
   const builtWebsite = await readFile(path.join("dist", "frontsmith-demo", "website", "index.html"), "utf8");
   assertIncludes(builtWebsite, 'href="/website/styles.css"', "built website stylesheet path");

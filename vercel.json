@@ -8,30 +8,7 @@
       "maxDuration": 10
     }
   },
-  "redirects": [
-    {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "frontsmith.vercel.app"
-        }
-      ],
-      "destination": "https://frontsmith.neurapath.ai/",
-      "permanent": true
-    },
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "frontsmith.vercel.app"
-        }
-      ],
-      "destination": "https://frontsmith.neurapath.ai/:path*",
-      "permanent": true
-    }
-  ],
+  "redirects": [],
   "cleanUrls": true,
   "trailingSlash": false
 }

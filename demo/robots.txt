@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Allow: /llms.txt
 
-Sitemap: https://frontsmith.neurapath.ai/sitemap.xml
+Sitemap: https://codex-frontsmith.example/sitemap.xml
