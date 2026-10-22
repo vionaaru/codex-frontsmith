@@ -46,7 +46,8 @@
     "test": "npm run test:launch && npm run test:regression && npm run test:office",
     "test:launch": "node tests/launch-readiness.mjs",
     "test:regression": "node tests/regression.mjs",
-    "test:office": "node tests/office.mjs && node tests/work-reports.mjs"
+    "test:office": "node tests/office.mjs && node tests/work-reports.mjs",
+    "test:gateway-poc": "node tools/codex-gateway-poc/gateway.test.mjs"
   },
   "engines": {
     "node": ">=20"
