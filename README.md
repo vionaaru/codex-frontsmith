@@ -53,11 +53,6 @@ Frontsmith v1.0 — цифровой офис с открытым исходны
 
 Учёт офиса — локальная база SQLite и панель только для чтения: `npm run office:init`, `npm run office:import`, `npm run office:serve` (`http://127.0.0.1:4180`). Схема, команды изменений и резервные копии описаны в [office/README.md](office/README.md).
 
-Для записи выполненных ремонтов из обычных сообщений в чате Codex используйте навык
-[`register-auto-work`](.agents/skills/register-auto-work/SKILL.md): «Запиши выполненные работы»
-или `$register-auto-work`. Навык сопоставляет автомобили, уточняет недостающие сведения
-и регистрирует факты в той же SQLite-базе после пробного прогона.
-
 Включённый в проект сайт автосервиса:
 
 ![Демонстрационный сайт автосервиса](docs/assets/frontsmith-acme-website.png)

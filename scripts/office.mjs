@@ -31,7 +31,7 @@ const commands = {
   restore: { help: "восстановить из копии: --from файл --confirm", run: restore },
   match: { help: "найти автомобиль для отчёта: [--vin VIN или последние 5+ символов] [--plate номер] [--phone телефон]", run: match },
   show: { help: "прочитать JSON: customer | vehicle | inquiry | order --id ID", run: show },
-  "report:register": { help: "один структурированный отчёт JSON через stdin [--dry-run]; см. skill register-auto-work", run: async (c) => {
+  "report:register": { help: "один структурированный отчёт JSON через stdin [--dry-run]; поля описаны в office/README.md", run: async (c) => {
     let json = '';
     process.stdin.setEncoding('utf8');
     for await (const chunk of process.stdin) json += chunk;
