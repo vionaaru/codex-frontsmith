@@ -20,6 +20,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from frontsmith_privacy.persons import SessionAwareAnonymizer
 from frontsmith_privacy.service import PrivacyError, PrivacyService, ServiceInfo
 from frontsmith_privacy.store import SessionStore, StateStoreUnavailable
 
@@ -65,7 +66,7 @@ def load_pii_guard_service(store: SessionStore, auth_token: str | None) -> Priva
         info.ner_model = config.ner_model
         info.ner_revision = config.ner_revision
         info.entity_types = tuple(config.entities)
-        anonymizer = Anonymizer(config)
+        anonymizer = SessionAwareAnonymizer(Anonymizer(config))
         info.model_instructions = Anonymizer.pseudonymize_system_prompt()
     except Exception as error:  # noqa: BLE001 -- любая ошибка загрузки блокирует обработку
         info.load_error = type(error).__name__

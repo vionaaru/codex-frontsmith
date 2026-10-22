@@ -4,9 +4,31 @@
 
 ## Зависимости
 
+Версии зафиксированы в `runtime.mjs` (`PINS`) и `requirements.lock`:
+
 - pii-guard commit `24230abb72949a9f85499244dd4f15a0ad0cdd9e` (версия пакета 0.1.0), extra `ner`. Исходники не копируются, ядро не меняется.
-- NER `redmadrobot-rnd/rubert-base-pii-ner` ревизии `c802e8cd26f85d1cf920973ea6f83965a0618d63`, веса запекаются в образ, при старте `HF_HUB_OFFLINE=1`.
-- spaCy `ru_core_news_sm`, torch CPU.
+- NER `redmadrobot-rnd/rubert-base-pii-ner` ревизии `c802e8cd26f85d1cf920973ea6f83965a0618d63`; при старте `HF_HUB_OFFLINE=1`.
+- spaCy `ru_core_news_sm` 3.8.0, torch CPU, Python 3.11.14, uv 0.12.24.
+- Windows: MSVC runtime из пакета `msvc-runtime` в venv (torch требует `msvcp140.dll`); подпись Microsoft проверяется при подготовке.
+
+## Runtime без Docker
+
+Сервис — локальный процесс Python, который запускает Node-процесс Frontsmith. Docker, системный Python, venv и pip вручную не нужны.
+
+```bash
+npm run privacy:bootstrap
+```
+
+скачивает uv (SHA-256 сверяется), ставит им Python, создаёт venv по `requirements.lock`, загружает веса NER и проверяет `/health`. Всё в каталоге данных Frontsmith вне Git:
+
+```text
+%LOCALAPPDATA%\Frontsmith\runtime\{uv,python,privacy-env,privacy-models,cache}
+%LOCALAPPDATA%\Frontsmith\privacy\privacy.sqlite      состояние сессий, права только пользователя
+```
+
+Если на системном диске меньше 4 ГБ: `npm run privacy:bootstrap -- --data-root D:\Frontsmith` (выбор запоминается в `%LOCALAPPDATA%\Frontsmith\data-root.txt`).
+
+Обычно сервис поднимает `npm run ai:start` вместе с Codex App Server. Отдельно для диагностики: `npm run privacy:start` (127.0.0.1:4310, токен генерируется на запуск).
 
 ## API
 
@@ -21,23 +43,21 @@
 
 ## Поведение
 
-- Состояние pii-guard (`PseudonymizationState`) сериализуется в явный JSON-формат `pii-guard-state/1` и сохраняется в приватной SQLite (`/data/privacy.sqlite`, том Docker) с `tenant_id`, `version`, `created_at`, `updated_at` до возврата результата. Pickle не используется.
+- Состояние pii-guard (`PseudonymizationState`) сериализуется в явный JSON-формат `pii-guard-state/1` и сохраняется в приватной SQLite (`<данные Frontsmith>/privacy/privacy.sqlite`) с `tenant_id`, `version`, `created_at`, `updated_at` до возврата результата. Pickle не используется.
 - Сессия обрабатывается под блокировкой; запись проверяет `version`, параллельное изменение даёт 409.
 - После псевдонимизации текст сверяется со всеми исходными значениями сессии; совпадение блокирует ответ.
 - `restore` использует mapping только этой сессии и только для адресатов из `PRIVACY_RESTORE_RECIPIENTS` (по умолчанию `operator`). Чужие и придуманные теги заменяются на `****`.
 - Fail closed: без NER, без `PERSON`/`PHONE_NUMBER`, без хранилища, без токена или при ошибке pii-guard сервис `not_ready`, а `prepare` отвечает 503.
 - Журнал содержит события, счётчики и типы сущностей, без текста.
 
-## Запуск и тесты
+- Имена: разметка pii-guard дополняется словами вплотную к PERSON, которые морфологически являются именем, фамилией или отчеством, и словами, чья нормальная форма совпадает с частью имени, уже известного сессии (`frontsmith_privacy/persons.py`). Причина — реальный пропуск NER: «Что мы знаем про Ивана Петрова?» → PERSON только для «Ивана». Оставшаяся в тексте известная часть имени блокирует ответ.
 
-```bash
-PRIVACY_SERVICE_TOKEN=<случайное значение> docker compose -f services/privacy/compose.yml up -d --build
-```
+## Тесты
 
 ```bash
 npm run test:privacy
 ```
 
-`test:privacy` собирает образ, запускает pytest в контейнере (логика сервиса и настоящий pii-guard с NER) и проверяет, что образ с `PII_GUARD_NER_DISABLED=1` объявляет себя `not_ready`. Если демон Docker выключен, тесты помечаются `SKIPPED`.
+Запускает на управляемом runtime: pytest (логика сервиса; настоящий pii-guard с NER — формы «Иван Петров», «Ивана Петрова», «Ивану Петрову», «с Иваном Петровым», «про Ивана Петрова», телефоны `+7 916 123-45-67`, `8 916 123 45 67`, `+7(916)1234567`, `89161234567`, две реплики одной сессии, изоляция сессий), затем настоящий процесс сервиса и fail closed через CodexHost с двойником App Server: ошибка pii-guard на `prepare`, остановленный процесс, незагруженные веса NER, недоступная SQLite — `turn/start` не вызывается. Без подготовленного runtime команда завершается FAIL с подсказкой `npm run privacy:bootstrap`.
 
-Шифрование состояния в хранилище в PoC не реализовано: том Docker защищается правами хоста.
+Шифрование состояния в хранилище в PoC не реализовано: каталог состояния вне Git и рабочей области Codex, доступ только текущему пользователю.

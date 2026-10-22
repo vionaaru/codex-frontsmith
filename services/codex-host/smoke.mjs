@@ -1,28 +1,19 @@
-// Реальный сквозной smoke-test: синтетические ПД → Privacy Service (pii-guard + NER)
-// → Codex Host → `codex app-server` (stdio) → Codex по подписке ChatGPT → restore.
-// Не входит в `npm test`: тратит лимиты подписки и требует Docker и вход ChatGPT.
+// Реальный сквозной smoke-test: синтетические ПД → Privacy Service (настоящий
+// pii-guard + NER, локальный процесс) → Codex Host → `codex app-server` (stdio) →
+// Codex по подписке ChatGPT → restore. Docker не нужен.
+// Не входит в `npm test`: тратит лимиты подписки.
 //
-//   npm run smoke:codex-host                 Privacy Service уже запущен
-//   npm run smoke:codex-host -- --docker     поднять Privacy Service через Docker Compose
+//   npm run smoke:codex-host
 //
-// Выход: 0 — PASS, 1 — FAIL, 2 — SKIPPED (нет Docker, Privacy Service или входа).
-import { execFileSync, spawnSync } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import os from "node:os";
+// Выход: 0 — PASS, 1 — FAIL, 2 — SKIPPED (runtime не подготовлен или нет входа ChatGPT).
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { AppServerClient } from "./app-server-client.mjs";
-import { CodexHost } from "./codex-host.mjs";
-import { assertOutside, codexEnv, defaultHostRoot, findCodex, prepareCodexHome } from "./codex-home.mjs";
-import { PrivacyClient } from "./privacy-client.mjs";
+import { AiRuntimeUnavailable, startAiRuntime } from "./ai-runtime.mjs";
+import { defaultHostRoot } from "./codex-home.mjs";
 import { getTestCustomerTool } from "./testing/test-customer-tool.mjs";
 
-const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const useDocker = process.argv.includes("--docker");
 const PERSON = "Иван Петров";
 const PHONE = "+7 916 123-45-67";
-const ORIGINALS = [PERSON, "Ивана Петрова", "Иван", "Петров", PHONE, "916 123-45-67", "123-45-67"];
+const ORIGINALS = [PERSON, "Ивана Петрова", "Иван", "Петров", PHONE, "916 123-45-67", "123-45-67", "9161234567"];
 const results = [];
 const check = (name, ok, detail = "") => {
   results.push({ name, ok });
@@ -32,91 +23,70 @@ const skip = (reason) => {
   console.log(`SKIPPED  ${reason}`);
   process.exit(2);
 };
-
-async function waitReady(privacy, timeoutMs) {
-  const deadline = Date.now() + timeoutMs;
-  let last;
-  while (Date.now() < deadline) {
-    try {
-      last = await privacy.readiness();
-      if (last.ready) return last;
-    } catch {
-      last = { reasons: ["unreachable"] };
-    }
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-  }
-  return last ?? { ready: false, reasons: ["timeout"] };
-}
-
-let baseUrl = process.env.FRONTSMITH_PRIVACY_URL ?? "http://127.0.0.1:4310";
-let token = process.env.FRONTSMITH_PRIVACY_TOKEN;
-if (useDocker) {
-  if (spawnSync("docker", ["info"], { stdio: "ignore" }).status !== 0) skip("Docker daemon недоступен");
-  token = randomBytes(24).toString("hex");
-  const compose = ["compose", "-f", path.join(repo, "services", "privacy", "compose.yml")];
-  console.log("Сборка и запуск Privacy Service (первая сборка скачивает torch и веса NER)...");
-  execFileSync("docker", [...compose, "up", "-d", "--build", "--force-recreate"], { stdio: "inherit", env: { ...process.env, PRIVACY_SERVICE_TOKEN: token } });
-}
-if (!token) skip("не задан FRONTSMITH_PRIVACY_TOKEN (или используйте --docker)");
-
-const privacy = new PrivacyClient({ baseUrl, token });
-const readiness = await waitReady(privacy, useDocker ? 600_000 : 10_000);
-if (!readiness.ready) skip(`Privacy Service не готов: ${readiness.reasons.join(",")}`);
-const health = readiness.health;
-console.log(`Privacy Service: pii-guard ${health.pii_guard_version} (${health.pii_guard_commit}), NER=${health.ner_enabled}, ${health.ner_model}@${health.ner_revision}`);
-
-const codexBin = findCodex();
-const home = prepareCodexHome(path.join(defaultHostRoot(), "home"), { forbiddenRoots: [repo] });
-const env = codexEnv(home);
-const status = spawnSync(codexBin, ["login", "status"], { env, encoding: "utf8" });
-if (!/ChatGPT/i.test(`${status.stdout}${status.stderr}`)) skip(`в ${home} нет входа ChatGPT: выполните npm run codex-host:login`);
-console.log(`${execFileSync(codexBin, ["--version"], { encoding: "utf8" }).trim()}; CODEX_HOME=${home}; вход: ChatGPT; API key: НЕТ`);
-
-const workspace = mkdtempSync(path.join(os.tmpdir(), "frontsmith-codex-host-ws-"));
-assertOutside(workspace, [repo, home]);
-writeFileSync(path.join(workspace, "README.txt"), "Пустая рабочая область Frontsmith Codex Host. Данных клиентов здесь нет.\n");
+const clean = (text) => ORIGINALS.every((value) => !text.includes(value));
+const oneLine = (text) => text.replace(/\s+/g, " ").slice(0, 200);
 
 const seen = [];
 const logFile = path.join(defaultHostRoot(), "logs", `smoke-${new Date().toISOString().replace(/[:.]/g, "-")}.jsonl`);
-const client = AppServerClient.spawn({ codexBin, args: ["app-server", "--strict-config"], env, cwd: workspace });
-const host = new CodexHost({
-  client,
-  privacy,
-  workspace,
-  tools: [getTestCustomerTool()],
-  model: process.env.FRONTSMITH_CODEX_MODEL,
-  diagnostics: { logFile, captureModelVisible: (entry) => seen.push(entry) }
-});
-const clean = (text) => ORIGINALS.every((value) => !text.includes(value));
+let runtime;
+try {
+  console.log("Запуск Privacy Service и Codex App Server...");
+  runtime = await startAiRuntime({
+    tools: [getTestCustomerTool()],
+    model: process.env.FRONTSMITH_CODEX_MODEL,
+    diagnostics: { logFile, captureModelVisible: (entry) => seen.push(entry) }
+  });
+} catch (error) {
+  if (error instanceof AiRuntimeUnavailable) skip(error.message);
+  throw error;
+}
+const { host, privacyHealth: health } = runtime;
+console.log(`Privacy Service: ${runtime.privacyService.url}, pii-guard ${health.pii_guard_version} (${health.pii_guard_commit}), NER=${health.ner_enabled}, ${health.ner_model}@${health.ner_revision}`);
+console.log(`${runtime.codexVersion}; App Server ${runtime.server.userAgent}; transport stdio; CODEX_HOME=${runtime.codexHome}; вход: ChatGPT; API key: НЕТ`);
 
 try {
-  const server = await host.start();
-  console.log(`App Server: ${server.userAgent}, transport stdio`);
-  const conversation = await host.openConversation({ tenantId: "smoke-tenant" });
+  // 1. Простой сквозной ход.
+  const simple = await host.openConversation({ tenantId: "smoke-tenant" });
+  const s1 = await host.send(simple.conversationId, `Клиент ${PERSON}, телефон ${PHONE}.\nОтветь одной фразой: с каким клиентом мы работаем?`);
+  const simpleInput = seen.filter((entry) => entry.kind === "turn_input").at(-1);
+  check("smoke: turn/start без «Иван Петров» и «+7 916 123-45-67»", clean(simpleInput.text) && simpleInput.pii_tags >= 2, `тегов=${simpleInput.pii_tags}`);
+  check("smoke: модель ответила тегом PERSON", /<PII type="PERSON"/.test(s1.modelText) && clean(s1.modelText), oneLine(s1.modelText));
+  check("smoke: ответ восстановлен локально", s1.text.includes("Петров") && !/<PII/.test(s1.text), oneLine(s1.text));
 
-  const t1 = await host.send(conversation.conversationId, `Клиент ${PERSON}, телефон ${PHONE}.\nЗапомни, что он обратился по ремонту подвески.`);
+  // 2. Двухходовая privacy-session и инструмент Host.
+  const conversation = await host.openConversation({ tenantId: "smoke-tenant" });
+  const from = seen.length;
+  const t1 = await host.send(conversation.conversationId, `Клиент ${PERSON}, телефон ${PHONE}.\nОн обратился по ремонту подвески.`);
   const t2 = await host.send(conversation.conversationId, "Что мы знаем про Ивана Петрова?");
   const t3 = await host.send(conversation.conversationId, "Вызови инструмент get_test_customer и перескажи карточку клиента одной строкой.");
 
-  const inputs = seen.filter((entry) => entry.kind === "turn_input");
-  const tools = seen.filter((entry) => entry.kind === "tool_output");
-  check("turn/start: исходные ПД отсутствуют во всех ходах", inputs.length === 3 && inputs.every((entry) => clean(entry.text)), `ходов=${inputs.length}`);
-  check("turn/start: теги PII присутствуют", inputs[0]?.pii_tags >= 2 && inputs[1]?.pii_tags >= 1, inputs.map((entry) => entry.pii_tags).join("/"));
+  const inputs = seen.slice(from).filter((entry) => entry.kind === "turn_input");
+  const tools = seen.slice(from).filter((entry) => entry.kind === "tool_output");
+  check("session: исходные ПД отсутствуют во всех turn/start", inputs.length === 3 && inputs.every((entry) => clean(entry.text)), `ходов=${inputs.length}`);
   const personTag = inputs[0]?.text.match(/<PII type="PERSON"[^>]*\/>/)?.[0];
-  check("двухходовый диалог: второй ход несёт тот же PERSON-тег", Boolean(personTag) && inputs[1]?.text.includes(personTag), personTag ?? "тег не найден");
-  check("ответ модели содержит теги, а не исходные значения", clean(t2.modelText) && /<PII/.test(t2.modelText), t2.modelText.slice(0, 160));
-  check("ответ восстановлен локально для адресата", t2.text.includes("Петров") && !/<PII/.test(t2.text));
-  check("инструмент Host вызван моделью", t3.toolCalls.includes("get_test_customer"), t3.toolCalls.join(","));
-  check("tool result очищен до модели", tools.length >= 1 && tools.every((entry) => clean(entry.text)), `результатов=${tools.length}`);
-  check("финальный ответ после инструмента восстановлен", t3.text.includes("Петров") || t3.text.includes("916"), "");
+  check("session: второй ход несёт тот же PERSON-тег", Boolean(personTag) && inputs[1]?.text.includes(personTag), `${personTag ?? "тег не найден"} | ${oneLine(inputs[1]?.text ?? "")}`);
+  check("session: модель связала сообщения (подвеска)", /подвеск/i.test(t2.modelText) && clean(t2.modelText), oneLine(t2.modelText));
+  check("session: ответ восстановлен локально", t2.text.includes("Петров") && !/<PII/.test(t2.text), oneLine(t2.text));
+  check("tool: get_test_customer вызван моделью", t3.toolCalls.includes("get_test_customer"), t3.toolCalls.join(","));
+  check("tool: model-visible результат без исходных ПД", tools.length >= 1 && tools.every((entry) => clean(entry.text) && entry.pii_tags >= 2), tools.map((entry) => oneLine(entry.text)).join(" | "));
+  check("tool: ответ модели только с псевдонимами", clean(t3.modelText), oneLine(t3.modelText));
+  check("tool: финальный ответ восстановлен локально", t3.text.includes("Петров") || t3.text.includes("916"), oneLine(t3.text));
+
+  // 3. Восстановленный текст не возвращается в историю Codex.
+  try {
+    const read = await runtime.client.request("thread/read", { threadId: conversation.threadId, includeTurns: true });
+    const history = JSON.stringify(read);
+    check("history: в thread App Server нет исходных ПД", clean(history), `${history.length} символов`);
+  } catch (error) {
+    console.log(`NOT CHECKED  history: thread/read недоступен (${error.message})`);
+  }
   check("запросов одобрения не было или все отклонены", host.approvals.every((entry) => JSON.stringify(entry.decision).includes("decline") || JSON.stringify(entry.decision).includes("denied")));
-  console.log(`Ответы модели (псевдонимизированные):\n  1: ${t1.modelText.replace(/\s+/g, " ").slice(0, 200)}\n  2: ${t2.modelText.replace(/\s+/g, " ").slice(0, 200)}\n  3: ${t3.modelText.replace(/\s+/g, " ").slice(0, 200)}`);
+  console.log(`Ответы модели (псевдонимизированные):\n  smoke: ${oneLine(s1.modelText)}\n  1: ${oneLine(t1.modelText)}\n  2: ${oneLine(t2.modelText)}\n  3: ${oneLine(t3.modelText)}`);
   console.log(`Диагностический журнал (только SHA-256 и счётчики): ${logFile}`);
 } catch (error) {
   check("сквозной прогон без ошибок", false, error.code ?? error.message);
 } finally {
-  host.close();
-  rmSync(workspace, { recursive: true, force: true });
+  await runtime.stop();
 }
 
 const failed = results.filter((result) => !result.ok).length;

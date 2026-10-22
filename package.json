@@ -51,6 +51,9 @@
     "test:codex-host": "node tests/codex-host.mjs",
     "test:codex-host:app-server": "node tests/codex-host-app-server.mjs",
     "test:privacy": "node services/privacy/run-tests.mjs",
+    "privacy:bootstrap": "node services/privacy/bootstrap.mjs",
+    "privacy:start": "node services/privacy/start.mjs",
+    "ai:start": "node services/codex-host/start.mjs",
     "codex-host:login": "node services/codex-host/login.mjs",
     "smoke:codex-host": "node services/codex-host/smoke.mjs"
   },

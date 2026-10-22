@@ -13,6 +13,7 @@ import re
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from typing import Any, Protocol
 
+from frontsmith_privacy.persons import known_person_tokens, person_words_left
 from frontsmith_privacy.store import SessionNotFound, SessionStore, StateStoreUnavailable, VersionConflict
 
 logger = logging.getLogger("frontsmith_privacy")
@@ -253,7 +254,9 @@ class PrivacyService:
             new_state = result.state
             if new_state is None:
                 raise NotReady("anonymizer_returned_no_state")
-            if _leaks(prepared, list(new_state.mapping.values())):
+            if _leaks(prepared, list(new_state.mapping.values())) or person_words_left(
+                prepared, known_person_tokens(new_state)
+            ):
                 logger.warning("event=prepare_blocked reason=verification_failed")
                 raise NotReady("verification_failed")
             try:

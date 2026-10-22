@@ -1,0 +1,12 @@
+# Прямые зависимости Privacy Service. Точные версии — в requirements.lock:
+#   uv pip compile requirements.in -o requirements.lock --universal --python-version 3.11 --torch-backend cpu
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+pytest>=8,<9
+httpx>=0.27,<1
+huggingface_hub
+pii-guard[ner] @ https://github.com/redmadrobot-rnd/pii-guard/archive/24230abb72949a9f85499244dd4f15a0ad0cdd9e.tar.gz
+ru_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/ru_core_news_sm-3.8.0/ru_core_news_sm-3.8.0-py3-none-any.whl
+# torch на Windows требует MSVC runtime (msvcp140.dll). Без прав администратора
+# DLL Microsoft ставятся в venv; bootstrap проверяет их подпись Authenticode.
+msvc-runtime==14.44.35112 ; sys_platform == 'win32'

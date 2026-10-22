@@ -3,9 +3,9 @@
 Опорная записка: [docs/architecture/privacy-crm-integration.md](../architecture/privacy-crm-integration.md).
 
 ## Текущее состояние
-- Текущий этап: 3. Privacy Service и Codex Host написаны; граница проверена на настоящем `codex app-server` с синтетической моделью. pii-guard с NER и реальный прогон по подписке ждут Docker и входа ChatGPT.
-- Последний принятый результат: PoC `services/privacy/` + `services/codex-host/` 22.10.2026, результат PARTIAL; до него PoC `tools/codex-gateway-poc/` (PASS) и аудит.
-- Следующий шаг: запустить Docker, выполнить `npm run test:privacy`, войти `npm run codex-host:login` и пройти `npm run smoke:codex-host -- --docker`.
+- Текущий этап: 3. Privacy Service работает локальным процессом без Docker с настоящим pii-guard + NER (тесты пройдены); реальный прогон по подписке ждёт входа ChatGPT в отдельный `CODEX_HOME`.
+- Последний принятый результат: Privacy Service без Docker 22.10.2026, результат PARTIAL; до него PoC `services/privacy/` + `services/codex-host/` (PARTIAL), PoC `tools/codex-gateway-poc/` (PASS) и аудит.
+- Следующий шаг: `npm run codex-host:login`, затем `npm run smoke:codex-host`.
 - База интеграции: `main`. Универсальная часть офиса перенесена из `autoservice` коммитом 78145b1; навык `register-auto-work`, дизайн сайта, логотип и ссылка записи T-Max остаются в `autoservice`.
 - Блокирующие вопросы: см. раздел «Блокирующие вопросы».
 
@@ -13,7 +13,7 @@
 - [ ] 0. Аудит Frontsmith и проверка маршрута Codex → защитный шлюз.
 - [ ] 1. Контракты, идентификаторы, хранилища и разделение доступа.
 - [ ] 2. Подключение crmkit и интерфейс работы с клиентами.
-- [ ] 3. Privacy Service на основе pii-guard — код и граница Host готовы, pii-guard с NER не запускался.
+- [ ] 3. Privacy Service на основе pii-guard — настоящий pii-guard + NER без Docker проверен, реальный прогон по подписке не выполнен.
 - [ ] 4. Единый LLM-сервис и запрет обходных подключений.
 - [ ] 5. Разбор отчётов и отображение клиентов в офисной панели.
 - [ ] 6. AI-диспетчер для первого выбранного канала.
@@ -34,15 +34,16 @@
 - [ ] Проверено содержимое свободных текстов в базе на реальные персональные данные — требуется отдельная проверка с согласия владельца
 
 ### Этап 3: Privacy Service перед Codex App Server
-- [ ] Privacy Service запускается с pii-guard + NER — образ `services/privacy/` описан (pii-guard 24230ab, NER c802e8c), не собирался: Docker выключен
-- [ ] Реализовано защищённое session state — реализовано (`pii-guard-state/1` в приватной SQLite, `version`, блокировка сессии); pytest ждёт Docker, шифрования нет
-- [x] User input очищается до turn/start — Host вызывает `turn/start` только с результатом `prepare`; проверено двойником App Server и настоящим `codex app-server` по HTTP-запросам к модели
-- [x] Tool output очищается до model-visible context — `get_test_customer` через `dynamicTools`, `function_call_output` у модели только с тегами
-- [x] Mapping недоступен Codex — у Privacy Service и клиента Host нет операций выдачи mapping; лишние поля ответа отбрасываются (тест)
-- [x] Ответ восстанавливается только после завершения turn — `restore` после `turn/completed`, в историю следующего хода не попадает (тест на настоящем app-server)
-- [ ] Двухходовый диалог сохраняет псевдонимы — проверено на двойнике Privacy Service; с настоящим pii-guard ждёт Docker
-- [x] При отказе Privacy Service вызов Codex блокируется — недоступность, NER, хранилище, ошибка `prepare`, ошибка на результате инструмента: `privacy_processing_failed`, `turn/start` не вызывается
-- [ ] Реальный smoke-test через App Server и ChatGPT subscription пройден — `npm run smoke:codex-host -- --docker` готов, нужен вход ChatGPT в отдельный `CODEX_HOME`
+- [x] Privacy Service запускается с настоящим pii-guard + NER без Docker — `npm run privacy:bootstrap`: uv 0.12.24 → Python 3.11.14 → venv по `requirements.lock` → веса NER c802e8c; `/health ready`, NER=true
+- [x] PERSON проверен на настоящем pii-guard — «Иван Петров», «Ивана Петрова», «Ивану Петрову», «с Иваном Петровым», «про Ивана Петрова» (последняя форма — с дополнением имён Frontsmith, NER сам размечает только «Ивана»)
+- [x] PHONE_NUMBER проверен на настоящем pii-guard — `+7 916 123-45-67`, `8 916 123 45 67`, `+7(916)1234567`, `89161234567`, с восстановлением
+- [x] Session state проверен с настоящим pii-guard — `pii-guard-state/1` в privacy SQLite, изоляция сессий, восстановление только своей сессии
+- [x] Двухходовый тест с настоящим pii-guard пройден — тот же PERSON-тег во втором сообщении, «Иван»/«Петров» отсутствуют, restore локальный
+- [ ] Codex App Server работает через ChatGPT subscription — нужен `npm run codex-host:login`
+- [ ] Полный сквозной smoke-test пройден
+- [ ] Trusted tool → Privacy Service → Codex проверен — на настоящем `codex app-server` с синтетической моделью; с подпиской не выполнялся
+- [x] Fail-closed проверен на настоящем Privacy Service — ошибка pii-guard на `prepare`, остановленный процесс, незагруженные веса NER, недоступная SQLite: `turn/start` = 0 (`npm run test:privacy`)
+- [x] User input и tool output очищаются до модели, mapping недоступен Codex, restore только после `turn/completed` — PoC 22.10.2026
 
 ## Результаты аудита
 
@@ -104,10 +105,10 @@
 - Временный `CODEX_HOME` после запуска содержит служебные SQLite, `.sandbox` и системные навыки; для агентного процесса нужна политика очистки.
 
 ### Инфраструктура
-- Node 24.19.0, npm 11.17.0. Python и Go не установлены. Docker 29.6.2 установлен, демон не запущен.
+- Node 24.19.0, npm 11.17.0. Системных Python и Go нет; Python для Privacy Service ставит `npm run privacy:bootstrap` в каталог данных Frontsmith. Docker в установке не используется.
 - Docker Compose, reverse proxy и контейнеров в репозитории нет. Порты: 4173 сайт, 4174 демонстрация, 4180 панель офиса, 4192 отчёт-приложение.
 - Развёртывание: Vercel (`vercel.json`) только для демонстрации и `api/contact.js`. Миграции применяет `office:init` с контрольными суммами. CI: `npm install`, `npm run check`, `npm run build:demo`, `npm test`.
-- Логичные места для будущих сервисов: `services/` рядом с `office/` в ветке-основе, запуск через отдельный Compose-файл в `deploy/`; crmkit (Go) и pii-guard (Python) — контейнерами, так как рантаймов на машине нет.
+- Сервисы — в `services/` рядом с `office/`, запускаются Node-хостом как локальные процессы (`npm run ai:start`); контейнеров нет. Место crmkit (Go) не решено.
 
 ### Статус блоков опорной архитектуры
 | Блок | Статус |
@@ -137,6 +138,6 @@
 2. Персональные данные уже в офисной базе (`customers.full_name` обязателен). Перенос контактов в CRM означает изменение схемы и очистку свободных текстов и копий; нужно решение владельца о порядке миграции.
 3. История Codex в `D:\CodexData\.codex` уже содержит сообщения владельца; отдельный `CODEX_HOME` для агентного процесса проверен в PoC, политика очистки основного не решена.
 4. Плагины Codex с внешним доступом (VK, браузеры, Slack, Calendar, computer use) включены в основном `CODEX_HOME`; в изолированном PoC они отключены флагами `[features]`.
-5. Python и Go отсутствуют: pii-guard разворачивается контейнером `services/privacy/` (Docker Desktop запускает владелец), место crmkit не решено.
+5. ~~Python для pii-guard~~ — решено: управляемый runtime `npm run privacy:bootstrap` (uv, Python, venv в каталоге данных Frontsmith), Docker не нужен. Место crmkit (Go) не решено.
 6. ~~Способ авторизации шлюза на upstream~~ — решено: API key запрещён, модельный контур — Codex App Server с подпиской ChatGPT (записка, 11.4).
 7. Текущая `office.sqlite` с ПД недоступна Codex до миграции клиентов в crmkit и очистки базы, копий и свободных текстов.

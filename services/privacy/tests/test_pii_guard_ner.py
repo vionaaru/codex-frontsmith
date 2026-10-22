@@ -1,7 +1,8 @@
 """Настоящий pii-guard с NER на синтетических российских данных.
 
-Требует установленный pii-guard с весами модели (контейнер Privacy Service).
-Без них тесты пропускаются, а не подменяются облегчённым режимом.
+Запускается `npm run test:privacy` на управляемом runtime Frontsmith
+(FRONTSMITH_REQUIRE_NER=1): отсутствие pii-guard или весов — ошибка, а не пропуск.
+Без этой переменной (pytest вне runtime) модуль пропускается, двойник не подставляется.
 """
 
 from __future__ import annotations
@@ -11,12 +12,14 @@ import os
 import pytest
 from conftest import PERSON, PHONE, TOKEN
 
+from frontsmith_privacy.persons import SessionAwareAnonymizer
 from frontsmith_privacy.service import NotReady, PrivacyService, ServiceInfo
 from frontsmith_privacy.store import SessionStore
 
-pii_guard = pytest.importorskip("pii_guard")
-if os.getenv("PII_GUARD_NER_DISABLED", "0") not in ("", "0"):
-    pytest.skip("контейнер собран без NER", allow_module_level=True)
+if os.getenv("FRONTSMITH_REQUIRE_NER") == "1":
+    import pii_guard
+else:
+    pii_guard = pytest.importorskip("pii_guard")
 
 from pii_guard import Anonymizer  # noqa: E402
 from pii_guard.config import NER_ONLY_ENTITIES, Config  # noqa: E402
@@ -28,7 +31,7 @@ INN = "7707083893"  # контрольная сумма корректна, зн
 
 @pytest.fixture(scope="module")
 def anonymizer():
-    return Anonymizer(Config.load())
+    return SessionAwareAnonymizer(Anonymizer(Config.load()))
 
 
 def build(tmp_path, anonymizer) -> PrivacyService:
@@ -65,18 +68,57 @@ def test_russian_phone_and_name(tmp_path, anonymizer):
     assert '<PII type="PERSON"' in text and '<PII type="PHONE_NUMBER"' in text
 
 
+NAME_FORMS = [
+    ("Иван Петров", "Клиент Иван Петров позвонил утром."),
+    ("Ивана Петрова", "Мы ждём Ивана Петрова к десяти."),
+    ("Ивану Петрову", "Передайте Ивану Петрову, что машина готова."),
+    ("с Иваном Петровым", "Договорились с Иваном Петровым о замене колодок."),
+    ("про Ивана Петрова", "Что мы знаем про Ивана Петрова?"),
+]
+
+
+@pytest.mark.parametrize(("form", "text"), NAME_FORMS, ids=[form for form, _ in NAME_FORMS])
+def test_person_forms(tmp_path, anonymizer, form, text):
+    svc = build(tmp_path, anonymizer)
+    sid = svc.create_session(TENANT)["privacy_session_id"]
+    result = svc.prepare(TENANT, sid, text)
+    assert "Иван" not in result["text"] and "Петров" not in result["text"], result["text"]
+    assert result["text"].count('<PII type="PERSON"') == 1, result["text"]
+    assert "PERSON" in result["entity_types"]
+
+
+PHONE_FORMATS = ["+7 916 123-45-67", "8 916 123 45 67", "+7(916)1234567", "89161234567"]
+
+
+@pytest.mark.parametrize("phone", PHONE_FORMATS)
+def test_phone_formats(tmp_path, anonymizer, phone):
+    svc = build(tmp_path, anonymizer)
+    sid = svc.create_session(TENANT)["privacy_session_id"]
+    result = svc.prepare(TENANT, sid, f"Телефон клиента {phone}")
+    digits = "".join(ch for ch in result["text"] if ch.isdigit())
+    assert "916" not in digits and "4567" not in digits, result["text"]
+    assert result["entity_types"] == ["PHONE_NUMBER"], result
+    assert svc.restore(TENANT, sid, result["text"], "operator")["text"] == f"Телефон клиента {phone}"
+
+
+def test_pii_guard_ner_alone_misses_surname_in_question(anonymizer):
+    """Фиксирует реальный пропуск NER, который закрывает SessionAwareAnonymizer."""
+    raw = anonymizer._inner.anonymize("Что мы знаем про Ивана Петрова?", mode="pseudonymize")
+    assert "Петрова" in raw.texts[0]
+
+
 def test_two_turns_keep_pseudonym_and_restore(tmp_path, anonymizer):
     svc = build(tmp_path, anonymizer)
     sid = svc.create_session(TENANT)["privacy_session_id"]
-    first = svc.prepare(
-        TENANT, sid, f"Клиент {PERSON}, телефон {PHONE}. Запомни, что он обратился по ремонту подвески."
-    )["text"]
+    first = svc.prepare(TENANT, sid, f"Клиент {PERSON}, телефон {PHONE}.\nОн обратился по ремонту подвески.")["text"]
+    assert PHONE not in first and "Петров" not in first
     second = svc.prepare(TENANT, sid, "Что мы знаем про Ивана Петрова?")["text"]
     person_tags = [part for part in first.split("<PII ")[1:] if part.startswith('type="PERSON"')]
     assert person_tags, first
     person_tag = "<PII " + person_tags[0].split("/>")[0] + "/>"
     assert person_tag in second, (first, second)
-    assert "Петров" not in second
+    assert "Петров" not in second and "Иван" not in second
+    assert second.count("<PII") == 1, second
     restored = svc.restore(TENANT, sid, f"Клиент {person_tag} обращался по ремонту подвески.", "operator")["text"]
     assert "Петров" in restored and "<PII" not in restored
 
