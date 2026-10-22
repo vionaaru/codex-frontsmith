@@ -21,3 +21,8 @@ yarn-error.log*
 .vercel
 # Журналы исследовательского PoC gateway
 tools/codex-gateway-poc/runtime/
+# Журналы Codex Host и рабочие данные Privacy Service
+services/codex-host/runtime/
+services/privacy/data/
+__pycache__/
+.pytest_cache/

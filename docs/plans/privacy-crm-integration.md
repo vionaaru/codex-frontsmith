@@ -3,9 +3,9 @@
 Опорная записка: [docs/architecture/privacy-crm-integration.md](../architecture/privacy-crm-integration.md).
 
 ## Текущее состояние
-- Текущий этап: 0. Аудит выполнен, маршрут `codex exec` через локальный шлюз доказан на синтетических данных; реальный upstream не проверен.
-- Последний принятый результат: PoC `tools/codex-gateway-poc/` 22.10.2026, результат PASS; до него аудит рабочей копии на ветке `feature/privacy-crm-integration`.
-- Следующий шаг: спроектировать доступ шлюза к upstream (API key или OAuth) без копирования секретов владельца.
+- Текущий этап: 3. Privacy Service и Codex Host написаны; граница проверена на настоящем `codex app-server` с синтетической моделью. pii-guard с NER и реальный прогон по подписке ждут Docker и входа ChatGPT.
+- Последний принятый результат: PoC `services/privacy/` + `services/codex-host/` 22.10.2026, результат PARTIAL; до него PoC `tools/codex-gateway-poc/` (PASS) и аудит.
+- Следующий шаг: запустить Docker, выполнить `npm run test:privacy`, войти `npm run codex-host:login` и пройти `npm run smoke:codex-host -- --docker`.
 - База интеграции: `main`. Универсальная часть офиса перенесена из `autoservice` коммитом 78145b1; навык `register-auto-work`, дизайн сайта, логотип и ссылка записи T-Max остаются в `autoservice`.
 - Блокирующие вопросы: см. раздел «Блокирующие вопросы».
 
@@ -13,7 +13,7 @@
 - [ ] 0. Аудит Frontsmith и проверка маршрута Codex → защитный шлюз.
 - [ ] 1. Контракты, идентификаторы, хранилища и разделение доступа.
 - [ ] 2. Подключение crmkit и интерфейс работы с клиентами.
-- [ ] 3. Privacy Service на основе pii-guard.
+- [ ] 3. Privacy Service на основе pii-guard — код и граница Host готовы, pii-guard с NER не запускался.
 - [ ] 4. Единый LLM-сервис и запрет обходных подключений.
 - [ ] 5. Разбор отчётов и отображение клиентов в офисной панели.
 - [ ] 6. AI-диспетчер для первого выбранного канала.
@@ -32,6 +32,17 @@
 - [ ] Проверен маршрут с реальным upstream — намеренно не выполнялся, сначала нужен способ авторизации шлюза
 - [ ] Проверено, какие файлы вне репозитория Codex читает в режиме `workspace-write` — требуется практическая проверка
 - [ ] Проверено содержимое свободных текстов в базе на реальные персональные данные — требуется отдельная проверка с согласия владельца
+
+### Этап 3: Privacy Service перед Codex App Server
+- [ ] Privacy Service запускается с pii-guard + NER — образ `services/privacy/` описан (pii-guard 24230ab, NER c802e8c), не собирался: Docker выключен
+- [ ] Реализовано защищённое session state — реализовано (`pii-guard-state/1` в приватной SQLite, `version`, блокировка сессии); pytest ждёт Docker, шифрования нет
+- [x] User input очищается до turn/start — Host вызывает `turn/start` только с результатом `prepare`; проверено двойником App Server и настоящим `codex app-server` по HTTP-запросам к модели
+- [x] Tool output очищается до model-visible context — `get_test_customer` через `dynamicTools`, `function_call_output` у модели только с тегами
+- [x] Mapping недоступен Codex — у Privacy Service и клиента Host нет операций выдачи mapping; лишние поля ответа отбрасываются (тест)
+- [x] Ответ восстанавливается только после завершения turn — `restore` после `turn/completed`, в историю следующего хода не попадает (тест на настоящем app-server)
+- [ ] Двухходовый диалог сохраняет псевдонимы — проверено на двойнике Privacy Service; с настоящим pii-guard ждёт Docker
+- [x] При отказе Privacy Service вызов Codex блокируется — недоступность, NER, хранилище, ошибка `prepare`, ошибка на результате инструмента: `privacy_processing_failed`, `turn/start` не вызывается
+- [ ] Реальный smoke-test через App Server и ChatGPT subscription пройден — `npm run smoke:codex-host -- --docker` готов, нужен вход ChatGPT в отдельный `CODEX_HOME`
 
 ## Результаты аудита
 
@@ -126,5 +137,6 @@
 2. Персональные данные уже в офисной базе (`customers.full_name` обязателен). Перенос контактов в CRM означает изменение схемы и очистку свободных текстов и копий; нужно решение владельца о порядке миграции.
 3. История Codex в `D:\CodexData\.codex` уже содержит сообщения владельца; отдельный `CODEX_HOME` для агентного процесса проверен в PoC, политика очистки основного не решена.
 4. Плагины Codex с внешним доступом (VK, браузеры, Slack, Calendar, computer use) включены в основном `CODEX_HOME`; в изолированном PoC они отключены флагами `[features]`.
-5. Python и Go отсутствуют, Docker не запущен: нужно решить, где разворачивать pii-guard и crmkit.
-6. Способ авторизации шлюза на upstream (API key или OAuth ChatGPT) не выбран; без него маршрут с реальной моделью не проверить.
+5. Python и Go отсутствуют: pii-guard разворачивается контейнером `services/privacy/` (Docker Desktop запускает владелец), место crmkit не решено.
+6. ~~Способ авторизации шлюза на upstream~~ — решено: API key запрещён, модельный контур — Codex App Server с подпиской ChatGPT (записка, 11.4).
+7. Текущая `office.sqlite` с ПД недоступна Codex до миграции клиентов в crmkit и очистки базы, копий и свободных текстов.

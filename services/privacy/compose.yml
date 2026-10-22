@@ -1,0 +1,26 @@
+# Только Privacy Service. Codex App Server остаётся процессом Windows-хоста.
+#
+#   PRIVACY_SERVICE_TOKEN=<случайное значение> docker compose -f services/privacy/compose.yml up -d
+#
+# Порт открыт только на 127.0.0.1. Состояние сессий — в именованном томе Docker,
+# вне репозитория и вне рабочей области Codex.
+name: frontsmith-privacy
+
+services:
+  privacy-service:
+    build: .
+    image: frontsmith-privacy:poc
+    environment:
+      PRIVACY_SERVICE_TOKEN: ${PRIVACY_SERVICE_TOKEN:?PRIVACY_SERVICE_TOKEN is required}
+      PRIVACY_RESTORE_RECIPIENTS: operator
+    ports:
+      - "127.0.0.1:${PRIVACY_SERVICE_PORT:-4310}:8080"
+    volumes:
+      - privacy-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+
+volumes:
+  privacy-data:

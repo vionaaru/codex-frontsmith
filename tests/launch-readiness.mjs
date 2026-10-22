@@ -48,10 +48,11 @@ const requiredScripts = {
   "office:backup": "node scripts/office.mjs backup",
   "office:restore": "node scripts/office.mjs restore",
   "office:serve": "node office/server.mjs",
-  test: "npm run test:launch && npm run test:regression && npm run test:office",
+  test: "npm run test:launch && npm run test:regression && npm run test:office && npm run test:codex-host",
   "test:launch": "node tests/launch-readiness.mjs",
   "test:regression": "node tests/regression.mjs",
-  "test:office": "node tests/office.mjs && node tests/work-reports.mjs"
+  "test:office": "node tests/office.mjs && node tests/work-reports.mjs",
+  "test:codex-host": "node tests/codex-host.mjs"
 };
 
 const requiredFiles = [
