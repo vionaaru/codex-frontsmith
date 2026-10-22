@@ -3,9 +3,9 @@
 Опорная записка: [docs/architecture/privacy-crm-integration.md](../architecture/privacy-crm-integration.md).
 
 ## Текущее состояние
-- Текущий этап: 3. Privacy Service работает локальным процессом без Docker с настоящим pii-guard + NER (тесты пройдены); реальный прогон по подписке ждёт входа ChatGPT в отдельный `CODEX_HOME`.
-- Последний принятый результат: Privacy Service без Docker 22.10.2026, результат PARTIAL; до него PoC `services/privacy/` + `services/codex-host/` (PARTIAL), PoC `tools/codex-gateway-poc/` (PASS) и аудит.
-- Следующий шаг: `npm run codex-host:login`, затем `npm run smoke:codex-host`.
+- Текущий этап: 3 закрыт. Privacy Service работает локальным процессом без Docker с настоящим pii-guard + NER; сквозной прогон Privacy → Codex App Server → ChatGPT subscription пройден.
+- Последний принятый результат: Privacy Service без Docker 22.10.2026, результат PASS; до него PoC `services/privacy/` + `services/codex-host/` (PARTIAL), PoC `tools/codex-gateway-poc/` (PASS) и аудит.
+- Следующий шаг: интеграция crmkit и вынос ПД из `office.sqlite`.
 - База интеграции: `main`. Универсальная часть офиса перенесена из `autoservice` коммитом 78145b1; навык `register-auto-work`, дизайн сайта, логотип и ссылка записи T-Max остаются в `autoservice`.
 - Блокирующие вопросы: см. раздел «Блокирующие вопросы».
 
@@ -13,7 +13,7 @@
 - [ ] 0. Аудит Frontsmith и проверка маршрута Codex → защитный шлюз.
 - [ ] 1. Контракты, идентификаторы, хранилища и разделение доступа.
 - [ ] 2. Подключение crmkit и интерфейс работы с клиентами.
-- [ ] 3. Privacy Service на основе pii-guard — настоящий pii-guard + NER без Docker проверен, реальный прогон по подписке не выполнен.
+- [x] 3. Privacy Service на основе pii-guard — локальный процесс без Docker, настоящий pii-guard + NER, сквозной прогон по подписке.
 - [ ] 4. Единый LLM-сервис и запрет обходных подключений.
 - [ ] 5. Разбор отчётов и отображение клиентов в офисной панели.
 - [ ] 6. AI-диспетчер для первого выбранного канала.
@@ -39,9 +39,9 @@
 - [x] PHONE_NUMBER проверен на настоящем pii-guard — `+7 916 123-45-67`, `8 916 123 45 67`, `+7(916)1234567`, `89161234567`, с восстановлением
 - [x] Session state проверен с настоящим pii-guard — `pii-guard-state/1` в privacy SQLite, изоляция сессий, восстановление только своей сессии
 - [x] Двухходовый тест с настоящим pii-guard пройден — тот же PERSON-тег во втором сообщении, «Иван»/«Петров» отсутствуют, restore локальный
-- [ ] Codex App Server работает через ChatGPT subscription — нужен `npm run codex-host:login`
-- [ ] Полный сквозной smoke-test пройден
-- [ ] Trusted tool → Privacy Service → Codex проверен — на настоящем `codex app-server` с синтетической моделью; с подпиской не выполнялся
+- [x] Codex App Server работает через ChatGPT subscription — отдельный `CODEX_HOME`, вход ChatGPT, API key не использовался
+- [x] Полный сквозной smoke-test пройден — `npm run smoke:codex-host`: codex-cli 0.163.0-alpha.11.2, stdio, 12 PASS; исходных ПД в `turn/start` и tool result нет
+- [x] Trusted tool → Privacy Service → Codex проверен — `get_test_customer` в smoke
 - [x] Fail-closed проверен на настоящем Privacy Service — ошибка pii-guard на `prepare`, остановленный процесс, незагруженные веса NER, недоступная SQLite: `turn/start` = 0 (`npm run test:privacy`)
 - [x] User input и tool output очищаются до модели, mapping недоступен Codex, restore только после `turn/completed` — PoC 22.10.2026
 
