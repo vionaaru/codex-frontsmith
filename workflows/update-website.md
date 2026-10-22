@@ -11,11 +11,13 @@
 
 ## Файлы сайта
 
+Корневой `website/` содержит код и учебный шаблон в Git. Рабочие контакты и цены формируются только в `.frontsmith/business/website/`. Команда обновления не переписывает исходный шаблон. Для изменения дизайна сначала измените шаблон, затем сформируйте рабочую копию повторно.
+
 ```text
-website/index.html
-website/styles.css
-website/script.js
-website/frontsmith-mark.svg
+.frontsmith/business/website/index.html
+.frontsmith/business/website/styles.css
+.frontsmith/business/website/script.js
+.frontsmith/business/website/frontsmith-mark.svg
 ```
 
 ## Проверка оператором

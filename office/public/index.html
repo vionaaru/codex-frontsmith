@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Офис автосервиса · Frontsmith</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержимому</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#/overview" aria-label="Обзор офиса">
+        <svg class="brand-logo" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" fill="#ffad45"/><path d="M9 26h22M12 26l3-9h10l3 9M14 30a2 2 0 1 0 0-.1M26 30a2 2 0 1 0 0-.1" fill="none" stroke="#111820" stroke-width="2.4" stroke-linecap="square"/></svg>
+        <span class="brand-text"><strong data-business-name>Офис</strong><small>Офис · только чтение</small></span>
+      </a>
+      <div class="sync">
+        <span class="sync-dot" data-sync-dot aria-hidden="true"></span>
+        <span data-sync-text>Загрузка…</span>
+        <button class="sync-button" type="button" data-refresh>Обновить</button>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Разделы офиса">
+      <a href="#/overview" data-nav="overview">Обзор</a>
+      <a href="#/customers" data-nav="customers">Клиенты и авто</a>
+      <a href="#/work" data-nav="work">Обращения и заказы</a>
+      <a href="#/results" data-nav="results">Выполненные работы</a>
+      <a href="#/tasks" data-nav="tasks">Задачи</a>
+      <a href="#/services" data-nav="services">Услуги и цены</a>
+      <a href="#/schedule" data-nav="schedule">Расписание</a>
+    </nav>
+  </header>
+
+  <div class="notices">
+    <p class="notice notice-demo" data-demo-notice hidden>
+      <strong>Учебные данные</strong>
+      <span>Записи с пометкой «учебная» придуманы для обучения и не являются реальными клиентами. Цены демонстрационные</span>
+    </p>
+    <p class="notice">
+      <strong>Booking Flow не синхронизируется</strong>
+      <span>Записи из внешнего сервиса онлайн-записи сюда не попадают. Изменения вносятся через Codex и команды <code>npm run office</code></span>
+    </p>
+    <p class="notice notice-error" data-sync-error role="alert" hidden></p>
+  </div>
+
+  <main id="main" class="main" tabindex="-1">
+    <noscript><p class="empty">Для панели нужен JavaScript</p></noscript>
+  </main>
+</body>
+</html>

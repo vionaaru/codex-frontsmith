@@ -1,14 +1,17 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { businessPath, businessRoot } from "./paths.mjs";
+import { businessPath, businessRoot, businessWebsiteRoot, websiteSourceRoot } from "./paths.mjs";
+import { loadServiceCatalog } from "../../office/lib/catalog.mjs";
 
-const websiteRoot = "website";
 const websiteFiles = ["index.html"];
 
 export async function renderWebsite() {
   const root = businessRoot();
+  const websiteRoot = businessWebsiteRoot();
   const profilePath = businessPath("business.json");
-  const business = JSON.parse(await readRequiredFile(profilePath, missingInstanceMessage(profilePath)));
+  const profile = JSON.parse(await readRequiredFile(profilePath, missingInstanceMessage(profilePath)));
+  const catalog = await loadServiceCatalog(profile);
+  const business = { ...profile, services: catalog.services };
   const activityDir = path.join(root, "activity");
   const launchDir = path.join(root, "launch");
   const replacements = buildReplacements(business);
@@ -17,16 +20,25 @@ export async function renderWebsite() {
   await mkdir(activityDir, { recursive: true });
   await mkdir(launchDir, { recursive: true });
 
-  await updateWebsiteFiles(replacements);
+  await cp(websiteSourceRoot, websiteRoot, { recursive: true, force: false, errorOnExist: false });
+  // HTML читается из шаблона при каждом обновлении; рабочие значения записываются только в приватную копию.
+  for (const file of websiteFiles) {
+    const current = await readWebsiteFile(file);
+    await writeWebsiteFile(path.join(websiteRoot, file), updateWebsiteFile(current, replacements));
+  }
+  for (const file of ["styles.css", "script.js"]) {
+    await cp(path.join(websiteSourceRoot, file), path.join(websiteRoot, file));
+  }
 
   const reviewPath = path.join(launchDir, "website-review.md");
   const activityPath = path.join(activityDir, "latest-website-update.md");
 
-  await writeFile(reviewPath, websiteReview(business, { root }));
+  await writeFile(reviewPath, websiteReview(business, { root, catalog }));
   await writeFile(activityPath, latestWebsiteUpdate(business, { root }));
 
   return {
-    business,
+    business: profile,
+    catalog,
     websiteDir: websiteRoot,
     reviewPath,
     activityPath,
@@ -62,7 +74,7 @@ function buildReplacements(business) {
     .join("");
 
   return {
-    seoTitle: escapeHtml(`${business.businessName} | ${business.businessType || "Услуги"}`),
+    seoTitle: escapeHtml(business.seoTitle || `${business.businessName} | ${business.businessType || "Услуги"}`),
     seoDescription: escapeHtml(seoDescription(business)),
     canonicalUrl: escapeHtml(websiteUrl),
     ogTitle: escapeHtml(`${business.businessName} | ${displayLine(business.tagline)}`),
@@ -70,6 +82,13 @@ function buildReplacements(business) {
     ogImageAlt: escapeHtml(business.media?.heroImageAlt || `Услуги ${business.businessName}`),
     businessName: escapeHtml(business.businessName),
     businessType: escapeHtml(business.businessType),
+    logoImage: escapeHtml(business.media?.logoImage || "/avtoritm-mark.svg"),
+    brandAriaLabel: escapeHtml(`${business.businessName} — в начало страницы`),
+    telegramUrl: escapeHtml(business.contact.telegramUrl || "#contact"),
+    whatsappUrl: escapeHtml(business.contact.whatsappUrl || "#contact"),
+    mapsUrl: escapeHtml(business.contact.mapsUrl || "#contact"),
+    reviewsUrl: escapeHtml(business.contact.mapsUrl ? `${business.contact.mapsUrl.replace(/\/+$/, "")}/reviews/` : "#contact"),
+    directionsText: escapeHtml(`${business.contact.city}, ${business.contact.address || "Адрес уточняйте перед визитом"}. Перед первым визитом уточните въезд и расположение бокса.`),
     brandTagline: escapeHtml(displayLine(business.brandTagline ?? business.businessType ?? "Услуги")),
     tagline: escapeHtml(displayLine(business.tagline)),
     summary: escapeHtml(displayLine(business.summary)),
@@ -210,6 +229,7 @@ function absoluteUrl(base, value) {
 }
 
 function seoDescription(business) {
+  if (business.seoDescription) return business.seoDescription;
   return `${displayLine(business.summary)} от ${business.businessName}: понятный объём работ, практические рекомендации, сроки и удобная связь`;
 }
 
@@ -218,6 +238,10 @@ function updateWebsiteFile(content, replacements) {
     .replace(replacePattern("html"), (match, open, tag, key, inner, close) => {
       return `${open}${replacementFor(replacements, key)}${close}`;
     });
+}
+
+export function renderWebsiteHtml(content, business) {
+  return updateWebsiteFile(content, buildReplacements(business));
 }
 
 function replaceMarkedContent(content, type, replacements) {
@@ -277,7 +301,7 @@ function assertHasMarkers(content, file) {
 }
 
 async function readWebsiteFile(file) {
-  const content = await readRequiredFile(path.join(websiteRoot, file));
+  const content = await readRequiredFile(path.join(websiteSourceRoot, file));
   assertNoLegacyTokens(content, file);
   assertHasMarkers(content, file);
   return content;
@@ -285,14 +309,7 @@ async function readWebsiteFile(file) {
 
 async function writeWebsiteFile(file, content) {
   assertNoLegacyTokens(content, file);
-  await writeFile(path.join(websiteRoot, file), content);
-}
-
-async function updateWebsiteFiles(replacements) {
-  for (const file of websiteFiles) {
-    const current = await readWebsiteFile(file);
-    await writeWebsiteFile(file, updateWebsiteFile(current, replacements));
-  }
+  await writeFile(file, content);
 }
 
 function serviceCards(services, business) {
@@ -369,7 +386,7 @@ function displayLine(value) {
   return String(value).trim().replace(/[.!?]+$/g, "");
 }
 
-function websiteReview(profile, { root }) {
+function websiteReview(profile, { root, catalog }) {
   return `# Проверка сайта
 
 Бизнес: ${profile.businessName}
@@ -382,7 +399,7 @@ function websiteReview(profile, { root }) {
 
 ## Изменённые файлы
 
-- website/index.html
+- ${businessDisplayPath(root, "website", "index.html")}
 - ${businessDisplayPath(root, "launch", "website-review.md")}
 - ${businessDisplayPath(root, "activity", "latest-website-update.md")}
 
@@ -394,12 +411,14 @@ function websiteReview(profile, { root }) {
 - Email: ${profile.contact.email}
 - Территория обслуживания: ${profile.serviceAreas.join(", ")}
 - Услуги: ${profile.services.map((service) => service.name).join(", ")}
+- Источник прайса: ${catalog.note}
 - Тон общения: ${profile.brandVoice}
 
 ## Связь профиля и сайта
 
 - Исходный профиль: ${businessDisplayPath(root, "business.json")}
-- Исходники публичного сайта: website/index.html
+- Шаблон сайта: website/index.html (код в Git)
+- Рабочий сайт: ${businessDisplayPath(root, "website", "index.html")} (данные вне Git)
 - Проверка запуска: ${businessDisplayPath(root, "launch", "website-review.md")}
 - Запись действия: ${businessDisplayPath(root, "activity", "latest-website-update.md")}
 
@@ -416,7 +435,7 @@ function websiteReview(profile, { root }) {
 
 1. Выполните \`npm run preview:website\`
 2. Откройте адрес локального предпросмотра
-3. Проверьте \`/website\` в сборке панели демонстрации для проверки полного сценария
+3. Учебный \`/website\` в сборке панели демонстрации не содержит приватных данных бизнеса
 
 ## Препятствия публикации
 
@@ -427,6 +446,7 @@ function websiteReview(profile, { root }) {
 
 ## Материалы
 
+- Рабочий сайт: ${businessDisplayPath(root, "website", "index.html")}
 - Исходники сайта: website/index.html
 - Стили сайта: website/styles.css
 - Скрипт сайта: website/script.js
@@ -453,7 +473,7 @@ function latestWebsiteUpdate(profile, { root }) {
 
 ## Изменённые файлы
 
-- website/index.html
+- ${businessDisplayPath(root, "website", "index.html")}
 - ${businessDisplayPath(root, "launch", "website-review.md")}
 - ${businessDisplayPath(root, "activity", "latest-website-update.md")}
 
@@ -463,7 +483,7 @@ function latestWebsiteUpdate(profile, { root }) {
 - Услуги и территория обслуживания
 - Тексты главной страницы и призывы к действию
 - SEO, canonical и метаданные Open Graph и Twitter
-- Форма заявки по-прежнему подключена к api/contact.js
+- Выбранные способы связи и переход к записи
 
 ## Перед публикацией
 
@@ -474,7 +494,7 @@ function latestWebsiteUpdate(profile, { root }) {
 
 ## Материалы
 
-- Исходники сайта: website/index.html
+- Рабочий сайт: ${businessDisplayPath(root, "website", "index.html")}
 - Материалы проверки: ${businessDisplayPath(root, "launch", "website-review.md")}
 - Запись действия: ${businessDisplayPath(root, "activity", "latest-website-update.md")}
 

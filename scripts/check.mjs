@@ -38,6 +38,21 @@ const requiredFiles = [
   "scripts/lib/render-website.mjs",
   "tests/regression.mjs",
   "tests/launch-readiness.mjs",
+  "tests/office.mjs",
+  "scripts/office.mjs",
+  "office/README.md",
+  "office/server.mjs",
+  "office/db/migrations/001_initial.sql",
+  "office/lib/db.mjs",
+  "office/lib/domain.mjs",
+  "office/lib/repositories.mjs",
+  "office/lib/operations.mjs",
+  "office/lib/import.mjs",
+  "office/lib/catalog.mjs",
+  "office/public/index.html",
+  "office/public/styles.css",
+  "office/public/app.js",
+  "package-lock.json",
   "website/index.html",
   "website/styles.css",
   "website/script.js",
@@ -110,7 +125,6 @@ const forbiddenText = [
   oldBusinessInstancePhrase,
   oldLocalInstancePhrase,
   oldFrontsmithInstancesPath,
-  oldBusinessWebsitePath,
   oldGeneratedWebsitePhrase,
   oldStarterWebsitePhrase,
   oldWebsiteOutputPhrase,
@@ -185,6 +199,12 @@ for (const file of ["website/index.html"]) {
 }
 
 const trackedFiles = await listTrackedFiles();
+const { stdout: committedPaths } = await execFileAsync("git", ["ls-files", "--cached"]);
+for (const file of committedPaths.split("\n").filter(Boolean)) {
+  if (file.startsWith(".frontsmith/") || /\.(?:sqlite3?|db)(?:-(?:wal|shm|journal))?$/i.test(file)) {
+    throw new Error(`Рабочие данные не должны отслеживаться Git: ${file}`);
+  }
+}
 for (const file of trackedFiles) {
   if (!shouldScan(file)) continue;
   if (!(await exists(file))) continue;

@@ -1,6 +1,14 @@
 .DS_Store
 node_modules/
 .frontsmith/
+# Рабочие SQLite-файлы и копии не должны попасть в Git даже при ошибочном расположении
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-wal
+*.db-shm
 codex_docs/
 .env
 .env.*

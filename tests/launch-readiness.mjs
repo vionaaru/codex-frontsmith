@@ -42,9 +42,16 @@ const requiredScripts = {
   "preview:demo": "node scripts/preview-demo.mjs",
   "preview:website": "node scripts/preview-website.mjs",
   "deploy:check": "node scripts/build-demo.mjs --quiet && node scripts/deploy-check.mjs",
-  test: "npm run test:launch && npm run test:regression",
+  "office:init": "node scripts/office.mjs init",
+  "office:import": "node scripts/office.mjs import",
+  "office:seed": "node scripts/office.mjs seed",
+  "office:backup": "node scripts/office.mjs backup",
+  "office:restore": "node scripts/office.mjs restore",
+  "office:serve": "node office/server.mjs",
+  test: "npm run test:launch && npm run test:regression && npm run test:office",
   "test:launch": "node tests/launch-readiness.mjs",
-  "test:regression": "node tests/regression.mjs"
+  "test:regression": "node tests/regression.mjs",
+  "test:office": "node tests/office.mjs && node tests/work-reports.mjs"
 };
 
 const requiredFiles = [

@@ -100,6 +100,7 @@ await mkdir(path.join(target, "estimates"), { recursive: true });
 await mkdir(path.join(target, "extensions"), { recursive: true });
 await mkdir(path.join(target, "launch"), { recursive: true });
 await mkdir(path.join(target, "settings"), { recursive: true });
+await mkdir(path.join(target, "files"), { recursive: true });
 
 await writeFile(
   path.join(target, "business.json"),
@@ -139,7 +140,7 @@ console.log(`Каталог рабочих данных: ${target}`);
 console.log(
   skipWebsite
     ? "Далее: npm run update:website"
-    : "Сайт готов: website/"
+    : "Рабочий сайт готов в приватном каталоге данных: website/ внутри каталога бизнеса"
 );
 
 function integrationSettings(profile) {

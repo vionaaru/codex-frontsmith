@@ -4,12 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import { runInNewContext } from "node:vm";
 
-const websiteRoot = "website";
+const websiteSourceRoot = "website";
 const websiteFiles = ["index.html", "styles.css", "script.js", "frontsmith-mark.svg", "favicon.svg"];
 const testPort = "4183";
 const demoPort = "4184";
 const testRoot = await mkdtemp(path.join(os.tmpdir(), "frontsmith-regression-"));
 const root = path.join(testRoot, "business");
+const websiteRoot = path.join(root, "website");
 const testEnv = {
   ...process.env,
   FRONTSMITH_BUSINESS_ROOT: root,
@@ -27,11 +28,12 @@ const deployCheckEnv = {
 const originalWebsite = new Map();
 
 for (const file of websiteFiles) {
-  originalWebsite.set(file, await readFile(path.join(websiteRoot, file), "utf8"));
+  originalWebsite.set(file, await readFile(path.join(websiteSourceRoot, file), "utf8"));
 }
 
 try {
   await run("npm", ["run", "check"]);
+  await runRejected(process.execPath, ["--input-type=module", "-e", "import { businessRoot } from './scripts/lib/paths.mjs'; businessRoot();"], { ...testEnv, FRONTSMITH_BUSINESS_ROOT: "website" });
   await run("npm", ["run", "bootstrap"]);
   await assertExists(path.join(root, "business.json"));
   await assertExists(path.join(websiteRoot, "index.html"));
@@ -65,11 +67,11 @@ try {
   const malformedProfilePath = path.join(testRoot, "invalid-booking-profile.json");
   await writeFile(malformedProfilePath, JSON.stringify({ ...defaultProfile, bookingUrl: "/booking" }));
   const publicFilesBefore = new Map();
-  for (const file of websiteFiles) publicFilesBefore.set(file, await readFile(path.join(websiteRoot, file), "utf8"));
+  for (const file of websiteFiles) publicFilesBefore.set(file, await readFile(path.join(websiteSourceRoot, file), "utf8"));
   await runRejected("npm", ["run", "bootstrap", "--", "--profile", malformedProfilePath]);
   assertEqual(await readFile(path.join(root, "business.json"), "utf8"), defaultProfileBefore, "неверный адрес записи не заменяет приватный профиль");
   for (const [file, before] of publicFilesBefore) {
-    assertEqual(await readFile(path.join(websiteRoot, file), "utf8"), before, "неверный адрес записи не меняет публичный файл " + file);
+    assertEqual(await readFile(path.join(websiteSourceRoot, file), "utf8"), before, "неверный адрес записи не меняет публичный файл " + file);
   }
 
   const legacyProfile = {
@@ -353,6 +355,8 @@ try {
   assertIncludes(demoHomepage, "https://github.com/vionaaru/codex-frontsmith", "demo GitHub setup path");
 
   const builtWebsite = await readFile(path.join("dist", "frontsmith-demo", "website", "index.html"), "utf8");
+  assertDoesNotInclude(builtWebsite, "https://avtoritm.example", "сборка демонстрации не содержит URL приватного профиля");
+  assertDoesNotInclude(builtWebsite, "service@avtoritm.example", "сборка демонстрации не содержит контакты приватного профиля");
   assertIncludes(builtWebsite, 'href="/website/styles.css"', "built website stylesheet path");
   assertIncludes(builtWebsite, 'src="/website/script.js"', "built website script path");
   assertDoesNotInclude(builtWebsite, 'href="./styles.css"', "built website relative stylesheet path");
@@ -391,6 +395,11 @@ try {
       }
     }
 
+    const privatePage = await (await fetch(`http://127.0.0.1:${testPort}/`)).text();
+    assertIncludes(privatePage, "https://avtoritm.example", "предпросмотр читает именно приватный рабочий сайт");
+    const privateDb = await fetch(`http://127.0.0.1:${testPort}/office.sqlite`);
+    assertEqual(privateDb.status, 404, "предпросмотр сайта не раскрывает базу данных");
+
     const invalidContact = await fetch(`http://127.0.0.1:${testPort}/api/contact`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -420,7 +429,9 @@ try {
 
   console.log("Регрессионные тесты Frontsmith пройдены.");
 } finally {
-  await restoreWebsite();
+  for (const [file, before] of originalWebsite) {
+    assertEqual(await readFile(path.join(websiteSourceRoot, file), "utf8"), before, "рабочие операции не изменяют шаблон сайта " + file);
+  }
   await rm(testRoot, { recursive: true, force: true });
 }
 
@@ -528,12 +539,6 @@ function assertServiceFilters(html, source, profile) {
     assertEqual(cards.filter(card => !card.hidden).length, expected, "фильтр показывает только свою категорию " + category);
     assertEqual(button["aria-pressed"], "true", "активный фильтр обозначен для доступности");
     assertEqual(status.textContent, `Показано услуг: ${expected}`, "число услуг после фильтрации");
-  }
-}
-
-async function restoreWebsite() {
-  for (const [file, content] of originalWebsite.entries()) {
-    await writeFile(path.join(websiteRoot, file), content);
   }
 }
 

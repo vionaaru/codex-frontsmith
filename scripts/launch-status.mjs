@@ -1,14 +1,14 @@
 import { access, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { businessPath, businessRoot } from "./lib/paths.mjs";
+import { businessPath, businessRoot, businessWebsiteRoot } from "./lib/paths.mjs";
 
 const root = businessRoot();
 const business = await readBusinessProfile();
 const checks = [
   ["Профиль бизнеса", path.join(root, "business.json")],
-  ["Одностраничный сайт", path.join("website", "index.html")],
-  ["Стили сайта", path.join("website", "styles.css")],
-  ["Интерактивные элементы сайта", path.join("website", "script.js")],
+  ["Одностраничный сайт", path.join(businessWebsiteRoot(), "index.html")],
+  ["Стили сайта", path.join(businessWebsiteRoot(), "styles.css")],
+  ["Интерактивные элементы сайта", path.join(businessWebsiteRoot(), "script.js")],
   ["Обработчик формы заявки", path.join("api", "contact.js")],
   ["Настройки интеграций", path.join(root, "settings", "integrations.md")],
   ["Работа с клиентами", path.join(root, "customer-inquiries", "README.md")],

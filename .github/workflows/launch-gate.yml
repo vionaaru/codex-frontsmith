@@ -25,7 +25,7 @@ jobs:
           node-version: "20"
 
       - name: Установка зависимостей
-        run: npm install
+        run: npm ci
 
       - name: Проверка состава и содержания
         run: npm run check

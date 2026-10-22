@@ -3,9 +3,11 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { OPTIONS as contactOptions, POST as contactPost } from "../api/contact.js";
+import { previewWebsiteRoot } from "./lib/paths.mjs";
 
 const port = Number(readArg("--port") ?? 4173);
-const root = path.resolve("website");
+const source = process.argv.includes("--source");
+const root = () => path.resolve(previewWebsiteRoot({ source }));
 
 function readArg(name) {
   const index = process.argv.indexOf(name);
@@ -33,9 +35,10 @@ const server = createServer(async (req, res) => {
   }
 
   const requested = pathname === "/" ? "/index.html" : pathname;
-  const filePath = path.join(root, requested);
+  const activeRoot = root();
+  const filePath = path.join(activeRoot, requested);
 
-  if (!filePath.startsWith(root)) {
+  if (!filePath.startsWith(`${activeRoot}${path.sep}`)) {
     res.writeHead(403);
     res.end("Forbidden");
     return;
@@ -98,7 +101,7 @@ function requestHeaders(req) {
   return headers;
 }
 
-server.listen(port, () => {
+server.listen(port, "127.0.0.1", () => {
   console.log(`Предпросмотр сайта Frontsmith: http://localhost:${port}`);
-  console.log(`Каталог сайта: ${root}`);
+  console.log(`Каталог сайта: ${root()}`);
 });

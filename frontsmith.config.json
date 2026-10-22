@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "defaultBlueprint": "auto-service",
   "defaultWorkspace": ".frontsmith/business",
+  "privateWebsite": ".frontsmith/business/website",
   "primaryInterface": "codex",
   "deployableOutput": "website",
   "defaultCapabilities": [

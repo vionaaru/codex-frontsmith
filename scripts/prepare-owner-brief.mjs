@@ -1,6 +1,6 @@
 import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { businessPath, businessRoot } from "./lib/paths.mjs";
+import { businessPath, businessRoot, businessWebsiteRoot } from "./lib/paths.mjs";
 
 const root = businessRoot();
 const business = await readBusinessProfile();
@@ -21,7 +21,7 @@ async function ownerBrief() {
     replyDrafts,
     estimateDrafts
   ] = await Promise.all([
-    exists(path.join("website", "index.html")),
+    exists(path.join(businessWebsiteRoot(), "index.html")),
     readOptional(businessPath("launch", "website-review.md")),
     readOptional(businessPath("launch", "launch-status.md")),
     readOptional(businessPath("settings", "integrations.md")),
@@ -44,7 +44,7 @@ async function ownerBrief() {
 
   const changed = [
     `Загружен профиль бизнеса ${business.businessName}`,
-    websiteReady ? "Исходники сайта находятся в `website/index.html`" : "Исходники сайта отсутствуют",
+    websiteReady ? "Рабочий сайт находится в приватном каталоге данных, исходный шаблон — в `website/`" : "Рабочий сайт нужно сформировать через npm run update:website",
     websiteReview ? `Материалы проверки сайта: \`${displayPath(businessPath("launch", "website-review.md"))}\`` : null,
     hasLaunchStatus ? `Статус запуска: \`${displayPath(businessPath("launch", "launch-status.md"))}\`` : null,
     replyCount > 0 ? `Черновиков ответов для проверки: ${replyCount}` : null,
