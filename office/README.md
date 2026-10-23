@@ -1,17 +1,18 @@
 # Офис: локальная база и панель
 
-Учёт одного автосервиса на этом компьютере: клиенты, автомобили, обращения, заказы работ, записи на время, задачи, каталог услуг и журнал действий. Панель только показывает состояние; изменения вносятся через Codex и узкие CLI-команды.
+Учёт одного автосервиса на этом компьютере: клиенты, автомобили, обращения, заказы работ, записи на время, задачи, каталог услуг и журнал действий. Бизнес-данные панель только показывает; в панели создаются и редактируются карточки клиентов, остальное меняется через Codex и узкие CLI-команды.
 
-Это не CRM и не облачный сервис. Оплаты, склад, бухгалтерия, роли и синхронизация с Booking Flow не реализованы.
+Контакты клиентов (имя, телефон, email, заметки, теги) хранит встроенный CRM — crmkit, через универсальный Customer Module (`office/customers/`). В офисной базе клиент — только `client_id` (`customers.id`), на который ссылаются бизнес-записи. Подробности — раздел 8.4 `docs/architecture/privacy-crm-integration.md`. Оплаты, склад, бухгалтерия, роли и синхронизация с Booking Flow не реализованы.
 
 ## Быстрый старт
 
 ```bash
 npm install
+npm run crm:bootstrap    # один раз: встроенный CRM (crmkit v0.9.1, без Go и Docker)
 npm run office:init      # создать базу или применить новые миграции, обновить проекцию профиля
 npm run office:import    # импортировать каталог услуг и demo-inquiry.json из файлов
 npm run office:seed      # необязательно: учебный набор клиентов, заказов, задач и записей
-npm run office:serve     # панель: http://127.0.0.1:4180
+npm run office:serve     # панель: http://127.0.0.1:4180, crmkit запускается автоматически
 ```
 
 Все команды можно повторять: повторный запуск ничего не удаляет, не перезаписывает и не дублирует.
@@ -28,6 +29,7 @@ npm run office:serve     # панель: http://127.0.0.1:4180
 | Копии | `.frontsmith/business/backups/` | нет |
 | Профиль бизнеса | `.frontsmith/business/business.json` | нет |
 | Схема | `office/db/migrations/*.sql` | да |
+| Контакты клиентов (CRM) | `<data-root>/crm/` вне репозитория и рабочей области Codex | нет |
 
 Путь к данным меняет `FRONTSMITH_BUSINESS_ROOT`: разрешён внешний каталог либо подкаталог `.frontsmith/`. Базу хранить на постоянном локальном диске, не в сетевой папке и не в serverless-окружении. Путь `.frontsmith/business/office.sqlite` сохранён для совместимости.
 
@@ -150,8 +152,9 @@ activity_events → entity_type + entity_id (без FK, журнал не уда
 
 - VIN уникален и хранится в канонической записи (17 заглавных символов без I, O, Q, проверка триггером). Принимается и хвост VIN из 5–16 символов
 - `vehicles.plate_key` — госномер без пробелов и дефисов, кириллица номерного алфавита заменена латиницей. Номер не уникален
-- `customers.phone_key` — цифры телефона, российский номер приведён к `7XXXXXXXXXX`. Телефон не уникален
-- Ключи — генерируемые колонки с индексами: старые записи получают их без переписывания данных. Правила продублированы в `office/lib/domain.mjs`, тест сверяет SQL и JS
+- Телефон сверяет CustomerProvider по нормализованному `+7XXXXXXXXXX` в CRM; в офисной базе телефона и его ключа нет. Телефон не уникален
+- Ключ госномера — генерируемая колонка с индексом. Правило продублировано в `office/lib/domain.mjs`, тест сверяет SQL и JS
+- Вывод `match` содержит `client_id` и автомобили, без контактов клиента
 
 | `verdict` | Что делать |
 | --- | --- |
@@ -165,8 +168,10 @@ activity_events → entity_type + entity_id (без FK, журнал не уда
 
 ```bash
 npm run office -- help
-npm run office -- list customers --q Ирина
-npm run office -- customer:add --name "Иван" --phone "+7 900 000-00-00"
+npm run office -- list customers --q Ирина --contacts   # без --contacts — только client_id
+npm run office -- customer:add --name "Иван" --phone "+7 900 000-00-00"   # контакт уходит в CRM
+npm run office -- customer:update --id <ID> --phone "8 900 000 00 01"
+npm run crm:migrate-customers -- --dry-run                                 # перенос контактов старой модели в CRM
 npm run office -- vehicle:add --customer <ID> --make Kia --model Rio --year 2018
 npm run office -- inquiry:add --customer <ID> --vehicle <ID> --service computer-diagnostics --source phone --description "Горит Check Engine"
 npm run office -- order:create --inquiry <ID> --start "2026-10-15 10:00" --end "2026-10-15 12:00"

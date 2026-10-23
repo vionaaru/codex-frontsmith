@@ -3,16 +3,16 @@
 Опорная записка: [docs/architecture/privacy-crm-integration.md](../architecture/privacy-crm-integration.md).
 
 ## Текущее состояние
-- Текущий этап: 3 закрыт. Privacy Service работает локальным процессом без Docker с настоящим pii-guard + NER; сквозной прогон Privacy → Codex App Server → ChatGPT subscription пройден.
-- Последний принятый результат: Privacy Service без Docker 22.10.2026, результат PASS; до него PoC `services/privacy/` + `services/codex-host/` (PARTIAL), PoC `tools/codex-gateway-poc/` (PASS) и аудит.
-- Следующий шаг: интеграция crmkit и вынос ПД из `office.sqlite`.
+- Текущий этап: 2 закрыт. Универсальный Customer Module на crmkit v0.9.1: контакты в crmkit, в офисной базе только `client_id` и связи; раздел «Клиенты» панели; перенос прежней модели — явной командой.
+- Последний принятый результат: Customer Module 23.10.2026 (`npm test`, `npm run test:crm` на настоящем crmkitd, `npm run smoke:crm-codex` на настоящем pii-guard и Codex по подписке — PASS); до него Privacy Service без Docker (PASS), PoC `services/privacy/` + `services/codex-host/` (PARTIAL), PoC `tools/codex-gateway-poc/` (PASS) и аудит.
+- Следующий шаг: подключить остальные универсальные модули Frontsmith к CustomerProvider и подготовить first-run workflow новой установки; перенос рабочей базы в CRM — только по решению владельца.
 - База интеграции: `main`. Универсальная часть офиса перенесена из `autoservice` коммитом 78145b1; навык `register-auto-work`, дизайн сайта, логотип и ссылка записи T-Max остаются в `autoservice`.
 - Блокирующие вопросы: см. раздел «Блокирующие вопросы».
 
 ## Этапы
 - [ ] 0. Аудит Frontsmith и проверка маршрута Codex → защитный шлюз.
 - [ ] 1. Контракты, идентификаторы, хранилища и разделение доступа.
-- [ ] 2. Подключение crmkit и интерфейс работы с клиентами.
+- [x] 2. Подключение crmkit и интерфейс работы с клиентами — универсальный Customer Module, crmkit v0.9.1 без Docker и Go.
 - [x] 3. Privacy Service на основе pii-guard — локальный процесс без Docker, настоящий pii-guard + NER, сквозной прогон по подписке.
 - [ ] 4. Единый LLM-сервис и запрет обходных подключений.
 - [ ] 5. Разбор отчётов и отображение клиентов в офисной панели.
@@ -32,6 +32,23 @@
 - [ ] Проверен маршрут с реальным upstream — намеренно не выполнялся, сначала нужен способ авторизации шлюза
 - [ ] Проверено, какие файлы вне репозитория Codex читает в режиме `workspace-write` — требуется практическая проверка
 - [ ] Проверено содержимое свободных текстов в базе на реальные персональные данные — требуется отдельная проверка с согласия владельца
+
+### Этап 2: Customer Module на crmkit
+- [x] crmkit автоматически bootstrap-ится без Docker/Go — `npm run crm:bootstrap`: релиз v0.9.1 windows-amd64, SHA-256 зафиксирован и сверен с checksums.txt, `<data-root>/runtime/crmkit/0.9.1/`, повтор ничего не скачивает
+- [x] crmkit запускается Frontsmith автоматически — `ensureCrm` в `office:serve`, CLI и `ai:start`; только 127.0.0.1; `npm run crm:start` для отдельного запуска
+- [x] Реализован универсальный CustomerProvider — `office/customers/contract.mjs`
+- [x] Реализован CrmkitProvider — `office/customers/crmkit-provider.mjs`
+- [x] Frontsmith сохраняет независимый client_id — прежний `customers.id` (UUID), не ID контакта crmkit
+- [x] Реализована provider-link модель — `customer_provider_links`, миграция 004
+- [x] Создание клиента работает через CustomerProvider — идемпотентно по `client_id`, восстановление после сбоя по `custom.frontsmith_client_id`
+- [x] Редактирование клиента работает через CustomerProvider — с версией и 409 при параллельной правке
+- [x] Frontsmith UI имеет список/поиск/карточку/создание/редактирование — проверено в браузере на учебной базе
+- [x] Новые business records используют только client_id — подписи добавляет сервер через `resolveDisplayData`, журнал без имён
+- [x] PII отсутствуют в business storage — новый клиент: 0 совпадений в ячейках и байтах файла; `phone_key` удалён
+- [x] Migration старой customer-модели проверена на fixture — `npm run crm:migrate-customers`, двойник и настоящий crmkitd: тот же client_id, FK целы, ПД 0
+- [x] Trusted CRM tool проходит через Privacy Service — `get_customer_context`, `npm run smoke:crm-codex` PASS
+- [ ] Перенос рабочей `office.sqlite` в CRM — не выполнялся, требует решения владельца
+- [ ] Резервирование business / CRM / privacy state одним согласованным процессом — не реализовано
 
 ### Этап 3: Privacy Service перед Codex App Server
 - [x] Privacy Service запускается с настоящим pii-guard + NER без Docker — `npm run privacy:bootstrap`: uv 0.12.24 → Python 3.11.14 → venv по `requirements.lock` → веса NER c802e8c; `/health ready`, NER=true
@@ -135,9 +152,9 @@
 
 ## Блокирующие вопросы
 1. ~~База интеграции~~ — решено: `main`, универсальная часть `office/` перенесена 22.10.2026. Ветки ещё не опубликованы на GitHub.
-2. Персональные данные уже в офисной базе (`customers.full_name` обязателен). Перенос контактов в CRM означает изменение схемы и очистку свободных текстов и копий; нужно решение владельца о порядке миграции.
+2. Персональные данные уже в рабочей офисной базе. Код переноса готов (`npm run crm:migrate-customers -- --dry-run`, затем `--confirm`); схема 004 при `office:init` отделит контакты в карантин без удаления. Нужно решение владельца о запуске переноса и о судьбе прежних копий в `.frontsmith/business/backups/` (содержат ПД, лежат в рабочей области Codex).
 3. История Codex в `D:\CodexData\.codex` уже содержит сообщения владельца; отдельный `CODEX_HOME` для агентного процесса проверен в PoC, политика очистки основного не решена.
 4. Плагины Codex с внешним доступом (VK, браузеры, Slack, Calendar, computer use) включены в основном `CODEX_HOME`; в изолированном PoC они отключены флагами `[features]`.
-5. ~~Python для pii-guard~~ — решено: управляемый runtime `npm run privacy:bootstrap` (uv, Python, venv в каталоге данных Frontsmith), Docker не нужен. Место crmkit (Go) не решено.
+5. ~~Python для pii-guard~~ — решено: управляемый runtime `npm run privacy:bootstrap` (uv, Python, venv в каталоге данных Frontsmith), Docker не нужен. ~~Место crmkit (Go)~~ — решено: бинарный релиз в `<data-root>/runtime/crmkit/`, база в `<data-root>/crm/`.
 6. ~~Способ авторизации шлюза на upstream~~ — решено: API key запрещён, модельный контур — Codex App Server с подпиской ChatGPT (записка, 11.4).
 7. Текущая `office.sqlite` с ПД недоступна Codex до миграции клиентов в crmkit и очистки базы, копий и свободных текстов.

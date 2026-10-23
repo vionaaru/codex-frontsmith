@@ -51,7 +51,10 @@ const requiredScripts = {
   test: "npm run test:launch && npm run test:regression && npm run test:office && npm run test:codex-host",
   "test:launch": "node tests/launch-readiness.mjs",
   "test:regression": "node tests/regression.mjs",
-  "test:office": "node tests/office.mjs && node tests/work-reports.mjs",
+  "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs",
+  "crm:bootstrap": "node services/crm/bootstrap.mjs",
+  "crm:start": "node services/crm/start.mjs",
+  "crm:migrate-customers": "node scripts/crm-migrate-customers.mjs",
   "test:codex-host": "node tests/codex-host.mjs"
 };
 

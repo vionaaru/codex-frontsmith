@@ -18,7 +18,6 @@ import { spawnSync } from "node:child_process";
 import { CRMKIT, crmPaths, crmkitAsset, freePort, protectDir, provisionCredential, readCredential, runMigrations, startCrmkit, writeConfig } from "./runtime.mjs";
 import { CrmkitClient } from "./client.mjs";
 
-const step = (text) => console.log(`\n▸ ${text}`);
 const fail = (text) => {
   console.error(`\n✗ ${text}`);
   process.exit(1);
@@ -87,24 +86,20 @@ export async function verifyClosedMode(paths) {
 }
 
 export async function bootstrapCrm(paths = crmPaths(), { log = console.log } = {}) {
-  log("
-▸ " + `crmkit ${CRMKIT.tag} (${crmkitAsset().file})`);
+  log(`\n▸ crmkit ${CRMKIT.tag} (${crmkitAsset().file})`);
   const install = await installCrmkit(paths, { log: (text) => log(`  ${text}`) });
   log(install.downloaded ? `  ${install.version}, SHA-256 проверен (зафиксированный и checksums.txt)` : `  уже установлен: ${install.version}`);
 
-  log("
-▸ " + "хранилище CRM");
+  log("\n▸ хранилище CRM");
   protectDir(paths.dataDir);
   log(writeConfig(paths) ? `  конфигурация создана: ${paths.config}` : "  конфигурация уже есть");
   for (const line of runMigrations(paths).filter((text) => /^(current|latest)/.test(text))) log(`  ${line}`);
 
-  log("
-▸ " + "учётные данные доверенного процесса Frontsmith");
+  log("\n▸ учётные данные доверенного процесса Frontsmith");
   const provisioned = await provisionCredential(paths);
   log(provisioned.created ? "  токен получен штатным входом crmkit (local mode, случайный порт)" : "  токен уже есть");
 
-  log("
-▸ " + "проверка обычного режима");
+  log("\n▸ проверка обычного режима");
   const check = await verifyClosedMode(paths);
   if (!check.tokenAccepted) throw new Error("crmkit не принял токен Frontsmith");
   if (check.authRequest !== "email_failed") throw new Error(`обычный режим выдал ответ на /auth/request: ${check.authRequest}`);

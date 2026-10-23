@@ -6,7 +6,7 @@ const state = { meta: null, route: null, results: null, hasData: false, lastOk: 
 
 const categoryLabels = { diagnostics: "Диагностика", maintenance: "Обслуживание", repair: "Ремонт", other: "Другое" };
 const entityLabels = { business: "Профиль", customer: "Клиент", vehicle: "Автомобиль", service: "Услуга", inquiry: "Обращение", work_order: "Заказ", order_item: "Позиция", appointment: "Запись", task: "Задача", database: "База" };
-const eventSources = { cli: "команда CLI", import: "импорт", seed: "учебный набор", migration: "инициализация" };
+const eventSources = { cli: "команда CLI", import: "импорт", seed: "учебный набор", migration: "инициализация", panel: "панель" };
 
 // --- DOM ---
 
