@@ -62,7 +62,8 @@ export function listMigrations() {
     });
 }
 
-export function migrate(db) {
+// upTo — только для тестов совместимости: собрать базу старой версии схемы
+export function migrate(db, { upTo = Infinity } = {}) {
   db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
     version INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -73,7 +74,7 @@ export function migrate(db) {
   const applied = new Map(db.prepare("SELECT version, name, checksum FROM schema_migrations").all().map((row) => [row.version, row]));
   const result = { applied: [], current: [] };
 
-  for (const migration of listMigrations()) {
+  for (const migration of listMigrations().filter((item) => item.version <= upTo)) {
     const existing = applied.get(migration.version);
     if (existing) {
       if (!migration.acceptedChecksums.includes(existing.checksum)) {
@@ -82,11 +83,23 @@ export function migrate(db) {
       result.current.push(migration.name);
       continue;
     }
-    db.transaction(() => {
-      db.exec(migration.sql);
-      db.prepare("INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (?, ?, ?, ?)")
-        .run(migration.version, migration.name, migration.checksum, nowIso());
-    })();
+    // Пересборка таблицы-родителя требует выключенных FK; PRAGMA внутри транзакции не действует.
+    // Целостность проверяется foreign_key_check до фиксации
+    const rebuild = /^-- frontsmith: foreign_keys=off$/m.test(migration.sql);
+    if (rebuild) db.pragma("foreign_keys = OFF");
+    try {
+      db.transaction(() => {
+        db.exec(migration.sql);
+        if (rebuild) {
+          const problems = db.pragma("foreign_key_check");
+          if (problems.length) throw new Error(`Миграция ${migration.name} нарушает внешние ключи: ${JSON.stringify(problems.slice(0, 5))}`);
+        }
+        db.prepare("INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (?, ?, ?, ?)")
+          .run(migration.version, migration.name, migration.checksum, nowIso());
+      })();
+    } finally {
+      if (rebuild) db.pragma("foreign_keys = ON");
+    }
     result.applied.push(migration.name);
   }
 

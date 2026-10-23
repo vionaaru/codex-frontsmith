@@ -3,6 +3,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { businessPath } from "../../scripts/lib/paths.mjs";
+import { getIdentity } from "../customers/identity.mjs";
 import { stableId, zonedDayRange } from "./domain.mjs";
 import { insertEvent } from "./repositories.mjs";
 import {
@@ -10,7 +11,6 @@ import {
   addVehicle,
   createAppointment,
   createContext,
-  createCustomer,
   createInquiry,
   createTask,
   createWorkOrder,
@@ -108,8 +108,9 @@ export function importCatalog(db, profile) {
   return result;
 }
 
-// Синтетическое обращение из customer-inquiries/demo-inquiry.json. Markdown-черновики остаются файлами
-export async function importDemoInquiryFile(db) {
+// Синтетическое обращение из customer-inquiries/demo-inquiry.json. Markdown-черновики остаются файлами.
+// Контакты клиента уходят в CustomerProvider, в офисной базе остаётся client_id
+export async function importDemoInquiryFile(db, { customers } = {}) {
   const file = businessPath("customer-inquiries", "demo-inquiry.json");
   if (!existsSync(file)) return { status: "missing", file };
   const data = JSON.parse(await readFile(file, "utf8"));
@@ -120,16 +121,20 @@ export async function importDemoInquiryFile(db) {
   if (existing) return { status: "existing", file, inquiryId: existing.id };
 
   const isDemo = data.demo === true;
+  if (!customers) throw new Error("Импорт обращения требует CustomerProvider");
   const ctx = createContext(db, { actor: "импорт файла", source: "import" });
   const ids = {
     customer: stableId("file-customer", externalId),
     vehicle: stableId("file-vehicle", externalId),
     inquiry: stableId("file-inquiry", externalId)
   };
+  if (!getIdentity(db, ids.customer)) {
+    await customers.createCustomer(
+      { displayName: data.customer?.name ?? null, phone: data.customer?.phone ?? null, email: data.customer?.email ?? null, notes: data.note ?? null },
+      { clientId: ids.customer, isDemo, allowSharedPhone: true, actor: "импорт файла", source: "import" }
+    );
+  }
   db.transaction(() => {
-    if (!db.prepare("SELECT 1 FROM customers WHERE id = ?").get(ids.customer)) {
-      createCustomer(ctx, { id: ids.customer, fullName: data.customer?.name, email: data.customer?.email, phone: data.customer?.phone, note: data.note, isDemo });
-    }
     const hasVehicle = Boolean(data.vehicle?.make);
     if (hasVehicle && !db.prepare("SELECT 1 FROM vehicles WHERE id = ?").get(ids.vehicle)) {
       addVehicle(ctx, { id: ids.vehicle, customerId: ids.customer, make: data.vehicle.make, model: data.vehicle.model, year: data.vehicle.year, mileageKm: data.vehicle.mileageKm, isDemo });
@@ -153,7 +158,19 @@ export async function importDemoInquiryFile(db) {
 
 const demoActor = "учебный набор";
 
-export function seedDemoData(db, { now = new Date() } = {}) {
+const demoCustomers = {
+  irina: ["Демо-клиент Ирина", "+7 (000) 000-00-11"],
+  sergey: ["Демо-клиент Сергей", "+7 (000) 000-00-22"],
+  marina: ["Демо-клиент Марина", null, "Предпочитает связь в мессенджере"],
+  oleg: ["Демо-клиент Олег", "+7 (000) 000-00-44"],
+  pavel: ["Демо-клиент Павел", "+7 (000) 000-00-55"]
+};
+const scenarioCustomer = { brakes: "irina", oil: "sergey", aircon: "marina", tires: "oleg", suspension: "pavel" };
+// Сценарий уже создан, если есть его автомобиль
+const scenarioMarker = { brakes: "irina-solaris", oil: "sergey-camry", aircon: "marina-polo", tires: "oleg-vesta", suspension: "pavel-octavia" };
+
+export async function seedDemoData(db, { now = new Date(), customers } = {}) {
+  if (!customers) throw new Error("Учебный набор требует CustomerProvider");
   const services = new Set(db.prepare("SELECT code FROM services").all().map((row) => row.code));
   const required = ["brake-pads", "oil-service", "air-conditioning", "tire-service", "suspension-diagnostics", "wheel-alignment", "computer-diagnostics"];
   const missing = required.filter((code) => !services.has(code));
@@ -171,9 +188,16 @@ export function seedDemoData(db, { now = new Date() } = {}) {
   const exists = (table, key) => Boolean(db.prepare(`SELECT 1 FROM ${table} WHERE id = ?`).get(id(key)));
   const result = { created: [], skipped: [] };
 
+  // Контакты учебных клиентов — в CRM до транзакции офиса. Повтор находит тот же контакт по client_id
+  for (const [scenario, key] of Object.entries(scenarioCustomer)) {
+    if (exists("vehicles", scenarioMarker[scenario]) || getIdentity(db, id(key))) continue;
+    const [displayName, phone, note] = demoCustomers[key];
+    await customers.createCustomer({ displayName, phone, notes: note ?? "Учебная запись, не реальный клиент" },
+      { clientId: id(key), isDemo: true, allowSharedPhone: true, actor: demoActor, source: "seed" });
+  }
+
   const scenarios = [
     ["brakes", () => {
-      customer("irina", "Демо-клиент Ирина", "+7 (000) 000-00-11");
       vehicle("irina-solaris", "irina", { make: "Hyundai", model: "Solaris", year: 2017, mileageKm: 128000, plate: "Х000ХХ 00" });
       inquiry("irina-brakes", "irina", "irina-solaris", "brake-pads", "phone", "Скрип при торможении спереди, усилился за последнюю неделю", 30);
       setInquiryStatus(ctx, { id: id("irina-brakes"), status: "in_progress" });
@@ -187,7 +211,6 @@ export function seedDemoData(db, { now = new Date() } = {}) {
       createTask(ctx, { id: id("task-brakes-parts"), workOrderId: id("order-brakes"), title: "Заказать колодки до вечера", dueAt: at(0, 17), assignee: "Администратор" });
     }],
     ["oil", () => {
-      customer("sergey", "Демо-клиент Сергей", "+7 (000) 000-00-22");
       vehicle("sergey-camry", "sergey", { make: "Toyota", model: "Camry", year: 2019, mileageKm: 61200 });
       inquiry("sergey-oil", "sergey", "sergey-camry", "oil-service", "website", "Плановое ТО на 60 000 км: масло и фильтры", 50);
       createWorkOrder(ctx, { id: id("order-oil"), number: "ДЕМО-0002", inquiryId: id("sergey-oil"), plannedStartAt: at(0, 9), plannedEndAt: at(0, 11), assignee: "Мастер Илья" });
@@ -203,7 +226,6 @@ export function seedDemoData(db, { now = new Date() } = {}) {
       createTask(ctx, { id: id("task-oil-ready"), workOrderId: id("order-oil"), title: "Сообщить клиенту о готовности", dueAt: at(0, 18), assignee: "Администратор" });
     }],
     ["aircon", () => {
-      customer("marina", "Демо-клиент Марина", null, "Предпочитает связь в мессенджере");
       vehicle("marina-polo", "marina", { make: "Volkswagen", model: "Polo", year: 2015 });
       inquiry("marina-ac", "marina", "marina-polo", "air-conditioning", "messenger", "Кондиционер почти не охлаждает салон", 70);
       setInquiryStatus(ctx, { id: id("marina-ac"), status: "waiting_customer", note: "Ждём удобное время визита" });
@@ -211,7 +233,6 @@ export function seedDemoData(db, { now = new Date() } = {}) {
       createTask(ctx, { id: id("task-ac-call"), inquiryId: id("marina-ac"), title: "Уточнить у клиента удобное время", dueAt: at(-1, 13), assignee: "Администратор" });
     }],
     ["tires", () => {
-      customer("oleg", "Демо-клиент Олег", "+7 (000) 000-00-44");
       vehicle("oleg-vesta", "oleg", { make: "Lada", model: "Vesta", year: 2021, mileageKm: 34000 });
       inquiry("oleg-tires", "oleg", "oleg-vesta", "tire-service", "phone", "Сезонная смена шин, свои колёса на дисках", 3);
       setInquiryStatus(ctx, { id: id("oleg-tires"), status: "in_progress" });
@@ -220,7 +241,6 @@ export function seedDemoData(db, { now = new Date() } = {}) {
       setInquiryStatus(ctx, { id: id("oleg-alignment"), status: "closed", note: "Клиент получил ориентир цены, запись не нужна" });
     }],
     ["suspension", () => {
-      customer("pavel", "Демо-клиент Павел", "+7 (000) 000-00-55");
       vehicle("pavel-octavia", "pavel", { make: "Skoda", model: "Octavia", year: 2012, mileageKm: 214000 });
       createWorkOrder(ctx, { id: id("order-suspension"), number: "ДЕМО-0003", customerId: id("pavel"), vehicleId: id("pavel-octavia"), note: "Стук справа на неровностях", assignee: "Мастер Андрей" });
       addOrderItem(ctx, { workOrderId: id("order-suspension"), kind: "service", serviceCode: "suspension-diagnostics" });
@@ -232,7 +252,7 @@ export function seedDemoData(db, { now = new Date() } = {}) {
 
   db.transaction(() => {
     for (const [key, build] of scenarios) {
-      if (exists("customers", { brakes: "irina", oil: "sergey", aircon: "marina", tires: "oleg", suspension: "pavel" }[key])) {
+      if (exists("vehicles", scenarioMarker[key])) {
         result.skipped.push(key);
         continue;
       }
@@ -247,9 +267,6 @@ export function seedDemoData(db, { now = new Date() } = {}) {
   })();
   return result;
 
-  function customer(key, fullName, phone, note) {
-    createCustomer(ctx, { id: id(key), fullName, phone, note: note ?? "Учебная запись, не реальный клиент", isDemo: true });
-  }
   function vehicle(key, customerKey, data) {
     addVehicle(ctx, { id: id(key), customerId: id(customerKey), ...data, isDemo: true });
   }

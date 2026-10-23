@@ -1,4 +1,5 @@
-// Панель офиса: только чтение. Данные — из локального GET API, обновление обычным polling
+// Панель офиса. Бизнес-данные — только чтение из локального GET API, обновление обычным polling.
+// Карточки клиентов создаются и редактируются здесь: сервер передаёт их в CustomerProvider (CRM)
 const POLL_MS = 20000;
 const main = document.querySelector("#main");
 const state = { meta: null, route: null, results: null, hasData: false, lastOk: null, seq: 0, loading: false };
@@ -100,8 +101,10 @@ function setParam(key, value) {
 
 const views = {
   overview: { nav: "overview", title: "Обзор офиса", intro: "Выполненные работы за месяц, активные заказы и ближайшие действия", endpoint: (p) => `/api/overview?${pick(p, ["month"])}`, render: renderOverview },
-  customers: { nav: "customers", title: "Клиенты и автомобили", intro: "Поиск по имени, телефону, email, марке, номеру или VIN", controls: customerControls, endpoint: (p) => `/api/customers?${pick(p, ["q"])}`, render: renderCustomers },
+  customers: { nav: "customers", title: "Клиенты", intro: "Поиск по имени, телефону, email или автомобилю. Контакты хранятся в CRM Frontsmith", controls: customerControls, endpoint: (p) => `/api/customers?${pick(p, ["q"])}`, render: renderCustomers },
   customer: { nav: "customers", endpoint: (p, id) => `/api/customers/${id}`, render: renderCustomer },
+  "customer-new": { nav: "customers", form: true, title: "Новый клиент", intro: "Контакты сохраняются в CRM Frontsmith. В базе офиса остаётся только идентификатор клиента", render: () => customerForm(null) },
+  customerEdit: { nav: "customers", form: true, endpoint: (p, id) => `/api/customers/${id}`, render: (c) => customerForm(c) },
   vehicle: { nav: "customers", endpoint: (p, id) => `/api/vehicles/${id}`, render: renderVehicle },
   work: { nav: "work", title: "Обращения и заказы", intro: "Обращение — запрос клиента. Заказ работ — отдельная запись с позициями и согласованием стоимости", controls: workControls, endpoint: workEndpoint, render: renderWork },
   results: { nav: "results", title: "Выполненные работы", intro: "Ремонты по дню выполнения, итоговая стоимость и фактические трудозатраты", controls: resultControls, endpoint: (p) => `/api/orders?performed=yes&${pick(p, ["q", "from", "to", "status"])}`, render: renderResults },
@@ -111,7 +114,7 @@ const views = {
   services: { nav: "services", title: "Услуги и цены", intro: "Каталог из базы офиса. Сайт берёт прайс из этого же каталога при npm run update:website", controls: serviceControls, endpoint: (p) => `/api/services?${pick(p, ["q", "category", "active"])}`, render: renderServices },
   schedule: { nav: "schedule", title: "Расписание", intro: "Записи на время из локальной базы. Внешний Booking Flow сюда не синхронизируется", controls: scheduleControls, endpoint: (p) => `/api/schedule?${pick(p, ["from", "status"], { days: "7" })}`, render: renderSchedule }
 };
-const detailRoutes = { customers: "customer", vehicles: "vehicle", inquiries: "inquiry", orders: "order" };
+const detailRoutes = { customers: "customer", "customer-edit": "customerEdit", vehicles: "vehicle", inquiries: "inquiry", orders: "order" };
 
 function pick(params, keys, defaults = {}) {
   const out = new URLSearchParams();
@@ -167,10 +170,12 @@ async function load({ focus = false } = {}) {
   const route = state.route;
   const view = resolveView(route);
   if (!view) return;
+  // Форма не перерисовывается при обновлении: введённое оператором не теряется
+  if (view.form && state.hasData) return;
   const seq = ++state.seq;
   setSync("loading");
   try {
-    const [meta, payload] = await Promise.all([fetchJson("/api/meta"), fetchJson(view.endpoint(route.params, route.id))]);
+    const [meta, payload] = await Promise.all([fetchJson("/api/meta"), view.endpoint ? fetchJson(view.endpoint(route.params, route.id)) : { data: null, meta: {} }]);
     if (seq !== state.seq) return;
     state.meta = meta.data;
     applyMeta(meta.data, payload.meta);
@@ -416,24 +421,44 @@ function kpi(title, value, href, hint, alert = false) {
 // --- Клиенты и автомобили ---
 
 function customerControls(params) {
-  return el("div", { class: "filters" }, searchField(params, "Имя, телефон, авто, номер"));
+  return el("div", { class: "filters" }, searchField(params, "Имя, телефон, email, авто"),
+    el("a", { class: "primary-button", href: "#/customer-new" }, "Новый клиент"));
 }
 
+const contactStatusText = {
+  pending_migration: "контакты ещё не перенесены в CRM",
+  unavailable: "CRM недоступен",
+  missing: "контакт не найден в CRM"
+};
+
+const customerTitle = (c) => c.displayName ?? el("span", { class: "unknown" }, `Клиент ${c.id.slice(0, 8)} · ${contactStatusText[c.contactStatus] ?? "без контактов"}`);
+
 function renderCustomers(rows) {
-  if (!rows.length) return el("p", { class: "empty panel" }, state.route.params.get("q") ? "По запросу никого не найдено" : "Клиентов пока нет. Добавьте клиента командой npm run office -- customer:add");
+  if (!rows.length) return el("p", { class: "empty panel" }, state.route.params.get("q") ? "По запросу никого не найдено" : "Клиентов пока нет. Нажмите «Новый клиент»");
   return el("div", { class: "table-wrap" }, el("table", { class: "stack" },
     el("thead", {}, el("tr", {}, el("th", {}, "Клиент"), el("th", {}, "Телефон"), el("th", {}, "Автомобили"), el("th", { class: "num" }, "Активно"))),
     el("tbody", {}, rows.map((c) => el("tr", {},
-      el("td", { class: "wide" }, el("a", { href: `#/customers/${c.id}` }, el("strong", {}, c.full_name)), " ", demoBadge(c)),
-      el("td", { "data-label": "Телефон" }, valueOr(c.phone)),
+      el("td", { class: "wide" }, el("a", { href: `#/customers/${c.id}` }, el("strong", {}, customerTitle(c))), " ", demoBadge(c)),
+      el("td", { "data-label": "Телефон" }, valueOr(c.phoneDisplay)),
       el("td", { "data-label": "Авто", class: "wide" }, valueOr(c.vehicles_label, "нет автомобилей")),
       el("td", { class: "num", "data-label": "Активно" }, `${c.active_inquiries} обр. · ${c.active_orders} зак.`))))));
 }
 
+// Карточка: контакты из CRM и бизнес-данные офиса по одному client_id
 function renderCustomer(c) {
+  const contact = c.contact;
+  const contactBlock = contact
+    ? el("section", { class: "card" },
+      facts([["Телефон", valueOr(contact.phoneDisplay)], ["Email", valueOr(contact.email)], ["Заметка", valueOr(contact.notes, "нет")],
+        ["Теги", contact.tags.length ? contact.tags.join(", ") : unknown("нет")], ["Добавлен", fmtDateTime(c.created_at)],
+        ["Хранение", `CRM Frontsmith (${contact.provider}) · client_id ${c.id}`]]),
+      el("p", { class: "card-actions" }, el("a", { class: "primary-button", href: `#/customer-edit/${c.id}` }, "Изменить контакты")))
+    : el("section", { class: "card" }, el("p", { class: "notice-inline" }, c.contactStatus === "pending_migration"
+      ? ["Контакты клиента ещё в прежней базе офиса. Перенос в CRM: ", el("code", {}, "npm run crm:migrate-customers -- --dry-run")]
+      : `Контакты недоступны: ${contactStatusText[c.contactStatus] ?? "CRM не ответил"}. Бизнес-данные ниже показаны по client_id ${c.id}`));
   return el("div", {},
-    detailHead(["#/customers", "Клиенты"], c.full_name, demoBadge(c)),
-    el("section", { class: "card" }, facts([["Телефон", valueOr(c.phone)], ["Email", valueOr(c.email)], ["Заметка", valueOr(c.note, "нет")], ["Добавлен", fmtDateTime(c.created_at)]])),
+    detailHead(["#/customers", "Клиенты"], contact?.displayName ?? `Клиент ${c.id.slice(0, 8)}`, demoBadge(c)),
+    contactBlock,
     el("h2", { class: "section-title" }, "Автомобили"),
     panel("Автомобили клиента", c.vehicles.map((v) => row({ href: `#/vehicles/${v.id}`, title: [v.make, v.model, v.year].filter(Boolean).join(" "), side: demoBadge(v), sub: [v.plate ? `номер ${v.plate}` : "номер не указан", v.mileage_km !== null ? `пробег ${v.mileage_km.toLocaleString("ru-RU")} км` : "пробег не указан"].join(" · ") })), "Автомобилей нет"),
     el("div", { class: "grid-2" },
@@ -456,6 +481,63 @@ function renderVehicle(v) {
     el("div", { class: "grid-2" },
       panel("Обращения по автомобилю", v.inquiries.map(inquiryRow), "Обращений нет"),
       panel("Заказы по автомобилю", v.workOrders.map(orderRow), "Заказов нет")));
+}
+
+// Форма клиента. requestId создаётся один раз на форму: повторная отправка не создаёт дубль
+function customerForm(customer) {
+  const requestId = crypto.randomUUID();
+  const contact = customer?.contact ?? null;
+  if (customer && !contact) {
+    return errorState("Контакты недоступны", "Редактирование возможно только для клиента, контакты которого уже в CRM", el("a", { href: `#/customers/${customer.id}` }, "Вернуться к карточке"));
+  }
+  const field = (labelText, attrs) => el("label", { class: "field" }, labelText, attrs.rows ? el("textarea", attrs) : el("input", attrs));
+  const message = el("div", { class: "form-message", role: "alert", hidden: true });
+  const shared = el("label", { class: "check", hidden: true }, el("input", { type: "checkbox", name: "allowSharedPhone" }), "Это другой человек с тем же номером: сохранить");
+  const submit = el("button", { type: "submit", class: "primary-button" }, customer ? "Сохранить" : "Создать клиента");
+  const form = el("form", { class: "customer-form panel-body", novalidate: true },
+    field("Имя *", { name: "displayName", required: true, maxlength: "200", autocomplete: "off", value: contact?.displayName ?? "" }),
+    field("Телефон", { name: "phone", type: "tel", maxlength: "40", autocomplete: "off", placeholder: "+7 916 123-45-67", value: contact?.phoneDisplay ?? "" }),
+    field("Email", { name: "email", type: "email", maxlength: "254", autocomplete: "off", value: contact?.email ?? "" }),
+    field("Заметка", { name: "notes", rows: "4", maxlength: "4000" }),
+    field("Теги через запятую", { name: "tags", maxlength: "400", autocomplete: "off", value: contact?.tags?.join(", ") ?? "" }),
+    shared, message,
+    el("p", { class: "card-actions" }, submit, el("a", { href: customer ? `#/customers/${customer.id}` : "#/customers" }, "Отмена")));
+  form.elements.notes.value = contact?.notes ?? "";
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = new FormData(form);
+    const value = (name) => String(data.get(name) ?? "").trim() || null;
+    const body = { displayName: value("displayName"), phone: value("phone"), email: value("email"), notes: value("notes"),
+      tags: String(data.get("tags") ?? "").split(",").map((tag) => tag.trim()).filter(Boolean), allowSharedPhone: data.get("allowSharedPhone") === "on" };
+    if (customer) body.version = contact.version; else body.requestId = requestId;
+    submit.disabled = true;
+    message.hidden = true;
+    try {
+      const response = await fetch(customer ? `/api/customers/${customer.id}` : "/api/customers", {
+        method: customer ? "PATCH" : "POST",
+        headers: { "content-type": "application/json", accept: "application/json", "x-frontsmith-office": "1" },
+        body: JSON.stringify(body)
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        const error = payload?.error ?? { message: `Ошибка ${response.status}` };
+        message.replaceChildren(el("strong", {}, error.message),
+          error.candidates?.length ? el("span", {}, " Карточки: ", error.candidates.map((id, index) => [index ? ", " : "", id ? el("a", { href: `#/customers/${id}` }, id.slice(0, 8)) : "контакт вне Frontsmith"])) : null);
+        message.hidden = false;
+        if (error.code === "phone_in_use") shared.hidden = false;
+        return;
+      }
+      location.hash = `#/customers/${payload.data.customer.id}`;
+    } catch {
+      message.replaceChildren(el("strong", {}, "Сервер панели недоступен. Данные формы сохранены на странице, повторите отправку"));
+      message.hidden = false;
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  return el("div", {},
+    customer ? detailHead([`#/customers/${customer.id}`, contact.displayName], "Изменить контакты") : null,
+    el("section", { class: "panel" }, form));
 }
 
 // --- Обращения и заказы ---

@@ -46,7 +46,7 @@
     "test": "npm run test:launch && npm run test:regression && npm run test:office && npm run test:codex-host",
     "test:launch": "node tests/launch-readiness.mjs",
     "test:regression": "node tests/regression.mjs",
-    "test:office": "node tests/office.mjs && node tests/work-reports.mjs",
+    "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs",
     "test:gateway-poc": "node tools/codex-gateway-poc/gateway.test.mjs",
     "test:codex-host": "node tests/codex-host.mjs",
     "test:codex-host:app-server": "node tests/codex-host-app-server.mjs",
@@ -55,7 +55,12 @@
     "privacy:start": "node services/privacy/start.mjs",
     "ai:start": "node services/codex-host/start.mjs",
     "codex-host:login": "node services/codex-host/login.mjs",
-    "smoke:codex-host": "node services/codex-host/smoke.mjs"
+    "smoke:codex-host": "node services/codex-host/smoke.mjs",
+    "crm:bootstrap": "node services/crm/bootstrap.mjs",
+    "crm:start": "node services/crm/start.mjs",
+    "crm:migrate-customers": "node scripts/crm-migrate-customers.mjs",
+    "test:crm": "node tests/crm-live.mjs",
+    "smoke:crm-codex": "node services/codex-host/smoke-customer.mjs"
   },
   "engines": {
     "node": ">=20"

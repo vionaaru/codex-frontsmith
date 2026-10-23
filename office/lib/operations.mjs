@@ -81,16 +81,7 @@ function businessCurrency(ctx) {
 
 // --- Клиенты и автомобили ---
 
-export function createCustomer(ctx, { fullName, phone, email, note, isDemo = false, id = newId() }) {
-  return run(ctx, (at) => {
-    const row = { id, full_name: required(fullName, "имя клиента"), phone: optional(phone), email: optional(email), note: optional(note), is_demo: isDemo ? 1 : 0, created_at: at, updated_at: at };
-    if (row.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) throw new OfficeValidationError("Некорректный email клиента");
-    ctx.db.prepare(`INSERT INTO customers (id, full_name, phone, email, note, is_demo, created_at, updated_at)
-      VALUES (@id, @full_name, @phone, @email, @note, @is_demo, @created_at, @updated_at)`).run(row);
-    event(ctx, at, { entityType: "customer", entityId: id, action: "created", summary: `Добавлен клиент ${row.full_name}`, isDemo });
-    return row;
-  });
-}
+// Клиенты создаются только через CustomerProvider (office/customers): контактов в этой базе нет
 
 export function addVehicle(ctx, { customerId, make, model, year, mileageKm, vin, plate, note, isDemo = false, id = newId() }) {
   return run(ctx, (at) => {
@@ -112,7 +103,7 @@ export function addVehicle(ctx, { customerId, make, model, year, mileageKm, vin,
     if (row.vin && !/^[A-HJ-NPR-Z0-9]{17}$/.test(row.vin)) throw new OfficeValidationError("VIN должен содержать 17 символов без I, O, Q");
     ctx.db.prepare(`INSERT INTO vehicles (id, customer_id, make, model, year, mileage_km, vin, plate, note, is_demo, created_at, updated_at)
       VALUES (@id, @customer_id, @make, @model, @year, @mileage_km, @vin, @plate, @note, @is_demo, @created_at, @updated_at)`).run(row);
-    event(ctx, at, { entityType: "vehicle", entityId: id, action: "created", summary: `Автомобиль ${row.make}${row.model ? ` ${row.model}` : ""} добавлен клиенту ${customer.full_name}`, isDemo });
+    event(ctx, at, { entityType: "vehicle", entityId: id, action: "created", summary: `Добавлен автомобиль ${row.make}${row.model ? ` ${row.model}` : ""}`, isDemo });
     return row;
   });
 }
@@ -144,7 +135,7 @@ export function createInquiry(ctx, { customerId, vehicleId, serviceCode, source,
     };
     ctx.db.prepare(`INSERT INTO inquiries (id, customer_id, vehicle_id, requested_service_id, source, external_id, description, status, assignee, received_at, is_demo, created_at, updated_at)
       VALUES (@id, @customer_id, @vehicle_id, @requested_service_id, @source, @external_id, @description, @status, @assignee, @received_at, @is_demo, @created_at, @updated_at)`).run(row);
-    event(ctx, at, { entityType: "inquiry", entityId: id, action: "created", summary: `Новое обращение: ${customer.full_name}${service ? ` · ${service.name}` : ""}`, details: { source: sourceKey }, isDemo });
+    event(ctx, at, { entityType: "inquiry", entityId: id, action: "created", summary: `Новое обращение${service ? `: ${service.name}` : ""}`, details: { source: sourceKey }, isDemo });
     return row;
   });
 }
@@ -190,7 +181,7 @@ export function createWorkOrder(ctx, { inquiryId, customerId, vehicleId, number,
     };
     ctx.db.prepare(`INSERT INTO work_orders (id, number, customer_id, vehicle_id, inquiry_id, status, currency, planned_start_at, planned_end_at, assignee, note, is_demo, created_at, updated_at)
       VALUES (@id, @number, @customer_id, @vehicle_id, @inquiry_id, @status, @currency, @planned_start_at, @planned_end_at, @assignee, @note, @is_demo, @created_at, @updated_at)`).run(row);
-    event(ctx, at, { entityType: "work_order", entityId: id, action: "created", summary: `Создан заказ ${row.number} для ${customer.full_name}`, details: { inquiryId: inquiry?.id ?? null }, isDemo: demo });
+    event(ctx, at, { entityType: "work_order", entityId: id, action: "created", summary: `Создан заказ ${row.number}`, details: { inquiryId: inquiry?.id ?? null }, isDemo: demo });
     if (inquiry) {
       update(ctx, "inquiries", inquiry, { status: "converted", closed_at: at }, at);
       event(ctx, at, { entityType: "inquiry", entityId: inquiry.id, action: "converted", summary: `Обращение оформлено в заказ ${row.number}`, details: { workOrderId: id }, isDemo: inquiry.is_demo === 1 });

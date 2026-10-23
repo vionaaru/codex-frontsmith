@@ -145,7 +145,8 @@ export function parseInstant(value, field, timeZone) {
   return date.toISOString();
 }
 
-// Ключи сопоставления. Те же правила — в генерируемых колонках миграции 002; тест сверяет их
+// Ключи сопоставления. Правило госномера — также в генерируемой колонке миграции 002; тест сверяет их.
+// Телефон нормализует CustomerProvider (office/customers/contract.mjs): в офисной базе его нет
 const plateLetters = { А: "A", В: "B", Е: "E", К: "K", М: "M", Н: "H", О: "O", Р: "P", С: "C", Т: "T", У: "Y", Х: "X" };
 
 export function plateKey(value) {
@@ -153,14 +154,6 @@ export function plateKey(value) {
     .replace(/[АВЕКМНОРСТУХавекмнорстух]/g, (letter) => plateLetters[letter.toUpperCase()]);
   // SQLite upper() меняет только ASCII
   return text ? text.replace(/[a-z]/g, (letter) => letter.toUpperCase()) : null;
-}
-
-export function phoneKey(value) {
-  const digits = String(value ?? "").replace(/[ \-()+. ]/g, "");
-  if (/[^0-9]/.test(digits) || digits.length < 10) return null;
-  if (digits.length === 10) return `7${digits}`;
-  if (digits.length === 11 && digits.startsWith("8")) return `7${digits.slice(1)}`;
-  return digits;
 }
 
 export function vinKey(value) {

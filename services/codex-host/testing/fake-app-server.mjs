@@ -26,7 +26,14 @@ async function runTurn(threadId, turnId, text) {
   thread.history.push(text);
   send({ method: "turn/started", params: { threadId, turn: { id: turnId, status: "inProgress", items: [] } } });
   let answer;
-  if (text.includes("клиента из CRM")) {
+  const contextCall = /get_customer_context client_id=([0-9a-f-]{36})/.exec(text);
+  if (contextCall) {
+    const result = await serverRequest("item/tool/call", { threadId, turnId, callId: `call-${turnId}`, namespace: null, tool: "get_customer_context", arguments: { client_id: contextCall[1] } });
+    const output = result.contentItems.map((item) => item.text).join("\n");
+    record({ kind: "tool_output", threadId, text: output, success: result.success });
+    thread.history.push(output);
+    answer = result.success ? `Контакт: ${tags(output).join(" ")}` : "Инструмент недоступен";
+  } else if (text.includes("клиента из CRM")) {
     const result = await serverRequest("item/tool/call", { threadId, turnId, callId: `call-${turnId}`, namespace: null, tool: "get_test_customer", arguments: {} });
     const output = result.contentItems.map((item) => item.text).join("\n");
     record({ kind: "tool_output", threadId, text: output, success: result.success });

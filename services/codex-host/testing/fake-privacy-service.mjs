@@ -10,7 +10,8 @@ import { randomUUID } from "node:crypto";
 const PATTERNS = [
   ["PERSON", /Иван(?:а|у|ом|е)? Петров(?:а|у|ым|е)?/g, "Иван Петров"],
   ["PERSON", /Мари(?:я|и|ю|ей) Сидоров(?:а|ой|у)/g, "Мария Сидорова"],
-  ["PHONE_NUMBER", /\+7 \d{3} \d{3}-\d{2}-\d{2}/g, null]
+  ["PHONE_NUMBER", /\+7 \d{3} \d{3}-\d{2}-\d{2}/g, null],
+  ["EMAIL", /[\w.+-]+@[\w-]+\.[\w.]+/g, null]
 ];
 
 export async function startFakePrivacyService({ token = "fake-token" } = {}) {

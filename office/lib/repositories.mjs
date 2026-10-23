@@ -93,25 +93,28 @@ function sumStatuses(counts, statuses) {
   return statuses.reduce((total, status) => total + (counts[status] ?? 0), 0);
 }
 
-export function listCustomers(db, { q, limit = 200 } = {}) {
-  const where = [];
-  const params = [];
-  if (q) {
-    where.push(`(instr(fs_fold(c.full_name), ?) OR instr(fs_fold(coalesce(c.phone, '')), ?) OR instr(fs_fold(coalesce(c.email, '')), ?)
-      OR EXISTS (SELECT 1 FROM vehicles v WHERE v.customer_id = c.id AND (instr(fs_fold(v.make || ' ' || coalesce(v.model, '')), ?) OR instr(fs_fold(coalesce(v.plate, '')), ?) OR instr(fs_fold(coalesce(v.vin, '')), ?))))`);
-    params.push(...Array(6).fill(fold(q)));
-  }
-  return db.prepare(`SELECT c.*,
+// Бизнес-сводка по клиентам. Контакты (имя, телефон, email) здесь не читаются:
+// их добавляет доверенный сервер через CustomerProvider по client_id
+export function customerSummaries(db, ids = null) {
+  const filter = ids ? "WHERE c.id IN (SELECT value FROM json_each(?))" : "";
+  const rows = db.prepare(`SELECT c.id, c.is_demo, c.created_at,
       (SELECT count(*) FROM vehicles v WHERE v.customer_id = c.id) AS vehicle_count,
       (SELECT count(*) FROM inquiries i WHERE i.customer_id = c.id AND i.status IN (${placeholders(activeInquiryStatuses)})) AS active_inquiries,
       (SELECT count(*) FROM work_orders wo WHERE wo.customer_id = c.id AND wo.status IN (${placeholders(activeWorkOrderStatuses)})) AS active_orders,
       (SELECT group_concat(v.make || coalesce(' ' || v.model, ''), ', ') FROM vehicles v WHERE v.customer_id = c.id) AS vehicles_label
-    FROM customers c ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-    ORDER BY c.full_name COLLATE NOCASE LIMIT ?`).all(...activeInquiryStatuses, ...activeWorkOrderStatuses, ...params, limit);
+    FROM customers c ${filter}`).all(...activeInquiryStatuses, ...activeWorkOrderStatuses, ...(ids ? [JSON.stringify(ids)] : []));
+  return new Map(rows.map((row) => [row.id, row]));
+}
+
+// client_id клиентов, у которых автомобиль совпадает с запросом (марка, модель, номер, VIN)
+export function customerIdsByVehicle(db, q) {
+  return db.prepare(`SELECT DISTINCT v.customer_id AS id FROM vehicles v
+    WHERE instr(fs_fold(v.make || ' ' || coalesce(v.model, '')), ?) OR instr(fs_fold(coalesce(v.plate, '')), ?) OR instr(fs_fold(coalesce(v.vin, '')), ?)`)
+    .all(...Array(3).fill(fold(q))).map((row) => row.id);
 }
 
 export function getCustomer(db, id) {
-  const customer = db.prepare("SELECT * FROM customers WHERE id = ?").get(id);
+  const customer = db.prepare("SELECT id, is_demo, created_at, updated_at, revision FROM customers WHERE id = ?").get(id);
   if (!customer) return null;
   return {
     ...customer,
@@ -123,7 +126,7 @@ export function getCustomer(db, id) {
 }
 
 export function getVehicle(db, id) {
-  const vehicle = db.prepare(`SELECT v.*, c.full_name AS customer_name FROM vehicles v JOIN customers c ON c.id = v.customer_id WHERE v.id = ?`).get(id);
+  const vehicle = db.prepare("SELECT * FROM vehicles WHERE id = ?").get(id);
   if (!vehicle) return null;
   return {
     ...vehicle,
@@ -133,16 +136,19 @@ export function getVehicle(db, id) {
   };
 }
 
-const inquirySelect = `SELECT i.*, c.full_name AS customer_name, c.phone AS customer_phone,
+const inquirySelect = `SELECT i.*,
     v.make AS vehicle_make, v.model AS vehicle_model, v.year AS vehicle_year,
     s.name AS service_name, s.code AS service_code,
     (SELECT count(*) FROM tasks t WHERE t.inquiry_id = i.id AND t.status IN ('open', 'in_progress')) AS open_tasks
   FROM inquiries i
-  JOIN customers c ON c.id = i.customer_id
   LEFT JOIN vehicles v ON v.id = i.vehicle_id
   LEFT JOIN services s ON s.id = i.requested_service_id`;
 
-export function listInquiries(db, { status, statuses, q, customerId, vehicleId, demo, limit = 200 } = {}) {
+// qClientIds — client_id клиентов, найденных по запросу в CustomerProvider
+const clientMatch = (column, qClientIds) => (qClientIds?.length ? ` OR ${column} IN (SELECT value FROM json_each(?))` : "");
+const clientParams = (qClientIds) => (qClientIds?.length ? [JSON.stringify(qClientIds)] : []);
+
+export function listInquiries(db, { status, statuses, q, qClientIds, customerId, vehicleId, demo, limit = 200 } = {}) {
   const where = [];
   const params = [];
   const list = statuses ?? (status ? [status] : null);
@@ -151,8 +157,8 @@ export function listInquiries(db, { status, statuses, q, customerId, vehicleId, 
   if (vehicleId) { where.push("i.vehicle_id = ?"); params.push(vehicleId); }
   if (demo !== undefined) { where.push("i.is_demo = ?"); params.push(demo ? 1 : 0); }
   if (q) {
-    where.push("(instr(fs_fold(i.description), ?) OR instr(fs_fold(c.full_name), ?) OR instr(fs_fold(coalesce(s.name, '')), ?) OR instr(fs_fold(coalesce(v.make || ' ' || v.model, '')), ?))");
-    params.push(...Array(4).fill(fold(q)));
+    where.push(`(instr(fs_fold(i.description), ?) OR instr(fs_fold(coalesce(s.name, '')), ?) OR instr(fs_fold(coalesce(v.make || ' ' || v.model, '')), ?)${clientMatch("i.customer_id", qClientIds)})`);
+    params.push(...Array(3).fill(fold(q)), ...clientParams(qClientIds));
   }
   return db.prepare(`${inquirySelect} ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY i.received_at DESC LIMIT ?`).all(...params, limit);
 }
@@ -174,18 +180,17 @@ const orderSelect = `SELECT wo.*, ${orderTotalSql} AS estimate_kopecks,
       'basis', json_extract(ae.details_json, '$.basis'), 'durationNote', json_extract(ae.details_json, '$.durationNote'))
       FROM activity_events ae WHERE ae.entity_type = 'work_order' AND ae.entity_id = wo.id AND ae.action = 'work_report_registered'
       ORDER BY ae.occurred_at DESC, ae.rowid DESC LIMIT 1) AS work_report_json,
-    c.full_name AS customer_name, v.make AS vehicle_make, v.model AS vehicle_model, v.year AS vehicle_year, v.plate AS vehicle_plate,
+    v.make AS vehicle_make, v.model AS vehicle_model, v.year AS vehicle_year, v.plate AS vehicle_plate,
     (SELECT count(*) FROM order_items oi WHERE oi.work_order_id = wo.id) AS item_count,
     (SELECT count(*) FROM tasks t WHERE t.work_order_id = wo.id AND t.status IN ('open', 'in_progress')) AS open_tasks
   FROM work_orders wo
-  JOIN customers c ON c.id = wo.customer_id
   JOIN vehicles v ON v.id = wo.vehicle_id`;
 
 function withWorkReport({ work_report_json, ...order }) {
   return { ...order, workReport: work_report_json ? JSON.parse(work_report_json) : null };
 }
 
-export function listWorkOrders(db, { status, statuses, q, customerId, vehicleId, performed, from, to, limit = 200 } = {}) {
+export function listWorkOrders(db, { status, statuses, q, qClientIds, customerId, vehicleId, performed, from, to, limit = 200 } = {}) {
   const where = [];
   const params = [];
   const list = statuses ?? (status ? [status] : null);
@@ -196,8 +201,8 @@ export function listWorkOrders(db, { status, statuses, q, customerId, vehicleId,
   if (from) { where.push("wo.performed_on >= ?"); params.push(from); }
   if (to) { where.push("wo.performed_on <= ?"); params.push(to); }
   if (q) {
-    where.push("(instr(fs_fold(wo.number), ?) OR instr(fs_fold(c.full_name), ?) OR instr(fs_fold(v.make || ' ' || coalesce(v.model, '')), ?) OR instr(fs_fold(coalesce(wo.note, '')), ?) OR instr(fs_fold(coalesce(v.plate, '')), ?))");
-    params.push(...Array(5).fill(fold(q)));
+    where.push(`(instr(fs_fold(wo.number), ?) OR instr(fs_fold(v.make || ' ' || coalesce(v.model, '')), ?) OR instr(fs_fold(coalesce(wo.note, '')), ?) OR instr(fs_fold(coalesce(v.plate, '')), ?)${clientMatch("wo.customer_id", qClientIds)})`);
+    params.push(...Array(4).fill(fold(q)), ...clientParams(qClientIds));
   }
   return db.prepare(`${orderSelect} ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
     ORDER BY ${performed ? "wo.performed_on DESC," : "CASE WHEN wo.planned_start_at IS NULL THEN 1 ELSE 0 END, wo.planned_start_at,"} wo.created_at DESC, wo.rowid DESC LIMIT ?`).all(...params, limit).map(withWorkReport);
@@ -218,14 +223,12 @@ export function getWorkOrder(db, id) {
 }
 
 const taskSelect = `SELECT t.*, i.description AS inquiry_description, wo.number AS work_order_number,
-    coalesce(ci.full_name, cw.full_name) AS customer_name, coalesce(ci.id, cw.id) AS customer_id
+    coalesce(i.customer_id, wo.customer_id) AS customer_id
   FROM tasks t
   LEFT JOIN inquiries i ON i.id = t.inquiry_id
-  LEFT JOIN customers ci ON ci.id = i.customer_id
-  LEFT JOIN work_orders wo ON wo.id = t.work_order_id
-  LEFT JOIN customers cw ON cw.id = wo.customer_id`;
+  LEFT JOIN work_orders wo ON wo.id = t.work_order_id`;
 
-export function listTasks(db, { status, statuses, due, now, dayEnd, q, inquiryId, workOrderId, limit = 200 } = {}) {
+export function listTasks(db, { status, statuses, due, now, dayEnd, q, qClientIds, inquiryId, workOrderId, limit = 200 } = {}) {
   const where = [];
   const params = [];
   const list = statuses ?? (status ? [status] : due ? openTaskStatuses : null);
@@ -237,8 +240,8 @@ export function listTasks(db, { status, statuses, due, now, dayEnd, q, inquiryId
   if (inquiryId) { where.push("t.inquiry_id = ?"); params.push(inquiryId); }
   if (workOrderId) { where.push("t.work_order_id = ?"); params.push(workOrderId); }
   if (q) {
-    where.push("(instr(fs_fold(t.title), ?) OR instr(fs_fold(coalesce(t.assignee, '')), ?) OR instr(fs_fold(coalesce(ci.full_name, cw.full_name, '')), ?))");
-    params.push(...Array(3).fill(fold(q)));
+    where.push(`(instr(fs_fold(t.title), ?) OR instr(fs_fold(coalesce(t.assignee, '')), ?)${clientMatch("coalesce(i.customer_id, wo.customer_id)", qClientIds)})`);
+    params.push(...Array(2).fill(fold(q)), ...clientParams(qClientIds));
   }
   return db.prepare(`${taskSelect} ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
     ORDER BY CASE WHEN t.due_at IS NULL THEN 1 ELSE 0 END, t.due_at, t.created_at LIMIT ?`).all(...params, limit);
@@ -256,15 +259,13 @@ export function listServices(db, { active, category, q } = {}) {
     FROM services s ${where.length ? `WHERE ${where.join(" AND ")}` : ""} ORDER BY s.sort_order, s.name`).all(...params);
 }
 
-const appointmentSelect = `SELECT a.*, coalesce(ci.full_name, cw.full_name) AS customer_name, coalesce(ci.id, cw.id) AS customer_id,
+const appointmentSelect = `SELECT a.*, coalesce(i.customer_id, wo.customer_id) AS customer_id,
     i.description AS inquiry_description, wo.number AS work_order_number,
     coalesce(vi.make || coalesce(' ' || vi.model, ''), vw.make || coalesce(' ' || vw.model, '')) AS vehicle_label
   FROM appointments a
   LEFT JOIN inquiries i ON i.id = a.inquiry_id
-  LEFT JOIN customers ci ON ci.id = i.customer_id
   LEFT JOIN vehicles vi ON vi.id = i.vehicle_id
   LEFT JOIN work_orders wo ON wo.id = a.work_order_id
-  LEFT JOIN customers cw ON cw.id = wo.customer_id
   LEFT JOIN vehicles vw ON vw.id = wo.vehicle_id`;
 
 export function listAppointments(db, { from, to, status, statuses, inquiryId, workOrderId, limit = 300 } = {}) {
@@ -288,26 +289,27 @@ export function listEvents(db, { entityType, entityId, limit = 50 } = {}) {
     ORDER BY occurred_at DESC, rowid DESC LIMIT ?`).all(...params, limit);
 }
 
-// Кандидаты для сопоставления автомобиля. Ключи уже нормализованы (domain.mjs); оценку даёт matching.mjs
-export function vehicleMatchCandidates(db, { vin, vinSuffix, plate, phone }) {
+// Кандидаты для сопоставления автомобиля. Ключи уже нормализованы (domain.mjs); оценку даёт matching.mjs.
+// phoneClientIds — client_id, найденные по телефону в CustomerProvider: телефона в офисной базе нет
+export function vehicleMatchCandidates(db, { vin, vinSuffix, plate, phoneClientIds }) {
   return db.prepare(`SELECT v.id AS vehicle_id, v.make, v.model, v.year, v.vin, v.plate, v.plate_key, v.is_demo,
-      c.id AS customer_id, c.full_name AS customer_name, c.phone AS customer_phone, c.phone_key,
+      v.customer_id,
       (SELECT count(*) FROM work_orders wo WHERE wo.vehicle_id = v.id) AS order_count,
       (SELECT max(coalesce(wo.completed_at, wo.created_at)) FROM work_orders wo WHERE wo.vehicle_id = v.id) AS last_order_at,
       (SELECT json_group_array(json_object('id', wo.id, 'number', wo.number, 'status', wo.status)) FROM work_orders wo
         WHERE wo.vehicle_id = v.id AND wo.status IN (${placeholders(activeWorkOrderStatuses)})) AS active_orders_json
-    FROM vehicles v JOIN customers c ON c.id = v.customer_id
+    FROM vehicles v
     WHERE (@vin IS NOT NULL AND v.vin = @vin)
       OR (@vinSuffix IS NOT NULL AND substr(v.vin, -length(@vinSuffix)) = @vinSuffix)
       OR (@plate IS NOT NULL AND v.plate_key = @plate)
-      OR (@phone IS NOT NULL AND c.phone_key = @phone)`)
-    .all(...activeWorkOrderStatuses, { vin: vin ?? null, vinSuffix: vinSuffix ?? null, plate: plate ?? null, phone: phone ?? null })
+      OR (v.customer_id IN (SELECT value FROM json_each(@phoneClientIds)))`)
+    .all(...activeWorkOrderStatuses, { vin: vin ?? null, vinSuffix: vinSuffix ?? null, plate: plate ?? null, phoneClientIds: JSON.stringify(phoneClientIds ?? []) })
     .map(({ active_orders_json: json, ...row }) => ({ ...row, active_orders: JSON.parse(json) }));
 }
 
-export function customersByPhoneKey(db, phoneKey) {
-  return db.prepare(`SELECT c.id, c.full_name, c.phone, c.is_demo, (SELECT count(*) FROM vehicles v WHERE v.customer_id = c.id) AS vehicle_count
-    FROM customers c WHERE c.phone_key = ? ORDER BY c.created_at`).all(phoneKey);
+export function customersWithVehicleCounts(db, ids) {
+  return db.prepare(`SELECT c.id, c.is_demo, (SELECT count(*) FROM vehicles v WHERE v.customer_id = c.id) AS vehicle_count
+    FROM customers c WHERE c.id IN (SELECT value FROM json_each(?)) ORDER BY c.created_at`).all(JSON.stringify(ids));
 }
 
 export function insertEvent(db, event) {
