@@ -3,9 +3,9 @@
 Опорная записка: [docs/architecture/privacy-crm-integration.md](../architecture/privacy-crm-integration.md).
 
 ## Текущее состояние
-- Текущий этап: 2 закрыт. Универсальный Customer Module на crmkit v0.9.1: контакты в crmkit, в офисной базе только `client_id` и связи; раздел «Клиенты» панели; перенос прежней модели — явной командой.
-- Последний принятый результат: Customer Module 23.10.2026 (`npm test`, `npm run test:crm` на настоящем crmkitd, `npm run smoke:crm-codex` на настоящем pii-guard и Codex по подписке — PASS); до него Privacy Service без Docker (PASS), PoC `services/privacy/` + `services/codex-host/` (PARTIAL), PoC `tools/codex-gateway-poc/` (PASS) и аудит.
-- Следующий шаг: подключить остальные универсальные модули Frontsmith к CustomerProvider и подготовить first-run workflow новой установки; перенос рабочей базы в CRM — только по решению владельца.
+- Текущий этап: first-run закрыт. `npm run bootstrap` готовит установку одной командой, `npm run frontsmith` запускает crmkit, Privacy Service, Codex App Server и офис одним процессом; чистая установка сразу работает через CustomerProvider.
+- Последний принятый результат: first-run 23.10.2026 (`npm run test:first-run` на пустом каталоге данных, `npm test` — PASS); до него Customer Module 23.10.2026 (`npm test`, `npm run test:crm` на настоящем crmkitd, `npm run smoke:crm-codex` на настоящем pii-guard и Codex по подписке — PASS); до него Privacy Service без Docker (PASS), PoC `services/privacy/` + `services/codex-host/` (PARTIAL), PoC `tools/codex-gateway-poc/` (PASS) и аудит.
+- Следующий шаг: перевести оставшиеся универсальные модули Frontsmith на CustomerProvider, затем — универсальный AI-диспетчер.
 - База интеграции: `main`. Универсальная часть офиса перенесена из `autoservice` коммитом 78145b1; навык `register-auto-work`, дизайн сайта, логотип и ссылка записи T-Max остаются в `autoservice`.
 - Блокирующие вопросы: см. раздел «Блокирующие вопросы».
 
@@ -47,8 +47,22 @@
 - [x] PII отсутствуют в business storage — новый клиент: 0 совпадений в ячейках и байтах файла; `phone_key` удалён
 - [x] Migration старой customer-модели проверена на fixture — `npm run crm:migrate-customers`, двойник и настоящий crmkitd: тот же client_id, FK целы, ПД 0
 - [x] Trusted CRM tool проходит через Privacy Service — `get_customer_context`, `npm run smoke:crm-codex` PASS
-- [ ] Перенос рабочей `office.sqlite` в CRM — не выполнялся, требует решения владельца
+- [x] Перенос рабочей `office.sqlite` в CRM — выполнен владельцем 23.10.2026: один учебный клиент, `client_id` сохранён, связь и контакт в crmkit есть, панель получает контакт из CRM, `foreign_key_check` пуст, `integrity_check` ok, ПД клиента в офисной базе 0 совпадений; копия после переноса `office:backup`
 - [ ] Резервирование business / CRM / privacy state одним согласованным процессом — не реализовано
+
+### First-run
+- [x] Один bootstrap готовит Frontsmith без Docker/Python/Go вручную — `npm run bootstrap`: Privacy runtime, crmkit, CRM, профиль, офисная база, проверки, итоговый статус
+- [x] Bootstrap идемпотентен — повтор не скачивает, не меняет базу, профиль, CRM, учётные данные и privacy state (сверка SHA-256 в тесте)
+- [x] Чистая установка сразу использует CustomerProvider/crmkit — клиентов 0, учебные клиенты только `npm run office:seed`
+- [x] Чистая business DB никогда не получает customer PII — все миграции до схемы 4 одной командой до первого клиента; `customers` без контактных колонок, карантин пуст
+- [x] Legacy installation определяется, но не мигрируется автоматически — контакты в `customers` (до 004) или в `legacy_customer_contacts`; копия до миграции схемы — в `<data-root>/crm/backups/`
+- [x] Один `npm run frontsmith` запускает необходимые сервисы — crmkit, Privacy Service, Codex App Server (при входе ChatGPT), офис `http://127.0.0.1:4180`
+- [x] Корректный shutdown завершает дочерние процессы — офис, App Server, Privacy Service, crmkit; порты свободны, PID завершены
+- [x] Первый клиент создаётся через CustomerProvider — API панели → CrmkitProvider → crmkit → `client_id`
+- [x] `test:first-run` проходит на пустом data-root — скачивает ~2 ГБ, первый старт NER на 6 ГБ RAM ~6,5 мин
+- [x] README содержит короткий пользовательский first-run
+- [ ] Вход ChatGPT в first-run проверен только как «sign-in required»; путь AI после единого старта покрыт `test:codex-host` и `smoke:crm-codex`
+- [ ] Профиль по умолчанию — учебный автосервис «АвтоРитм» (`blueprints/auto-service`): универсального стартового профиля нет
 
 ### Этап 3: Privacy Service перед Codex App Server
 - [x] Privacy Service запускается с настоящим pii-guard + NER без Docker — `npm run privacy:bootstrap`: uv 0.12.24 → Python 3.11.14 → venv по `requirements.lock` → веса NER c802e8c; `/health ready`, NER=true
@@ -152,9 +166,9 @@
 
 ## Блокирующие вопросы
 1. ~~База интеграции~~ — решено: `main`, универсальная часть `office/` перенесена 22.10.2026. Ветки ещё не опубликованы на GitHub.
-2. Персональные данные уже в рабочей офисной базе. Код переноса готов (`npm run crm:migrate-customers -- --dry-run`, затем `--confirm`); схема 004 при `office:init` отделит контакты в карантин без удаления. Нужно решение владельца о запуске переноса и о судьбе прежних копий в `.frontsmith/business/backups/` (содержат ПД, лежат в рабочей области Codex).
+2. ~~Персональные данные в рабочей офисной базе~~ — перенесены в crmkit 23.10.2026. Прежние копии в `.frontsmith/business/backups/`: две учебные (6 клиентов «Демо-клиент», синтетические телефоны) вынесены в `D:\Frontsmith\backups\legacy-demo-office\`; `office-20261017-145808Z.sqlite` (27 учебных клиентов, 21 отчёт владельца о работах) и каталоги `tmax-before-customization-*` оставлены: нельзя доказать, что там только учебные данные. Решение — за владельцем.
 3. История Codex в `D:\CodexData\.codex` уже содержит сообщения владельца; отдельный `CODEX_HOME` для агентного процесса проверен в PoC, политика очистки основного не решена.
 4. Плагины Codex с внешним доступом (VK, браузеры, Slack, Calendar, computer use) включены в основном `CODEX_HOME`; в изолированном PoC они отключены флагами `[features]`.
 5. ~~Python для pii-guard~~ — решено: управляемый runtime `npm run privacy:bootstrap` (uv, Python, venv в каталоге данных Frontsmith), Docker не нужен. ~~Место crmkit (Go)~~ — решено: бинарный релиз в `<data-root>/runtime/crmkit/`, база в `<data-root>/crm/`.
 6. ~~Способ авторизации шлюза на upstream~~ — решено: API key запрещён, модельный контур — Codex App Server с подпиской ChatGPT (записка, 11.4).
-7. Текущая `office.sqlite` с ПД недоступна Codex до миграции клиентов в crmkit и очистки базы, копий и свободных текстов.
+7. Текущая `office.sqlite` без контактов клиентов; свободные тексты и оставшиеся прежние копии не проверены на ПД.

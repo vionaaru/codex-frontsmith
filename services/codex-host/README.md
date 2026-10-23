@@ -48,7 +48,7 @@ npm run ai:start
 npm run smoke:codex-host
 ```
 
-Первичная подготовка выполняется один раз: `npm run privacy:bootstrap` и `npm run codex-host:login`. `ai:start` (`ai-runtime.mjs`) поднимает Privacy Service на 127.0.0.1, ждёт `/health ready`, проверяет вход ChatGPT, запускает `codex app-server` и при остановке завершает App Server, затем Privacy Service. Docker не используется.
+Первичная подготовка выполняется один раз: `npm run bootstrap` (в том числе `privacy:bootstrap` и `crm:bootstrap`) и `npm run codex-host:login`. Обычный запуск офиса вместе с AI runtime — `npm run frontsmith`: он передаёт `startAiRuntime` уже запущенные crmkit и Privacy Service. `ai:start` — отдельный запуск AI runtime без офиса. `ai:start` (`ai-runtime.mjs`) поднимает Privacy Service на 127.0.0.1, ждёт `/health ready`, проверяет вход ChatGPT, запускает `codex app-server` и при остановке завершает App Server, затем Privacy Service. Docker не используется.
 
 `test:codex-host` входит в `npm test`. `test:codex-host:app-server` запускает установленный `codex app-server` с синтетической локальной моделью и проверяет фактические HTTP-запросы к модели. `smoke:codex-host` использует тот же `ai-runtime.mjs` с настоящим pii-guard и тратит лимиты подписки, поэтому в `npm test` не входит; без подготовленного runtime или входа ChatGPT завершается `SKIPPED` (код 2).
 

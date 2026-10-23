@@ -5,6 +5,7 @@
 Дата проверки источников: 22 октября 2026 года  
 Изменение 0.2: выбрана схема Frontsmith Host → Privacy Service → Codex App Server → подписка ChatGPT (раздел 11.4)  
 Изменение 0.3: реализован универсальный Customer Module на crmkit v0.9.1 (раздел 8.4)  
+Изменение 0.4: first-run и единый запуск офиса (раздел 17, «Жизненный цикл установки»)  
 Статус: проект архитектуры и основа для постановки задач  
 Предполагаемый исполнитель разработки: Claude Code с выбранной пользователем моделью Sonnet 5
 
@@ -696,6 +697,27 @@ C-DEMO-0001 | R-DEMO-0001 | 15000 RUB | 7 часов
 Постоянно работают сервер офиса, crmkit, Privacy Service и LLM-шлюз. Codex runner запускается для заданий либо управляется отдельным сервисом. Privacy Service и Codex App Server — локальные дочерние процессы Node-хоста Frontsmith (раздел 9.4); контейнеры и Docker в установке не используются.
 
 Допустимо объединить сервер офиса и часть оркестрации. Не объединять их права с агентным процессом.
+
+### Жизненный цикл установки
+
+```text
+npm run bootstrap
+        ↓
+Frontsmith-managed runtimes: Privacy runtime (uv → Python → pii-guard + NER), crmkit,
+CRM storage, профиль и офисная база последней схемы; повтор — только проверки
+
+npm run codex-host:login
+        ↓
+ChatGPT subscription (однократный вход в CODEX_HOME Host)
+
+npm run frontsmith
+        ↓
+CRM + Privacy + Codex App Server + Office
+```
+
+`npm run frontsmith` (`scripts/frontsmith.mjs`) — один процесс-владелец: crmkit, Privacy Service и Codex App Server — его дочерние процессы, сервер офиса работает в нём самом и получает CustomerProvider на том же экземпляре crmkit. Остановка — в обратном порядке. Обязательны офисная база, crmkit и Privacy Service: без них запуск прерывается (`BUSINESS_DB_NOT_READY`, `CRM_NOT_READY`, `PRIVACY_NOT_READY`). Без входа ChatGPT офис работает, AI — нет (`CODEX_NOT_AUTHENTICATED`).
+
+Новая установка не хранит клиентов по прежней модели: bootstrap применяет все миграции до последней схемы одной командой, до появления первого клиента, а клиенты создаются только через CustomerProvider. Состояние установки (новая, актуальная, legacy) выводится из существующих маркеров: маркеров runtime, `schema_migrations` и `legacy_customer_contacts`. Контакты legacy-установки в CRM переносятся только явной командой `npm run crm:migrate-customers`.
 
 Для pii-guard загрузить и зафиксировать веса заранее. Недоступность скачивания при старте не должна незаметно переводить защиту в режим без NER.
 
