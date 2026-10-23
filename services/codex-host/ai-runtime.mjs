@@ -33,13 +33,26 @@ export class AiRuntimeUnavailable extends Error {
 }
 
 export function codexLoginStatus(codexBin, env) {
-  const result = spawnSync(codexBin, ["login", "status"], { env, encoding: "utf8" });
+  const result = spawnSync(codexBin, ["login", "status"], { env, encoding: "utf8", windowsHide: true });
   return /ChatGPT/i.test(`${result.stdout}${result.stderr}`);
 }
 
+// Состояние Codex для Host: CLI найден, вход ChatGPT в отдельном CODEX_HOME есть.
+// Вход не выполняется: только npm run codex-host:login
+export function codexAuthStatus({ forbiddenRoots = [] } = {}) {
+  const codexBin = findCodex();
+  const version = spawnSync(codexBin, ["--version"], { encoding: "utf8", windowsHide: true });
+  if (version.error || version.status !== 0) return { state: "cli_missing", codexBin };
+  const home = prepareCodexHome(path.join(defaultHostRoot(), "home"), { forbiddenRoots: [repo, ...forbiddenRoots] });
+  const authenticated = codexLoginStatus(codexBin, codexEnv(home));
+  return { state: authenticated ? "ready" : "login_required", codexBin, home, version: version.stdout.trim() };
+}
+
 // tools — массив инструментов Host или функция ({ crm }) → массив (инструментам CRM нужен клиент crmkit).
-// crm: false — не запускать встроенный CRM (тесты со своим экземпляром crmkit)
-export async function startAiRuntime({ tools = [], model, diagnostics = {}, onPrivacyLog, privacyPort, crm: withCrm = true } = {}) {
+// crm: false — не запускать встроенный CRM (тесты со своим экземпляром crmkit);
+// crm: { ...ensureCrm() } и privacyService — уже запущенные процессом `npm run frontsmith`:
+// их останавливает владелец, а не stop() этого runtime
+export async function startAiRuntime({ tools = [], model, diagnostics = {}, onPrivacyLog, privacyPort, crm: withCrm = true, privacyService = null } = {}) {
   const paths = runtimePaths();
   const status = runtimeStatus(paths);
   if (!status.ready) throw new AiRuntimeUnavailable(status.reason, "Privacy runtime не подготовлен: выполните npm run privacy:bootstrap");
@@ -50,15 +63,16 @@ export async function startAiRuntime({ tools = [], model, diagnostics = {}, onPr
   const env = codexEnv(home);
   if (!codexLoginStatus(codexBin, env)) throw new AiRuntimeUnavailable("codex_login_required", `в ${home} нет входа ChatGPT: выполните npm run codex-host:login`);
 
-  let crm = null;
-  if (withCrm) {
+  const sharedCrm = typeof withCrm === "object" && withCrm !== null;
+  let crm = sharedCrm ? withCrm : null;
+  if (withCrm === true) {
     try {
       crm = await ensureCrm();
     } catch (error) {
       throw new AiRuntimeUnavailable(error.code ?? "crm_unavailable", error.message);
     }
   }
-  let service;
+  let service = privacyService;
   let client;
   let workspace;
   const stop = async () => {
@@ -66,12 +80,12 @@ export async function startAiRuntime({ tools = [], model, diagnostics = {}, onPr
     if (client?.process && client.process.exitCode === null) {
       await new Promise((resolve) => client.process.once("exit", resolve));
     }
-    await service?.stop();
-    await crm?.stop();
+    if (!privacyService) await service?.stop();
+    if (!sharedCrm) await crm?.stop();
     if (workspace) rmSync(workspace, { recursive: true, force: true });
   };
   try {
-    service = await startPrivacyService({ paths, port: privacyPort, onLog: onPrivacyLog });
+    service ??= await startPrivacyService({ paths, port: privacyPort, onLog: onPrivacyLog });
   } catch (error) {
     await stop();
     throw error;

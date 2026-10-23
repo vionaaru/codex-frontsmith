@@ -226,8 +226,8 @@ function setSync(status, error) {
 
 function failure(error) {
   if (error.code === "database_missing") {
-    return errorState("База офиса ещё не создана", "Панель не показывает нули вместо отсутствующих данных. Создайте базу и импортируйте каталог:",
-      el("pre", {}, el("code", {}, "npm run office:init\nnpm run office:import")), el("p", {}, "Учебный набор при необходимости: npm run office:seed"));
+    return errorState("База офиса ещё не создана", "Панель не показывает нули вместо отсутствующих данных. Подготовьте офис:",
+      el("pre", {}, el("code", {}, "npm run bootstrap\nnpm run frontsmith")), el("p", {}, "Учебный набор при необходимости: npm run office:seed"));
   }
   if (error.status === 404) return errorState("Запись не найдена", error.message, el("a", { href: "#/overview" }, "Вернуться к обзору"));
   return errorState("Не удалось загрузить данные", `${error.message}. Показатели не отображаются, пока данные недоступны`, el("button", { type: "button", class: "sync-button", onclick: () => load() }, "Повторить"));

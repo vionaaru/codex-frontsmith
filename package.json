@@ -23,6 +23,8 @@
   "scripts": {
     "check": "node scripts/check.mjs",
     "bootstrap": "node scripts/bootstrap.mjs",
+    "business:init": "node scripts/business-init.mjs",
+    "frontsmith": "node scripts/frontsmith.mjs",
     "update:website": "node scripts/update-website.mjs",
     "owner:brief": "node scripts/prepare-owner-brief.mjs",
     "prepare:reply": "node scripts/prepare-customer-reply.mjs",
@@ -60,6 +62,7 @@
     "crm:start": "node services/crm/start.mjs",
     "crm:migrate-customers": "node scripts/crm-migrate-customers.mjs",
     "test:crm": "node tests/crm-live.mjs",
+    "test:first-run": "node tests/first-run.mjs",
     "smoke:crm-codex": "node services/codex-host/smoke-customer.mjs"
   },
   "engines": {

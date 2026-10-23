@@ -12,7 +12,7 @@
 // принимает `--data-root` и запоминает выбор в `%LOCALAPPDATA%\Frontsmith\data-root.txt`.
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -62,6 +62,12 @@ function localAppData() {
 // Указатель на выбранный каталог данных. Сам указатель маленький и всегда в
 // `%LOCALAPPDATA%\Frontsmith`, даже если данные лежат на другом диске.
 export const DATA_ROOT_POINTER = path.join(localAppData(), "Frontsmith", "data-root.txt");
+
+// Запомнить выбранный каталог данных (--data-root первичной подготовки)
+export function rememberDataRoot(root) {
+  mkdirSync(path.dirname(DATA_ROOT_POINTER), { recursive: true });
+  writeFileSync(DATA_ROOT_POINTER, `${path.resolve(root)}\n`);
+}
 
 export function dataRoot() {
   if (process.env.FRONTSMITH_DATA_ROOT) return path.resolve(process.env.FRONTSMITH_DATA_ROOT);
@@ -164,7 +170,8 @@ export async function startPrivacyService({
   extraEnv = {},
   paths = runtimePaths(),
   requireReady = true,
-  timeoutMs = 300_000,
+  // Первый запуск после установки на слабом компьютере (6 ГБ RAM) загружает torch и NER ~6,5 минуты
+  timeoutMs = 900_000,
   onLog
 } = {}) {
   const status = runtimeStatus(paths);
@@ -205,8 +212,9 @@ export async function startPrivacyService({
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   if (exited || !last || (requireReady && !last.body?.ready)) {
+    // Причина — до остановки: после stop() процесс уже завершён нами
+    const reason = exited ? `privacy_process_exited:${exited.code}` : !last ? "privacy_start_timeout" : (last.body?.reasons ?? []).join(",") || "privacy_not_ready";
     await stop();
-    const reason = exited ? `privacy_process_exited:${exited.code}` : !last ? "privacy_start_timeout" : last.body.reasons.join(",");
     throw Object.assign(new Error(`Privacy Service не готов: ${reason}`), { code: "privacy_not_ready", reason });
   }
   return { url, token, port, process: child, health: last.body, stop, exited: exit };

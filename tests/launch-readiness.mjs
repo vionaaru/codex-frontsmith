@@ -30,6 +30,8 @@ const requiredCapabilities = [
 const requiredScripts = {
   check: "node scripts/check.mjs",
   bootstrap: "node scripts/bootstrap.mjs",
+  "business:init": "node scripts/business-init.mjs",
+  frontsmith: "node scripts/frontsmith.mjs",
   "owner:brief": "node scripts/prepare-owner-brief.mjs",
   "prepare:reply": "node scripts/prepare-customer-reply.mjs",
   "prepare:estimate": "node scripts/prepare-estimate-draft.mjs",
@@ -55,7 +57,8 @@ const requiredScripts = {
   "crm:bootstrap": "node services/crm/bootstrap.mjs",
   "crm:start": "node services/crm/start.mjs",
   "crm:migrate-customers": "node scripts/crm-migrate-customers.mjs",
-  "test:codex-host": "node tests/codex-host.mjs"
+  "test:codex-host": "node tests/codex-host.mjs",
+  "test:first-run": "node tests/first-run.mjs"
 };
 
 const requiredFiles = [
@@ -131,6 +134,8 @@ for (const scenario of requiredScenarioLabels) {
 
 for (const command of [
   "npm run bootstrap",
+  "npm run codex-host:login",
+  "npm run frontsmith",
   "npm run owner:brief",
   "npm run prepare:reply",
   "npm run prepare:estimate",

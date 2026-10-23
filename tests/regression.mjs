@@ -34,7 +34,7 @@ for (const file of websiteFiles) {
 try {
   await run("npm", ["run", "check"]);
   await runRejected(process.execPath, ["--input-type=module", "-e", "import { businessRoot } from './scripts/lib/paths.mjs'; businessRoot();"], { ...testEnv, FRONTSMITH_BUSINESS_ROOT: "website" });
-  await run("npm", ["run", "bootstrap"]);
+  await run("npm", ["run", "business:init"]);
   await assertExists(path.join(root, "business.json"));
   await assertExists(path.join(websiteRoot, "index.html"));
   await run("npm", ["run", "launch:status"]);
@@ -60,7 +60,7 @@ try {
   assertDoesNotInclude(defaultWebsite, "acme-kitchen-remodel", "сайт не содержит фотографии кухни");
   assertAutoServices(defaultWebsite, defaultProfile);
   const defaultProfileBefore = await readFile(path.join(root, "business.json"), "utf8");
-  await runRejected("npm", ["run", "bootstrap"]);
+  await runRejected("npm", ["run", "business:init"]);
   assertEqual(await readFile(path.join(root, "business.json"), "utf8"), defaultProfileBefore, "повторная настройка не перезаписывает профиль");
   assertEqual(await readFile(path.join(websiteRoot, "index.html"), "utf8"), defaultWebsite, "отказ повторной настройки не меняет сайт");
 
@@ -68,7 +68,7 @@ try {
   await writeFile(malformedProfilePath, JSON.stringify({ ...defaultProfile, bookingUrl: "/booking" }));
   const publicFilesBefore = new Map();
   for (const file of websiteFiles) publicFilesBefore.set(file, await readFile(path.join(websiteSourceRoot, file), "utf8"));
-  await runRejected("npm", ["run", "bootstrap", "--", "--profile", malformedProfilePath]);
+  await runRejected("npm", ["run", "business:init", "--", "--profile", malformedProfilePath]);
   assertEqual(await readFile(path.join(root, "business.json"), "utf8"), defaultProfileBefore, "неверный адрес записи не заменяет приватный профиль");
   for (const [file, before] of publicFilesBefore) {
     assertEqual(await readFile(path.join(websiteSourceRoot, file), "utf8"), before, "неверный адрес записи не меняет публичный файл " + file);
@@ -93,7 +93,7 @@ try {
   await rm(root, { recursive: true, force: true });
 
   await run("npm", [
-    "run", "bootstrap", "--",
+    "run", "business:init", "--",
     "--business-name", "АвтоРитм",
     "--business-type", "Автосервис",
     "--service-areas", "Москва,Ближайшие районы",

@@ -13,7 +13,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statfsSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { DATA_ROOT_POINTER, PINS, SERVICE_DIR, dataRoot, runtimeEnv, runtimePaths, startPrivacyService, uvAsset } from "./runtime.mjs";
+import { PINS, SERVICE_DIR, dataRoot, rememberDataRoot, runtimeEnv, runtimePaths, startPrivacyService, uvAsset } from "./runtime.mjs";
 
 const MIN_FREE_BYTES = 4 * 1024 ** 3;
 const args = process.argv.slice(2);
@@ -33,8 +33,7 @@ if (requested) {
   const root = path.resolve(requested);
   const repo = path.resolve(SERVICE_DIR, "..", "..");
   if (root.toLowerCase().startsWith(repo.toLowerCase())) fail("каталог данных не может находиться внутри репозитория");
-  mkdirSync(path.dirname(DATA_ROOT_POINTER), { recursive: true });
-  writeFileSync(DATA_ROOT_POINTER, `${root}\n`);
+  rememberDataRoot(root);
 }
 const paths = runtimePaths(dataRoot());
 for (const dir of [paths.runtime, paths.cache, paths.tmp, paths.stateDir]) mkdirSync(dir, { recursive: true });
