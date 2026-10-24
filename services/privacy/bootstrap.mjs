@@ -19,6 +19,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { PINS, SERVICE_DIR, VENDOR, dataRoot, rememberDataRoot, runtimeEnv, runtimePaths, startPrivacyService } from "./runtime.mjs";
 import { assertBundledPlatform, assertComponents } from "../../scripts/lib/vendor.mjs";
+import { dataRootPlan, looksInstalled, validateDataRoot } from "../../scripts/lib/data-root.mjs";
 
 // Распакованный Python ~0,1 ГБ, venv с torch ~1,5 ГБ, сборка и кэш uv — с запасом
 const MIN_FREE_BYTES = 3 * 1024 ** 3;
@@ -42,10 +43,16 @@ try {
 
 const requested = flag("--data-root");
 if (requested) {
-  const root = path.resolve(requested);
-  const repo = path.resolve(SERVICE_DIR, "..", "..");
-  if (root.toLowerCase().startsWith(repo.toLowerCase())) fail("каталог данных не может находиться внутри репозитория");
-  rememberDataRoot(root);
+  // Те же правила, что у npm run bootstrap: уже выбранный каталог не меняется
+  let plan;
+  try {
+    plan = dataRootPlan({ requested });
+  } catch (error) {
+    fail(`${error.code}: ${error.message}`);
+  }
+  const checked = validateDataRoot(plan.root, { projectRoot: path.resolve(SERVICE_DIR, "..", ".."), installed: looksInstalled(plan.root) });
+  if (!checked.ok) fail(`DATA_ROOT_INVALID: ${plan.root}: ${checked.problems.join("; ")}`);
+  if (plan.remember) rememberDataRoot(checked.root);
 }
 const paths = runtimePaths(dataRoot());
 for (const dir of [paths.runtime, paths.cache, paths.tmp, paths.stateDir]) mkdirSync(dir, { recursive: true });

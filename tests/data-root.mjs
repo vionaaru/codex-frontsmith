@@ -157,6 +157,10 @@ try {
     assert.equal(moved.status, 1);
     assert.match(moved.stderr, /DATA_ROOT_ALREADY_SET/);
     assert.equal(readFileSync(DATA_ROOT_POINTER, "utf8").trim(), saved, "выбор существующей установки не изменён");
+    const privacy = spawnSync(process.execPath, [path.join(repo, "services", "privacy", "bootstrap.mjs"), "--data-root", path.join(temp, "E", "Frontsmith")], { cwd: repo, env, encoding: "utf8", timeout: 120_000 });
+    assert.equal(privacy.status, 1);
+    assert.match(privacy.stderr, /DATA_ROOT_ALREADY_SET/, "npm run privacy:bootstrap подчиняется тем же правилам");
+    assert.equal(readFileSync(DATA_ROOT_POINTER, "utf8").trim(), saved);
   });
 
   console.log(`Data root: ${passed} проверок пройдено`);
