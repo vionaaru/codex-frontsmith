@@ -1,13 +1,15 @@
 import { createHash, randomUUID } from "node:crypto";
 
-// Машинные статусы совпадают с CHECK в миграции 001. Подписи — только для людей
+// Машинные статусы совпадают с CHECK в миграции 001. Подписи — только для людей.
+// Здесь нейтральные подписи универсального профиля; отраслевой профиль переопределяет их
+// в blueprint.json → vocabulary (см. profileVocabulary). Идентификаторы не меняются
 
 export const inquiryStatuses = {
   new: { label: "Новое", transitions: ["in_progress", "waiting_customer", "converted", "closed"] },
   in_progress: { label: "В работе", transitions: ["waiting_customer", "converted", "closed"] },
   waiting_customer: { label: "Ждёт клиента", transitions: ["in_progress", "converted", "closed"] },
-  converted: { label: "Оформлен заказ", transitions: [] },
-  closed: { label: "Закрыто без заказа", transitions: ["in_progress"] }
+  converted: { label: "Оформлено", transitions: [] },
+  closed: { label: "Закрыто", transitions: ["in_progress"] }
 };
 
 export const workOrderStatuses = {
@@ -30,9 +32,9 @@ export const costApprovalStatuses = {
 export const appointmentStatuses = {
   tentative: { label: "Предварительно", transitions: ["confirmed", "cancelled"] },
   confirmed: { label: "Подтверждена", transitions: ["arrived", "no_show", "cancelled"] },
-  arrived: { label: "Клиент приехал", transitions: ["completed"] },
+  arrived: { label: "Клиент пришёл", transitions: ["completed"] },
   completed: { label: "Завершена", transitions: [] },
-  no_show: { label: "Не приехал", transitions: [] },
+  no_show: { label: "Не пришёл", transitions: [] },
   cancelled: { label: "Отменена", transitions: [] }
 };
 
@@ -47,7 +49,7 @@ export const inquirySources = {
   phone: "Телефон",
   website: "Сайт",
   booking_flow: "Booking Flow",
-  walk_in: "Пришёл в сервис",
+  walk_in: "Личный визит",
   messenger: "Мессенджер",
   email: "Почта",
   local_file: "Локальный файл",
@@ -59,7 +61,7 @@ export const appointmentSources = {
   phone: "Телефон",
   website: "Сайт",
   booking_flow: "Booking Flow",
-  walk_in: "Пришёл в сервис",
+  walk_in: "Личный визит",
   messenger: "Мессенджер",
   email: "Почта",
   demo_seed: "Учебный набор",
@@ -71,6 +73,15 @@ export const activeWorkOrderStatuses = ["draft", "awaiting_approval", "approved"
 export const openTaskStatuses = ["open", "in_progress"];
 export const upcomingAppointmentStatuses = ["tentative", "confirmed", "arrived"];
 
+// Категории услуг каталога: машинный ключ → подпись. Неизвестный ключ показывается как есть
+export const serviceCategories = {
+  consultation: "Консультация",
+  service: "Услуги",
+  project: "Проектные работы",
+  support: "Сопровождение",
+  other: "Другое"
+};
+
 export const vocabulary = {
   inquiry: inquiryStatuses,
   workOrder: workOrderStatuses,
@@ -78,8 +89,29 @@ export const vocabulary = {
   appointment: appointmentStatuses,
   task: taskStatuses,
   inquirySources,
-  appointmentSources
+  appointmentSources,
+  serviceCategories
 };
+
+// Словарь бизнес-профиля: нейтральная база + подписи из blueprint.json → vocabulary.
+// Переопределяются только подписи существующих ключей статусов и источников; категории
+// услуг профиль задаёт целиком. Переходы и машинные ключи не меняются
+export function profileVocabulary(overrides = {}) {
+  const result = {};
+  for (const [name, dictionary] of Object.entries(vocabulary)) {
+    const custom = overrides?.[name] ?? {};
+    if (name === "serviceCategories") {
+      result[name] = Object.keys(custom).length ? { ...custom } : { ...dictionary };
+      continue;
+    }
+    result[name] = Object.fromEntries(Object.entries(dictionary).map(([key, value]) => {
+      const label = typeof custom[key] === "string" ? custom[key] : null;
+      if (typeof value === "string") return [key, label ?? value];
+      return [key, { ...value, label: label ?? value.label }];
+    }));
+  }
+  return result;
+}
 
 export class OfficeValidationError extends Error {
   constructor(message) {

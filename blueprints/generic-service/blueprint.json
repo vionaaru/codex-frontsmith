@@ -8,5 +8,8 @@
   "officeModules": [],
   "requiredProfileFields": ["businessName", "businessType", "services", "contact", "timeZone"],
   "defaultPages": ["home"],
-  "capabilities": ["business-setup", "owner-brief", "website", "customer-desk", "ongoing-customer-communication", "estimates-proposals", "launch-plan", "activity-log", "settings-integrations", "extension-planning", "connected-action-receipts"]
+  "capabilities": ["business-setup", "owner-brief", "website", "customer-desk", "ongoing-customer-communication", "estimates-proposals", "launch-plan", "activity-log", "settings-integrations", "extension-planning", "connected-action-receipts"],
+  "vocabulary": {
+    "serviceCategories": { "consultation": "Консультация", "service": "Услуги", "project": "Проектные работы", "support": "Сопровождение", "other": "Другое" }
+  }
 }

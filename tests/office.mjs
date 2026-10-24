@@ -341,6 +341,9 @@ try {
       assert.equal(monthly.days[2].orders, 1, "готовые и выданные учитываются по дню выполнения");
       assert.deepEqual(monthly.days[0], { date: "2026-10-01", orders: 0, missingTotals: 0, totalKopecks: 0 });
       const meta = (await get("/api/meta")).body.data;
+      assert.equal(meta.vocabulary.inquiry.converted.label, "Оформлен заказ", "auto-service сохраняет прежние подписи");
+      assert.equal(meta.vocabulary.inquiry.closed.label, "Закрыто без заказа");
+      assert.equal(meta.vocabulary.serviceCategories.diagnostics, "Диагностика");
       assert.equal(overview.monthlyWork.month, meta.today.date.slice(0, 7), "текущий месяц по часовому поясу бизнеса");
       for (const [month, length] of [["2024-02", 29], ["2025-02", 28], ["2100-02", 28], ["2026-04", 30]]) {
         const empty = (await get(`/api/overview?month=${month}`)).body.data.monthlyWork;

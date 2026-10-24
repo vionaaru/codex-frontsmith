@@ -4,6 +4,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { profileVocabulary } from "../../office/lib/domain.mjs";
 
 const projectRoot = fileURLToPath(new URL("../../", import.meta.url));
 
@@ -61,4 +62,10 @@ export function officeModules(profile) {
   const blueprint = profileBlueprint(profile);
   if (!blueprint || !Array.isArray(blueprint.officeModules)) return [...CORE_OFFICE_MODULES, ...INDUSTRY_OFFICE_MODULES];
   return [...new Set([...CORE_OFFICE_MODULES, ...blueprint.officeModules.filter((module) => INDUSTRY_OFFICE_MODULES.includes(module))])];
+}
+
+// Словари статусов, источников и категорий услуг для профиля: нейтральная база ядра +
+// подписи профиля. Неизвестный профиль — нейтральная база
+export function vocabularyFor(profile) {
+  return profileVocabulary(profileBlueprint(profile)?.vocabulary ?? {});
 }

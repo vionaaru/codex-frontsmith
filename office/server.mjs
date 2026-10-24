@@ -12,14 +12,13 @@ import {
   appointmentStatuses,
   inquiryStatuses,
   taskStatuses,
-  vocabulary,
   workOrderStatuses,
   zonedDayRange
 } from "./lib/domain.mjs";
 import * as repo from "./lib/repositories.mjs";
 import { CustomerError } from "./customers/contract.mjs";
 import { connectCustomers, enrichCustomerRefs } from "./customers/index.mjs";
-import { officeModules } from "../scripts/lib/blueprints.mjs";
+import { officeModules, vocabularyFor } from "../scripts/lib/blueprints.mjs";
 import { businessPath } from "../scripts/lib/paths.mjs";
 
 export const defaultOfficePort = 4180;
@@ -119,7 +118,7 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
     ["/api/health", () => ({ ok: true, database: officeDbExists(dbFile) ? "present" : "missing" })],
     ["/api/meta", async (conn, ctx) => {
       const provider = await customerProvider();
-      return { business: publicBusiness(ctx.business), modules: profileModules(), vocabulary, schemaVersion: schemaVersion(conn), today: ctx.day,
+      return { business: publicBusiness(ctx.business), modules: profileModules(), vocabulary: vocabularyFor(currentProfile()), schemaVersion: schemaVersion(conn), today: ctx.day,
         customers: { provider: provider?.name ?? null, available: Boolean(provider), capabilities: provider?.capabilities ?? null } };
     }],
     ["/api/overview", (conn, ctx) => {
@@ -358,15 +357,17 @@ function found(value, label) {
 }
 
 // Разделы панели по бизнес-профилю: отраслевые (автомобили, заказ-наряды) только в своём профиле
-function profileModules() {
+function currentProfile() {
   const file = businessPath("business.json");
-  let profile = null;
   try {
-    profile = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null;
+    return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null;
   } catch {
-    profile = null;
+    return null;
   }
-  return officeModules(profile);
+}
+
+function profileModules() {
+  return officeModules(currentProfile());
 }
 
 function publicBusiness(business) {

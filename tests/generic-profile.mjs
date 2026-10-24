@@ -101,6 +101,11 @@ try {
       const meta = await api("GET", "/api/meta");
       assert.equal(meta.status, 200);
       assert.deepEqual(meta.body.data.modules, CORE_OFFICE_MODULES);
+      const vocabulary = meta.body.data.vocabulary;
+      assert.equal(vocabulary.inquiry.converted.label, "Оформлено");
+      assert.equal(vocabulary.inquiry.closed.label, "Закрыто");
+      assert.equal(vocabulary.serviceCategories.consultation, "Консультация");
+      assert.doesNotMatch(JSON.stringify(vocabulary), /заказ|Ремонт|Диагностика|Обслуживание|в сервис|приехал/, "словарь generic без автосервисных подписей");
       assert.equal(meta.body.data.business.name, "Новая компания");
       assert.equal(meta.body.data.business.booking_url, null);
       for (const route of ["/api/overview", "/api/customers", "/api/inquiries", "/api/tasks", "/api/services", "/api/schedule", "/api/events"]) {

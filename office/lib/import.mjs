@@ -110,7 +110,7 @@ export function importCatalog(db, profile) {
 
 // Синтетическое обращение из customer-inquiries/demo-inquiry.json. Markdown-черновики остаются файлами.
 // Контакты клиента уходят в CustomerProvider, в офисной базе остаётся client_id
-export async function importDemoInquiryFile(db, { customers } = {}) {
+export async function importDemoInquiryFile(db, { customers, vocabulary } = {}) {
   const file = businessPath("customer-inquiries", "demo-inquiry.json");
   if (!existsSync(file)) return { status: "missing", file };
   const data = JSON.parse(await readFile(file, "utf8"));
@@ -122,7 +122,7 @@ export async function importDemoInquiryFile(db, { customers } = {}) {
 
   const isDemo = data.demo === true;
   if (!customers) throw new Error("Импорт обращения требует CustomerProvider");
-  const ctx = createContext(db, { actor: "импорт файла", source: "import" });
+  const ctx = createContext(db, { actor: "импорт файла", source: "import", vocabulary });
   const ids = {
     customer: stableId("file-customer", externalId),
     vehicle: stableId("file-vehicle", externalId),
@@ -169,7 +169,7 @@ const scenarioCustomer = { brakes: "irina", oil: "sergey", aircon: "marina", tir
 // Сценарий уже создан, если есть его автомобиль
 const scenarioMarker = { brakes: "irina-solaris", oil: "sergey-camry", aircon: "marina-polo", tires: "oleg-vesta", suspension: "pavel-octavia" };
 
-export async function seedDemoData(db, { now = new Date(), customers } = {}) {
+export async function seedDemoData(db, { now = new Date(), customers, vocabulary } = {}) {
   if (!customers) throw new Error("Учебный набор требует CustomerProvider");
   const services = new Set(db.prepare("SELECT code FROM services").all().map((row) => row.code));
   const required = ["brake-pads", "oil-service", "air-conditioning", "tire-service", "suspension-diagnostics", "wheel-alignment", "computer-diagnostics"];
@@ -179,7 +179,7 @@ export async function seedDemoData(db, { now = new Date(), customers } = {}) {
   const business = db.prepare("SELECT time_zone FROM business WHERE singleton = 1").get();
   if (!business) throw new Error("Нет проекции профиля бизнеса. Сначала выполните npm run office:init");
 
-  const ctx = createContext(db, { actor: demoActor, source: "seed", now: () => now });
+  const ctx = createContext(db, { actor: demoActor, source: "seed", now: () => now, vocabulary });
   const day = zonedDayRange(now, business.time_zone);
   const dayStart = Date.parse(day.start);
   const at = (dayOffset, hour, minute = 0) => new Date(dayStart + dayOffset * 86_400_000 + (hour * 60 + minute) * 60_000).toISOString();

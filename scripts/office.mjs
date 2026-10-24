@@ -11,7 +11,8 @@ import {
   restoreOfficeDb,
   schemaVersion
 } from "../office/lib/db.mjs";
-import { OfficeValidationError, parseInstant, parseQuantity, parseRubles, vocabulary } from "../office/lib/domain.mjs";
+import { OfficeValidationError, parseInstant, parseQuantity, parseRubles } from "../office/lib/domain.mjs";
+import { vocabularyFor } from "./lib/blueprints.mjs";
 import { importCatalog, importDemoInquiryFile, readProfile, seedDemoData, syncBusinessProjection } from "../office/lib/import.mjs";
 import { matchVehicleWithCustomers } from "../office/lib/matching.mjs";
 import { connectCustomers } from "../office/customers/index.mjs";
@@ -98,7 +99,7 @@ async function importFiles() {
   try {
     const profile = await readProfile();
     const catalog = importCatalog(db, profile);
-    const inquiry = await withCustomers(db, (customers) => importDemoInquiryFile(db, { customers }));
+    const inquiry = await withCustomers(db, async (customers) => importDemoInquiryFile(db, { customers, vocabulary: await profileLabels() }));
     console.log(`Каталог: добавлено ${catalog.inserted.length}, уже в базе ${catalog.existing.length}`);
     for (const diff of catalog.differences) {
       console.log(`  ! ${diff.code}: в business.json другое значение (${diff.fields.join(", ")}). Источник истины — база; меняйте цену через service:price`);
@@ -114,7 +115,7 @@ async function importFiles() {
 async function seed() {
   const db = openReady();
   try {
-    const result = await withCustomers(db, (customers) => seedDemoData(db, { customers }));
+    const result = await withCustomers(db, async (customers) => seedDemoData(db, { customers, vocabulary: await profileLabels() }));
     console.log(`Учебный набор: создано ${result.created.length ? result.created.join(", ") : "ничего"}; уже было ${result.skipped.length ? result.skipped.join(", ") : "ничего"}`);
     console.log("Все записи помечены is_demo = 1. Это не данные Booking Flow и не реальные клиенты");
   } finally {
@@ -148,8 +149,13 @@ async function status() {
   }
 }
 
-function statuses() {
-  for (const [name, dictionary] of Object.entries(vocabulary)) {
+// Подписи статусов и категорий текущего бизнес-профиля; без профиля — нейтральные
+async function profileLabels() {
+  return vocabularyFor(await readProfile().catch(() => null));
+}
+
+async function statuses() {
+  for (const [name, dictionary] of Object.entries(await profileLabels())) {
     console.log(`\n${name}`);
     for (const [key, value] of Object.entries(dictionary)) {
       const label = typeof value === "string" ? value : value.label;
@@ -307,7 +313,7 @@ async function mutate(run) {
   const db = openReady();
   try {
     const timeZone = db.prepare("SELECT time_zone FROM business WHERE singleton = 1").get()?.time_zone ?? "Europe/Moscow";
-    const ctx = ops.createContext(db, { actor: args.actor ?? process.env.FRONTSMITH_ACTOR ?? "оператор", source: "cli" });
+    const ctx = ops.createContext(db, { actor: args.actor ?? process.env.FRONTSMITH_ACTOR ?? "оператор", source: "cli", vocabulary: await profileLabels() });
     const result = await run(ctx, timeZone);
     console.log(`Готово: ${command}`);
     console.log(JSON.stringify(result, null, 2));

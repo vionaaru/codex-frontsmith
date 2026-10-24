@@ -12,13 +12,20 @@ import {
   newId,
   taskStatuses,
   vinKey,
+  vocabulary,
   workOrderStatuses
 } from "./domain.mjs";
 import { insertEvent } from "./repositories.mjs";
 
-export function createContext(db, { actor = "оператор", source = "cli", now = () => new Date() } = {}) {
+// vocabulary — словарь бизнес-профиля (vocabularyFor): подписи статусов в журнале событий.
+// Без него — нейтральные подписи ядра
+export function createContext(db, { actor = "оператор", source = "cli", now = () => new Date(), vocabulary: labels = vocabulary } = {}) {
   if (!String(actor).trim()) throw new OfficeValidationError("Не указан автор изменения");
-  return { db, actor: String(actor).trim(), source, now };
+  return { db, actor: String(actor).trim(), source, now, vocabulary: labels };
+}
+
+function label(ctx, kind, status) {
+  return ctx.vocabulary?.[kind]?.[status]?.label ?? vocabulary[kind][status].label;
 }
 
 function run(ctx, fn) {
@@ -143,10 +150,10 @@ export function createInquiry(ctx, { customerId, vehicleId, serviceCode, source,
 export function setInquiryStatus(ctx, { id, status, note, revision }) {
   return run(ctx, (at) => {
     const inquiry = find(ctx, "inquiries", id, "Обращение");
-    if (status === "converted") throw new OfficeValidationError("Статус «Оформлен заказ» ставится операцией order:create");
-    assertTransition(inquiryStatuses, inquiry.status, status, "Обращение");
+    if (status === "converted") throw new OfficeValidationError(`Статус «${label(ctx, "inquiry", "converted")}» ставится операцией order:create`);
+    assertTransition(ctx.vocabulary?.inquiry ?? inquiryStatuses, inquiry.status, status, "Обращение");
     update(ctx, "inquiries", inquiry, { status, closed_at: status === "closed" ? at : null }, at, revision);
-    event(ctx, at, { entityType: "inquiry", entityId: id, action: "status_changed", summary: `Обращение: ${inquiryStatuses[inquiry.status].label} → ${inquiryStatuses[status].label}`, details: { from: inquiry.status, to: status, note: optional(note) }, isDemo: inquiry.is_demo === 1 });
+    event(ctx, at, { entityType: "inquiry", entityId: id, action: "status_changed", summary: `Обращение: ${label(ctx, "inquiry", inquiry.status)} → ${label(ctx, "inquiry", status)}`, details: { from: inquiry.status, to: status, note: optional(note) }, isDemo: inquiry.is_demo === 1 });
     return { ...inquiry, status };
   });
 }
@@ -157,7 +164,7 @@ export function createWorkOrder(ctx, { inquiryId, customerId, vehicleId, number,
   return run(ctx, (at) => {
     const inquiry = inquiryId ? find(ctx, "inquiries", inquiryId, "Обращение") : null;
     if (inquiry && !["new", "in_progress", "waiting_customer"].includes(inquiry.status)) {
-      throw new OfficeValidationError(`Обращение уже в статусе «${inquiryStatuses[inquiry.status].label}»; заказ из него не создаётся`);
+      throw new OfficeValidationError(`Обращение уже в статусе «${label(ctx, "inquiry", inquiry.status)}»; заказ из него не создаётся`);
     }
     const customer = find(ctx, "customers", inquiry?.customer_id ?? customerId, "Клиент");
     const vehicle = find(ctx, "vehicles", vehicleId ?? inquiry?.vehicle_id, "Автомобиль");
@@ -358,11 +365,11 @@ export function createAppointment(ctx, { inquiryId, workOrderId, startsAt, endsA
 export function setAppointmentStatus(ctx, { id, status, basis, revision }) {
   return run(ctx, (at) => {
     const appointment = find(ctx, "appointments", id, "Запись");
-    assertTransition(appointmentStatuses, appointment.status, status, "Запись");
+    assertTransition(ctx.vocabulary?.appointment ?? appointmentStatuses, appointment.status, status, "Запись");
     const fields = { status };
     if (status === "confirmed") fields.confirmation_basis = required(basis, "основание подтверждения (например: клиент подтвердил по телефону)");
     update(ctx, "appointments", appointment, fields, at, revision);
-    event(ctx, at, { entityType: "appointment", entityId: id, action: "status_changed", summary: `Запись: ${appointmentStatuses[appointment.status].label} → ${appointmentStatuses[status].label}`, details: { from: appointment.status, to: status, basis: optional(basis) }, isDemo: appointment.is_demo === 1 });
+    event(ctx, at, { entityType: "appointment", entityId: id, action: "status_changed", summary: `Запись: ${label(ctx, "appointment", appointment.status)} → ${label(ctx, "appointment", status)}`, details: { from: appointment.status, to: status, basis: optional(basis) }, isDemo: appointment.is_demo === 1 });
     return { ...appointment, ...fields };
   });
 }

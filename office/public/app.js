@@ -4,7 +4,8 @@ const POLL_MS = 20000;
 const main = document.querySelector("#main");
 const state = { meta: null, route: null, results: null, hasData: false, lastOk: null, seq: 0, loading: false };
 
-const categoryLabels = { diagnostics: "Диагностика", maintenance: "Обслуживание", repair: "Ремонт", other: "Другое" };
+// Категории услуг — из словаря бизнес-профиля (/api/meta → vocabulary.serviceCategories)
+const categoryLabels = () => state.meta?.vocabulary?.serviceCategories ?? {};
 const entityLabels = { business: "Профиль", customer: "Клиент", vehicle: "Автомобиль", service: "Услуга", inquiry: "Обращение", work_order: "Заказ", order_item: "Позиция", appointment: "Запись", task: "Задача", database: "База" };
 const eventSources = { cli: "команда CLI", import: "импорт", seed: "учебный набор", migration: "инициализация", panel: "панель" };
 
@@ -680,7 +681,7 @@ function renderTasks(rows) {
 
 function serviceControls(params) {
   return el("div", { class: "filters" },
-    selectField("Категория", "category", params, [["", "Все"], ...Object.entries(categoryLabels)]),
+    selectField("Категория", "category", params, [["", "Все"], ...Object.entries(categoryLabels())]),
     selectField("Показ", "active", params, [["", "Все услуги"], ["yes", "Активные"], ["no", "Скрытые"]]),
     searchField(params, "Название, описание, код"));
 }
@@ -692,7 +693,7 @@ function renderServices(rows) {
       el("thead", {}, el("tr", {}, el("th", {}, "Услуга"), el("th", {}, "Категория"), el("th", { class: "num" }, "Цена"), el("th", { class: "num" }, "Время"), el("th", {}, "Статус"))),
       el("tbody", {}, rows.map((s) => el("tr", {},
         el("td", { class: "wide" }, el("strong", {}, s.name), el("div", { class: "note" }, has("work-orders") ? `${s.code} · в заказах: ${s.order_item_count}, в обращениях: ${s.inquiry_count}` : `${s.code} · в обращениях: ${s.inquiry_count}`)),
-        el("td", { "data-label": "Категория" }, categoryLabels[s.category] ?? s.category),
+        el("td", { "data-label": "Категория" }, categoryLabels()[s.category] ?? s.category),
         el("td", { class: "num", "data-label": "Цена" }, s.base_price_kopecks === null ? unknown("уточняется") : s.base_price_kopecks === 0 ? "бесплатно" : `от ${money(s.base_price_kopecks, s.currency)}`, s.is_demo_price ? el("div", {}, el("span", { class: "badge demo" }, "демо-цена")) : null),
         el("td", { class: "num", "data-label": "Время" }, s.duration_minutes ? `${s.duration_minutes} мин` : unknown("уточняется")),
         el("td", { "data-label": "Статус" }, s.is_active ? "активна" : "скрыта")))))),
