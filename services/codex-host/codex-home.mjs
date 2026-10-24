@@ -5,11 +5,17 @@
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { dataRoot } from "../privacy/runtime.mjs";
 
+// Новая установка — <каталог данных>/codex-host. Установки до выбора каталога данных хранят
+// вход в %LOCALAPPDATA%\Frontsmith\codex-host: если он там есть, он и используется, чтобы
+// вход ChatGPT не сбрасывался
 export function defaultHostRoot() {
   if (process.env.FRONTSMITH_CODEX_HOST_ROOT) return path.resolve(process.env.FRONTSMITH_CODEX_HOST_ROOT);
   const base = process.platform === "win32" ? process.env.LOCALAPPDATA ?? os.homedir() : path.join(os.homedir(), ".local", "share");
-  return path.join(base, "Frontsmith", "codex-host");
+  const legacy = path.join(base, "Frontsmith", "codex-host");
+  if (existsSync(legacy)) return legacy;
+  return path.join(dataRoot(), "codex-host");
 }
 
 export function findCodex() {

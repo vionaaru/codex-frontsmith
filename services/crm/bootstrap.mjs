@@ -2,8 +2,9 @@
 //
 //   npm run crm:bootstrap
 //
-// 1. Платформа → архив релиза crmkit v0.9.1 с GitHub.
-// 2. SHA-256 архива сверяется с зафиксированным в runtime.mjs и с официальным checksums.txt.
+// 1. Архив релиза crmkit v0.9.1 из поставки Frontsmith (vendor/crmkit/release, Windows amd64).
+// 2. SHA-256 архива сверяется с vendor/manifest.json, с зафиксированным в runtime.mjs и с
+//    официальным checksums.txt релиза (лежит рядом). Сеть не используется.
 // 3. crmkitd распаковывается в <data>/runtime/crmkit/<версия>/ (PATH не меняется, права администратора не нужны).
 // 4. <data>/crm/: конфигурация, схема базы (crmkitd migrate --execute), токен доверенного процесса.
 // 5. Проверка: обычный запуск на 127.0.0.1 принимает токен, /auth/request кода не выдаёт.
@@ -11,10 +12,11 @@
 //
 // Каталог данных — тот же, что у Privacy Service (`npm run privacy:bootstrap -- --data-root`).
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
+import { assertBundledPlatform, assertComponents } from "../../scripts/lib/vendor.mjs";
 import { CRMKIT, crmPaths, crmkitAsset, freePort, protectDir, provisionCredential, readCredential, runMigrations, startCrmkit, writeConfig } from "./runtime.mjs";
 import { CrmkitClient } from "./client.mjs";
 
@@ -30,16 +32,14 @@ export async function installCrmkit(paths, { log = () => {} } = {}) {
     if (version === `crmkitd ${CRMKIT.tag}`) return { downloaded: false, version, asset };
   }
   mkdirSync(paths.tmp, { recursive: true });
-  const download = async (url) => {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`не удалось скачать ${url}: HTTP ${response.status}`);
-    return Buffer.from(await response.arrayBuffer());
-  };
-  log(`скачивание ${asset.url}`);
-  const archive = await download(asset.url);
+  // Архив из поставки Frontsmith; указатель Git LFS вместо архива — понятная ошибка до распаковки
+  assertBundledPlatform();
+  await assertComponents(["crmkit-binary"]);
+  log(`из поставки: ${path.relative(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".."), asset.local)}`);
+  const archive = readFileSync(asset.local);
   const digest = createHash("sha256").update(archive).digest("hex");
   if (digest !== asset.sha256) throw new Error(`SHA-256 ${asset.file} не совпадает с зафиксированным`);
-  const checksums = (await download(asset.checksumsUrl)).toString("utf8");
+  const checksums = readFileSync(asset.localChecksums, "utf8");
   const official = checksums.split(/\r?\n/).map((line) => line.trim().split(/\s+/)).find(([, name]) => name === asset.file)?.[0];
   if (official !== digest) throw new Error(`${asset.file} не совпадает с официальным checksums.txt релиза ${CRMKIT.tag}`);
 
@@ -88,7 +88,7 @@ export async function verifyClosedMode(paths) {
 export async function bootstrapCrm(paths = crmPaths(), { log = console.log } = {}) {
   log(`\n▸ crmkit ${CRMKIT.tag} (${crmkitAsset().file})`);
   const install = await installCrmkit(paths, { log: (text) => log(`  ${text}`) });
-  log(install.downloaded ? `  ${install.version}, SHA-256 проверен (зафиксированный и checksums.txt)` : `  уже установлен: ${install.version}`);
+  log(install.downloaded ? `  ${install.version}, распакован из поставки; SHA-256 проверен (manifest, зафиксированный, checksums.txt)` : `  уже установлен: ${install.version}`);
 
   log("\n▸ хранилище CRM");
   protectDir(paths.dataDir);

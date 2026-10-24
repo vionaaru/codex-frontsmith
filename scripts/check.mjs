@@ -246,8 +246,10 @@ async function isTracked(file) {
   }
 }
 
+// vendor/ — неизменённый сторонний код и бинарные артефакты: формулировки Frontsmith к нему не
+// применяются, комплектность проверяет npm run release:check
 function shouldScan(file) {
-  return !file.startsWith(".frontsmith/") && !file.startsWith(".git/");
+  return !file.startsWith(".frontsmith/") && !file.startsWith(".git/") && !file.startsWith("vendor/");
 }
 
 async function listProjectFiles(dir) {

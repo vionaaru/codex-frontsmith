@@ -1,18 +1,20 @@
 // Управляемый runtime Privacy Service: локальный uv → локальный Python → venv с
-// pii-guard и весами NER. Всё лежит в каталоге данных Frontsmith вне Git, вне
-// `.frontsmith/business/` и вне рабочей области Codex. Docker не используется.
+// pii-guard. Установочные артефакты (uv, Python, wheels, исходники pii-guard, модель
+// NER) поставляются в vendor/ репозитория; распакованный runtime лежит в каталоге
+// данных Frontsmith вне Git, вне `.frontsmith/business/` и вне рабочей области Codex.
+// Docker не используется.
 //
 //   <data>/runtime/uv/            uv зафиксированной версии
-//   <data>/runtime/python/        Python, установленный uv
+//   <data>/runtime/python/        Python из vendor/runtime-assets/python
 //   <data>/runtime/privacy-env/   venv Privacy Service
-//   <data>/runtime/privacy-models Hugging Face cache с весами NER
 //   <data>/privacy/privacy.sqlite состояние псевдонимизации
+//   vendor/ner-model/…            веса NER: сервис читает их на месте, без Hugging Face
 //
-// <data> — `%LOCALAPPDATA%\Frontsmith`. Если там мало места, первичная подготовка
-// принимает `--data-root` и запоминает выбор в `%LOCALAPPDATA%\Frontsmith\data-root.txt`.
+// <data> выбирается при первом `npm run bootstrap` (по умолчанию `%LOCALAPPDATA%\Frontsmith`)
+// и запоминается в `%LOCALAPPDATA%\Frontsmith\data-root.txt`.
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,21 +41,30 @@ export const PINS = {
   spacyModel: "ru_core_news_sm"
 };
 
-const UV_TARGETS = {
-  "win32-x64": "uv-x86_64-pc-windows-msvc.zip",
-  "win32-arm64": "uv-aarch64-pc-windows-msvc.zip",
-  "linux-x64": "uv-x86_64-unknown-linux-gnu.tar.gz",
-  "linux-arm64": "uv-aarch64-unknown-linux-gnu.tar.gz",
-  "darwin-x64": "uv-x86_64-apple-darwin.tar.gz",
-  "darwin-arm64": "uv-aarch64-apple-darwin.tar.gz"
+// Артефакты в поставке (только Windows x64). Источник указан для аудита: Bootstrap
+// по этим адресам не обращается
+export const UV_DIST = {
+  file: "uv-x86_64-pc-windows-msvc.zip",
+  sha256: PINS.uv.sha256["win32-x64"]
 };
 
-export function uvAsset() {
-  const key = `${process.platform}-${process.arch}`;
-  const file = UV_TARGETS[key];
-  if (!file) throw new Error(`платформа ${key} не поддерживается`);
-  return { key, file, sha256: PINS.uv.sha256[key], url: `https://github.com/astral-sh/uv/releases/download/${PINS.uv.version}/${file}` };
-}
+export const PYTHON_DIST = {
+  build: "20260211",
+  file: `cpython-${PINS.python}+20260211-x86_64-pc-windows-msvc-install_only_stripped.tar.gz`,
+  url: `https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-${PINS.python}%2B20260211-x86_64-pc-windows-msvc-install_only_stripped.tar.gz`,
+  // Совпадает с SHA256SUMS релиза python-build-standalone 20260211
+  sha256: "db4a7b6389961f194ef5c1cb21a46c023dbc13703ac51f7bd7eaa1088740ca72"
+};
+
+const REPO_ROOT = path.resolve(SERVICE_DIR, "..", "..");
+export const VENDOR = {
+  uv: path.join(REPO_ROOT, "vendor", "runtime-assets", "uv", UV_DIST.file),
+  python: path.join(REPO_ROOT, "vendor", "runtime-assets", "python", PYTHON_DIST.file),
+  wheels: path.join(REPO_ROOT, "vendor", "runtime-assets", "wheels"),
+  piiGuard: path.join(REPO_ROOT, "vendor", "pii-guard", "source"),
+  // Модель NER читается прямо из поставки: каталог и есть зафиксированная версия
+  nerModel: path.join(REPO_ROOT, "vendor", "ner-model", "rubert-base-pii-ner")
+};
 
 function localAppData() {
   return process.platform === "win32" ? process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local") : path.join(os.homedir(), ".local", "share");
@@ -69,13 +80,18 @@ export function rememberDataRoot(root) {
   writeFileSync(DATA_ROOT_POINTER, `${path.resolve(root)}\n`);
 }
 
+// Каталог данных по умолчанию, если пользователь не выбрал другой
+export function defaultDataRoot() {
+  return path.join(localAppData(), "Frontsmith");
+}
+
 export function dataRoot() {
   if (process.env.FRONTSMITH_DATA_ROOT) return path.resolve(process.env.FRONTSMITH_DATA_ROOT);
   if (existsSync(DATA_ROOT_POINTER)) {
     const saved = readFileSync(DATA_ROOT_POINTER, "utf8").trim();
     if (saved) return path.resolve(saved);
   }
-  return path.join(localAppData(), "Frontsmith");
+  return defaultDataRoot();
 }
 
 export function runtimePaths(root = dataRoot()) {
@@ -88,6 +104,9 @@ export function runtimePaths(root = dataRoot()) {
     uvDir: path.join(runtime, "uv"),
     uv: path.join(runtime, "uv", exe ? "uv.exe" : "uv"),
     pythonDir: path.join(runtime, "python"),
+    // Интерпретатор из поставки: распаковывается сюда, в систему и реестр не ставится
+    basePythonDir: path.join(runtime, "python", `cpython-${PINS.python}-bundled`),
+    basePython: exe ? path.join(runtime, "python", `cpython-${PINS.python}-bundled`, "python.exe") : path.join(runtime, "python", `cpython-${PINS.python}-bundled`, "bin", "python3"),
     env,
     python: exe ? path.join(env, "Scripts", "python.exe") : path.join(env, "bin", "python"),
     models: path.join(runtime, "privacy-models"),
@@ -122,9 +141,20 @@ export function runtimeEnv(paths, extra = {}) {
   };
 }
 
+// Веса NER в поставке: настоящий файл, а не указатель Git LFS (быстрая проверка без SHA-256;
+// полная сверка — при установке и в npm run release:check)
+export function nerModelStatus(dir = VENDOR.nerModel) {
+  const weights = path.join(dir, "model.safetensors");
+  if (!existsSync(weights)) return { ready: false, reason: "ner_model_missing" };
+  if (statSync(weights).size < 1024 && readFileSync(weights, "utf8").startsWith("version https://git-lfs")) return { ready: false, reason: "ner_model_lfs_pointer" };
+  return { ready: true };
+}
+
 // Подготовленный runtime: маркер bootstrap совпадает с зафиксированными версиями.
 export function runtimeStatus(paths = runtimePaths()) {
   if (!existsSync(paths.python)) return { ready: false, reason: "privacy_runtime_missing", paths };
+  const ner = nerModelStatus();
+  if (!ner.ready) return { ready: false, reason: ner.reason, paths };
   if (!existsSync(paths.marker)) return { ready: false, reason: "privacy_runtime_incomplete", paths };
   let marker;
   try {
@@ -142,8 +172,12 @@ export function serviceEnv(paths, { token, dbPath = paths.stateDb, extra = {} } 
     PRIVACY_DB_PATH: dbPath,
     PRIVACY_RESTORE_RECIPIENTS: "operator",
     PII_GUARD_COMMIT: PINS.piiGuardCommit,
-    PII_GUARD_NER_MODEL: PINS.nerModel,
-    PII_GUARD_NER_REVISION: PINS.nerRevision,
+    // Локальный каталог модели: Hugging Face Hub не нужен, ревизия — сам каталог поставки.
+    // Пустая PII_GUARD_NER_REVISION — «без ревизии Hub» для локального пути
+    PII_GUARD_NER_MODEL: VENDOR.nerModel,
+    PII_GUARD_NER_REVISION: "",
+    FRONTSMITH_NER_MODEL_ID: PINS.nerModel,
+    FRONTSMITH_NER_REVISION: PINS.nerRevision,
     PII_GUARD_SPACY_MODEL: PINS.spacyModel,
     HF_HUB_OFFLINE: "1",
     TRANSFORMERS_OFFLINE: "1",

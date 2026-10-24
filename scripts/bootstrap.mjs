@@ -1,10 +1,15 @@
 // Первичная подготовка Frontsmith одной командой. Docker, Python, Go и OpenAI API key не нужны.
 //
-//   npm run bootstrap
-//   npm run bootstrap -- --data-root D:\Frontsmith       каталог данных на другом диске (запоминается)
+// Установочные артефакты (crmkit, pii-guard, модель NER, uv, Python, wheels) берутся из vendor/
+// репозитория и сверяются с vendor/manifest.json; из интернета Bootstrap ничего не скачивает.
+//
+//   npm run bootstrap                                    первый запуск спросит каталог данных
+//   npm run bootstrap -- --data-root E:\Frontsmith       каталог данных без вопроса (запоминается)
+//   npm run bootstrap -- --yes                           не спрашивать: путь по умолчанию или --data-root
 //   npm run bootstrap -- --business-name "…" …          флаги профиля бизнеса для первой установки
 //   npm run bootstrap -- --blueprint auto-service        отраслевой профиль вместо generic-service (первая установка)
 //
+//  0. поставка: файлы Git LFS на месте
 //  1. каталог данных Frontsmith          7. миграции офисной базы
 //  2. структура каталогов                8. CustomerProvider (crmkit)
 //  3. Privacy runtime (uv → Python → pii-guard + NER)
@@ -18,7 +23,7 @@
 // создаются (учебный набор — отдельно: npm run office:seed). Контакты клиентов прежней
 // модели в CRM не переносятся автоматически: только npm run crm:migrate-customers.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import path from "node:path";
 import { assertHealthy, backupOfficeDb, migrate, officeDbPath, openOfficeDb, schemaVersion } from "../office/lib/db.mjs";
 import { importCatalog, readProfile, syncBusinessProjection } from "../office/lib/import.mjs";
@@ -26,9 +31,11 @@ import { CrmkitProvider } from "../office/customers/crmkit-provider.mjs";
 import { bootstrapCrm } from "../services/crm/bootstrap.mjs";
 import { crmPaths, ensureCrm, freePort, protectDir } from "../services/crm/runtime.mjs";
 import { codexAuthStatus } from "../services/codex-host/ai-runtime.mjs";
-import { DATA_ROOT_POINTER, dataRoot, rememberDataRoot, runtimePaths, runtimeStatus, startPrivacyService } from "../services/privacy/runtime.mjs";
-import { LEGACY_HINT, assertDataRootOutsideRepo, foreignCrmLinks, inspectBusinessDb, inspectInstallation, latestSchema, projectRoot } from "./lib/installation.mjs";
+import { DATA_ROOT_POINTER, rememberDataRoot, runtimePaths, runtimeStatus, startPrivacyService } from "../services/privacy/runtime.mjs";
+import { LEGACY_HINT, foreignCrmLinks, inspectBusinessDb, inspectInstallation, latestSchema, projectRoot } from "./lib/installation.mjs";
 import { businessRoot } from "./lib/paths.mjs";
+import { dataRootPlan, looksInstalled, promptDataRoot, validateDataRoot } from "./lib/data-root.mjs";
+import { VendorError, assertBundledPlatform, isLfsPointer, readManifest, vendorPath } from "./lib/vendor.mjs";
 import { LEGACY_BLUEPRINT, defaultBlueprintId, officeModules } from "./lib/blueprints.mjs";
 
 const args = process.argv.slice(2);
@@ -57,21 +64,25 @@ async function bootstrap() {
     throw new BootstrapError("BOOTSTRAP_RESET_REFUSED", "bootstrap не удаляет рабочие данные. Пересоздать каталог бизнеса: npm run business:init -- --reset");
   }
 
+  // ── 0. поставка ─────────────────────────────────────────────────
+  // До выбора каталога и установки: настоящие файлы Git LFS, а не указатели
+  step(0, "Поставка Frontsmith (vendor/)");
+  try {
+    assertBundledPlatform();
+    const manifest = readManifest();
+    const pointers = manifest.components.flatMap((item) => item.files ?? []).filter((file) => file.lfs && (!existsSync(vendorPath(file.path)) || isLfsPointer(vendorPath(file.path))));
+    if (pointers.length) {
+      throw new VendorError("LFS_OBJECTS_MISSING", `большие файлы не получены из Git LFS (${pointers.length} из ${manifest.components.flatMap((item) => item.files ?? []).filter((file) => file.lfs).length}), например ${pointers[0].path}.\n` +
+        "   Выполните в каталоге Frontsmith:\n     git lfs install\n     git lfs pull\n   и повторите npm run bootstrap");
+    }
+  } catch (error) {
+    throw new BootstrapError(error.code ?? "VENDOR_NOT_READY", error.message);
+  }
+  say("   crmkit, pii-guard, модель NER, uv, Python и wheels на месте (SHA-256 проверяется при установке)");
+
   // ── 1. каталог данных ───────────────────────────────────────────
   step(1, "Каталог данных Frontsmith");
-  const requested = flag("--data-root");
-  if (requested) {
-    assertDataRootOutsideRepo(path.resolve(requested));
-    rememberDataRoot(requested);
-  }
-  const root = dataRoot();
-  try {
-    assertDataRootOutsideRepo(root);
-  } catch (error) {
-    throw new BootstrapError(error.code, error.message);
-  }
-  const source = process.env.FRONTSMITH_DATA_ROOT ? "FRONTSMITH_DATA_ROOT" : requested ? "--data-root" : root === path.dirname(DATA_ROOT_POINTER) ? "по умолчанию" : DATA_ROOT_POINTER;
-  say(`   ${root} (${source})`);
+  const root = await chooseDataRoot();
   say(`   данные бизнеса: ${path.resolve(businessRoot())}`);
 
   // ── 2. структура ────────────────────────────────────────────────
@@ -93,7 +104,7 @@ async function bootstrap() {
   if (prepared.ready) {
     say(`   уже подготовлен: Python ${prepared.marker.python}, pii-guard ${prepared.marker.piiGuardCommit.slice(0, 7)}, NER ${prepared.marker.nerRevision.slice(0, 7)}`);
   } else {
-    say(`   подготовка (${prepared.reason}); первая установка скачивает около 2 ГБ`);
+    say(`   подготовка (${prepared.reason}); установка из поставки, без сети`);
     runNode("services/privacy/bootstrap.mjs", [], "PRIVACY_NOT_READY");
     if (!runtimeStatus(privacy).ready) throw new BootstrapError("PRIVACY_NOT_READY", "Privacy runtime не подготовлен");
     privacyProbed = true;
@@ -111,7 +122,7 @@ async function bootstrap() {
   // ── 6–7. профиль бизнеса и офисная база ────────────────────────
   step("6–7", "Профиль бизнеса и офисная база");
   const install = inspectInstallation();
-  const profileArgs = args.filter((value, index) => value !== "--data-root" && args[index - 1] !== "--data-root");
+  const profileArgs = args.filter((value, index) => value !== "--data-root" && args[index - 1] !== "--data-root" && value !== "--yes");
   // Новая установка — профиль по умолчанию (frontsmith.config.json) или явный --blueprint.
   // Существующий business.json не перенастраивается: только явный --profile
   if (!install.profile) {
@@ -155,6 +166,36 @@ async function bootstrap() {
   else say("   Codex CLI не найден: установите Codex или укажите CODEX_BIN. Офис работает без AI");
 
   printSummary(install);
+}
+
+// Первая установка: --data-root, интерактивный выбор или путь по умолчанию в неинтерактивном
+// терминале. Существующая установка: сохранённый каталог, без вопросов и без переноса
+async function chooseDataRoot() {
+  const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY) && !args.includes("--yes");
+  let plan;
+  try {
+    plan = dataRootPlan({ requested: flag("--data-root"), interactive });
+  } catch (error) {
+    throw new BootstrapError(error.code, error.message);
+  }
+  const options = { projectRoot, workspaces: [path.resolve(businessRoot())].filter((dir) => !dir.startsWith(projectRoot)) };
+  const labels = { env: "FRONTSMITH_DATA_ROOT", saved: `выбран ранее, ${DATA_ROOT_POINTER}`, existing: "существующая установка", flag: "--data-root", prompt: "выбран сейчас", default: "по умолчанию: неинтерактивный запуск без --data-root" };
+  let result;
+  if (plan.source === "prompt") {
+    result = await promptDataRoot({ suggested: plan.root, validate: (candidate) => validateDataRoot(candidate, options) }).catch((error) => {
+      throw new BootstrapError(error.code ?? "DATA_ROOT_INVALID", error.message);
+    });
+  } else {
+    result = validateDataRoot(plan.root, { ...options, installed: looksInstalled(plan.root) });
+    if (!result.ok) {
+      const hint = plan.source === "saved" || plan.source === "existing" ? "" : "\n   Укажите другой каталог: npm run bootstrap -- --data-root E:\\Frontsmith";
+      throw new BootstrapError("DATA_ROOT_INVALID", `${plan.root}:\n   ${result.problems.join("\n   ")}${hint}`);
+    }
+  }
+  if (plan.remember) rememberDataRoot(result.root);
+  say(`   ${result.root} (${labels[plan.source]})`);
+  if (result.free !== null && result.free !== undefined) say(`   свободно: ${(result.free / 1024 ** 3).toFixed(1)} ГБ`);
+  return result.root;
 }
 
 async function prepareBusinessDb(before, crm) {

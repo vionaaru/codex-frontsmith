@@ -16,6 +16,7 @@ import { randomBytes } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { dataRoot } from "../privacy/runtime.mjs";
 import { CrmkitClient } from "./client.mjs";
 
@@ -46,12 +47,19 @@ export const DEFAULT_CRM_PORT = 4320;
 // адрес нигде не принимает почту и в контакты не попадает.
 export const OPERATOR_EMAIL = "frontsmith-host@frontsmith.invalid";
 
+// Архив релиза и официальный checksums.txt лежат в vendor/crmkit/release (только Windows
+// amd64). Адрес релиза — для аудита: Bootstrap к GitHub не обращается
+const RELEASE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "vendor", "crmkit", "release");
+
 export function crmkitAsset(key = `${process.platform}-${process.arch}`) {
   const target = TARGETS[key];
   if (!target) throw new Error(`платформа ${key} не поддерживается релизом crmkit ${CRMKIT.tag}`);
   const file = `crmkit-${CRMKIT.tag}-${target}.tar.gz`;
   const base = `https://github.com/crmkit/crmkit/releases/download/${CRMKIT.tag}`;
-  return { key, file, sha256: CRMKIT.sha256[key], url: `${base}/${file}`, checksumsUrl: `${base}/checksums.txt` };
+  return {
+    key, file, sha256: CRMKIT.sha256[key], url: `${base}/${file}`,
+    local: path.join(RELEASE_DIR, file), localChecksums: path.join(RELEASE_DIR, "checksums.txt")
+  };
 }
 
 export function crmPaths(root = dataRoot()) {

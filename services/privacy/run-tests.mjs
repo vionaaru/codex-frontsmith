@@ -67,13 +67,16 @@ const rejectsPrivacy = (promise) => assert.rejects(promise, (error) => error ins
 
 let service;
 try {
-  await check("настоящий сервис: /health ready, NER загружен, PERSON и PHONE_NUMBER доступны", async () => {
-    service = await startPrivacyService({ port: PORT, dbPath: path.join(root, "privacy.sqlite"), paths });
+  await check("настоящий сервис: /health ready, NER загружен из поставки без Hugging Face cache, PERSON и PHONE_NUMBER доступны", async () => {
+    // Пустой HF_HOME и HF_HUB_OFFLINE=1: веса берутся только из vendor/ner-model
+    const noHubCache = mkdtempSync(path.join(root, "no-hub-cache-"));
+    service = await startPrivacyService({ port: PORT, dbPath: path.join(root, "privacy.sqlite"), paths, extraEnv: { HF_HOME: noHubCache } });
     const health = service.health;
     assert.equal(health.ready, true);
     assert.equal(health.ner_enabled, true);
     assert.equal(health.pii_guard_commit, status.marker.piiGuardCommit);
     assert.equal(health.ner_revision, status.marker.nerRevision);
+    assert.equal(health.ner_model, status.marker.nerModel);
     assert.ok(["PERSON", "PHONE_NUMBER"].every((entity) => health.available_entity_types.includes(entity)));
   });
 
@@ -116,8 +119,9 @@ try {
   });
 
   await check("fail closed: веса NER не загрузились — сервис not_ready, Host не стартует, turn/start = 0", async () => {
+    // Каталог модели без файлов: локальная загрузка не удаётся, в сеть сервис не идёт
     const emptyModels = mkdtempSync(path.join(root, "no-models-"));
-    service = await startPrivacyService({ port: PORT, dbPath: path.join(root, "privacy.sqlite"), paths, requireReady: false, extraEnv: { HF_HOME: emptyModels } });
+    service = await startPrivacyService({ port: PORT, dbPath: path.join(root, "privacy.sqlite"), paths, requireReady: false, extraEnv: { HF_HOME: emptyModels, PII_GUARD_NER_MODEL: emptyModels } });
     assert.equal(service.health.ready, false);
     assert.equal(service.health.ner_enabled, false);
     assert.ok(service.health.reasons.includes("entity_unavailable:PHONE_NUMBER"), service.health.reasons.join(","));

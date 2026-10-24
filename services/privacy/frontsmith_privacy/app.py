@@ -63,8 +63,10 @@ def load_pii_guard_service(store: SessionStore, auth_token: str | None) -> Priva
         from pii_guard import Anonymizer
 
         config = Config.load()
-        info.ner_model = config.ner_model
-        info.ner_revision = config.ner_revision
+        # Модель Frontsmith загружается из локального каталога поставки: в /health —
+        # её идентификатор и ревизия Hugging Face, а не путь на диске
+        info.ner_model = os.getenv("FRONTSMITH_NER_MODEL_ID") or config.ner_model
+        info.ner_revision = os.getenv("FRONTSMITH_NER_REVISION") or config.ner_revision
         info.entity_types = tuple(config.entities)
         anonymizer = SessionAwareAnonymizer(Anonymizer(config))
         info.model_instructions = Anonymizer.pseudonymize_system_prompt()
