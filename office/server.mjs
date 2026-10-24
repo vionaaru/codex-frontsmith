@@ -3,6 +3,7 @@
 // Браузер получает JSON-представления; SQL, путь к базе, токен CRM и приватные файлы наружу не отдаются.
 // Контакты клиентов в офисной базе не хранятся: сервер добавляет подписи по client_id
 import { createServer } from "node:http";
+import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -18,6 +19,8 @@ import {
 import * as repo from "./lib/repositories.mjs";
 import { CustomerError } from "./customers/contract.mjs";
 import { connectCustomers, enrichCustomerRefs } from "./customers/index.mjs";
+import { officeModules } from "../scripts/lib/blueprints.mjs";
+import { businessPath } from "../scripts/lib/paths.mjs";
 
 export const defaultOfficePort = 4180;
 const host = "127.0.0.1";
@@ -116,7 +119,7 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
     ["/api/health", () => ({ ok: true, database: officeDbExists(dbFile) ? "present" : "missing" })],
     ["/api/meta", async (conn, ctx) => {
       const provider = await customerProvider();
-      return { business: publicBusiness(ctx.business), vocabulary, schemaVersion: schemaVersion(conn), today: ctx.day,
+      return { business: publicBusiness(ctx.business), modules: profileModules(), vocabulary, schemaVersion: schemaVersion(conn), today: ctx.day,
         customers: { provider: provider?.name ?? null, available: Boolean(provider), capabilities: provider?.capabilities ?? null } };
     }],
     ["/api/overview", (conn, ctx) => {
@@ -352,6 +355,18 @@ function uuid(value) {
 function found(value, label) {
   if (!value) throw new HttpError(404, `${label} не найден(а)`, "not_found");
   return value;
+}
+
+// Разделы панели по бизнес-профилю: отраслевые (автомобили, заказ-наряды) только в своём профиле
+function profileModules() {
+  const file = businessPath("business.json");
+  let profile = null;
+  try {
+    profile = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null;
+  } catch {
+    profile = null;
+  }
+  return officeModules(profile);
 }
 
 function publicBusiness(business) {

@@ -26,7 +26,7 @@ npm run office:seed      # необязательно: учебный набор
 | Что | Где | В Git |
 | --- | --- | --- |
 | База SQLite | `.frontsmith/business/office.sqlite` (+ `-wal`, `-shm`) | нет |
-| Копии | `.frontsmith/business/backups/` | нет |
+| Копии | `<data-root>/backups/office/` вне репозитория и рабочей области Codex; прежние — `.frontsmith/business/backups/` | нет |
 | Профиль бизнеса | `.frontsmith/business/business.json` | нет |
 | Схема | `office/db/migrations/*.sql` | да |
 | Контакты клиентов (CRM) | `<data-root>/crm/` вне репозитория и рабочей области Codex | нет |
@@ -211,17 +211,19 @@ API: `/api/health`, `/api/meta`, `/api/overview`, `/api/customers[/:id]`, `/api/
 ## Резервная копия и восстановление
 
 ```bash
-npm run office:backup                                   # .frontsmith/business/backups/office-<время>.sqlite
-npm run office:backup -- --to D:/backups/office.sqlite
+npm run office:backup                                   # <data-root>/backups/office/office-<время>.sqlite
+npm run office:backup -- --to D:/backups/office.sqlite  # путь вне репозитория
 npm run office:restore -- --from <файл копии> --confirm
+npm run backups:relocate                                # план переноса прежних копий из .frontsmith/business/backups/
 ```
 
 - Копия делается через SQLite backup API драйвера: она включает изменения из WAL и не требует остановки CLI
 - Каждая копия проверяется `integrity_check` и `foreign_key_check`
-- Перед восстановлением текущая база сохраняется в `backups/office-before-restore-*.sqlite`
+- Перед восстановлением текущая база сохраняется в `<data-root>/backups/office/office-before-restore-*.sqlite`
 - Перед восстановлением остановите панель: на Windows открытый файл нельзя заменить
 - Не копируйте `office.sqlite` вручную во время работы: без `-wal` копия может быть неполной
-- Каталог `backups/` лежит рядом с базой. Для защиты от потери диска копируйте файлы копий на другой носитель
+- Копия может содержать персональные данные (контакты до схемы 004, свободные тексты), поэтому по умолчанию лежит в каталоге данных Frontsmith с доступом только текущему пользователю; `--to` внутрь репозитория отклоняется. Для защиты от потери диска копируйте файлы копий на другой носитель
+- `npm run backups:relocate -- --confirm` копирует прежние копии из рабочей области в `<data-root>/backups/workspace-legacy/` байт в байт вместе с `-wal`/`-shm`, сверяет SHA-256 и пишет манифест без содержимого; исходники не удаляет
 
 ## Проверки
 

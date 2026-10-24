@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title data-frontsmith-text="seoTitle">Новая компания | Сервисная компания</title>
+    <meta name="description" data-frontsmith-attrs="content:seoDescription" content="Расскажите о задаче: объём, сроки и стоимость согласуем заранее" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#111820" />
+    <link rel="canonical" data-frontsmith-attrs="href:canonicalUrl" href="http://localhost:4173" />
+    <meta property="og:site_name" data-frontsmith-attrs="content:businessName" content="Новая компания" />
+    <meta property="og:title" data-frontsmith-attrs="content:ogTitle" content="Новая компания | Понятные услуги и согласование до начала работ" />
+    <meta property="og:description" data-frontsmith-attrs="content:seoDescription" content="Расскажите о задаче: объём, сроки и стоимость согласуем заранее" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:url" data-frontsmith-attrs="content:canonicalUrl" content="http://localhost:4173" />
+    <meta property="og:image" data-frontsmith-attrs="content:ogImage" content="http://localhost:4173/assets/acme-contact-planning.jpg" />
+    <meta property="og:image:alt" data-frontsmith-attrs="content:ogImageAlt" content="Обсуждение задачи с клиентом" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" data-frontsmith-attrs="content:ogTitle" content="Новая компания | Понятные услуги и согласование до начала работ" />
+    <meta name="twitter:description" data-frontsmith-attrs="content:seoDescription" content="Расскажите о задаче: объём, сроки и стоимость согласуем заранее" />
+    <meta name="twitter:image" data-frontsmith-attrs="content:ogImage" content="http://localhost:4173/assets/acme-contact-planning.jpg" />
+    <meta name="twitter:image:alt" data-frontsmith-attrs="content:ogImageAlt" content="Обсуждение задачи с клиентом" />
+    <link rel="icon" href="/favicon.svg" sizes="any" type="image/svg+xml" />
+    <link rel="icon" href="/favicon.png" sizes="64x64" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header" data-header>
+      <div class="site-header-inner">
+        <a class="brand-mark" href="#top" data-frontsmith-attrs="aria-label:brandAriaLabel" aria-label="Новая компания — в начало страницы">
+          <img class="brand-logo" data-frontsmith-attrs="src:logoImage" src="/frontsmith-mark.svg" alt="" width="40" height="40" />
+          <span class="brand-wordmark"><strong data-frontsmith-text="businessName">Новая компания</strong><small data-frontsmith-text="businessType">Сервисная компания</small></span>
+        </a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Открыть меню" data-nav-toggle><span></span><span></span></button>
+        <nav class="site-nav" id="site-nav" data-nav aria-label="Основная навигация">
+          <div class="drawer-head"><strong>Навигация</strong><button class="drawer-close" type="button" aria-label="Закрыть меню" data-nav-close>×</button></div>
+          <div class="drawer-links"><a href="#services">Услуги</a><a href="#approach">Подход</a><a href="#faq">Вопросы</a><a href="#contact">Контакты</a></div>
+          <a class="button primary drawer-booking" data-frontsmith-attrs="href:bookingUrl" data-frontsmith-text="bookingLabel" href="#contact">Связаться</a>
+        </nav>
+        <a class="header-button" data-frontsmith-attrs="href:bookingUrl" href="#contact"><span data-frontsmith-text="bookingLabel">Связаться</span> <span aria-hidden="true">↗</span></a>
+      </div>
+      <button class="nav-backdrop" type="button" aria-label="Закрыть меню" data-nav-backdrop></button>
+    </header>
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="container hero-copy">
+          <div class="eyebrow"><span class="eyebrow-line"></span><span data-frontsmith-text="brandTagline">Услуги для клиентов</span></div>
+          <div class="hero-heading-row">
+            <h1 id="hero-title" data-frontsmith-text="tagline">Понятные услуги и согласование до начала работ</h1>
+            <div class="hero-aside"><p data-frontsmith-text="summary">Расскажите о задаче: объём, сроки и стоимость согласуем заранее</p><a class="button primary" data-frontsmith-attrs="href:bookingUrl" href="#contact"><span data-frontsmith-text="bookingLabel">Связаться</span><span aria-hidden="true">↗</span></a><a class="text-link light" href="#services">Посмотреть услуги <span aria-hidden="true">↓</span></a></div>
+          </div>
+        </div>
+        <figure class="hero-image"><img data-frontsmith-attrs="src:heroImage,alt:heroImageAlt" src="/assets/acme-contact-planning.jpg" alt="Обсуждение задачи с клиентом" fetchpriority="high" /><figcaption><span>Сначала понять задачу</span><span>Изображение — пример</span></figcaption></figure>
+        <div class="container hero-bottom"><span>Обсудить задачу</span><span>Согласовать условия</span><span>Выполнить работу</span></div>
+      </section>
+      <section id="services" class="section services-section" aria-labelledby="services-title">
+        <div class="container">
+          <div class="section-heading"><div><p class="eyebrow section-number">01 / Услуги</p><h2 id="services-title">Чем мы можем помочь</h2></div><p class="section-lead">Выберите услугу или опишите задачу своими словами. Объём и условия обсудим до начала работ.</p></div>
+          <frontsmith-service-cards class="service-card-grid" data-frontsmith-html="serviceCards">
+          <p class="service-empty">Список услуг появится после заполнения профиля компании</p>
+        </frontsmith-service-cards>
+          <p class="pricing-note" data-frontsmith-text="pricingNote">Стоимость согласуется с владельцем до начала работ.</p>
+        </div>
+      </section>
+      <section id="approach" class="section approach-section" aria-labelledby="approach-title">
+        <div class="container"><div class="section-heading"><div><p class="eyebrow section-number">02 / Подход</p><h2 id="approach-title">Понятный порядок работы</h2></div><p class="section-lead">Объясняем варианты и следующий шаг до того, как вы примете решение.</p></div>
+          <div class="approach-grid"><article><span class="large-index">01</span><h3>Обсуждаем задачу</h3><p>Уточняем, что нужно сделать, к какому сроку и что для вас важно.</p></article><article><span class="large-index">02</span><h3>Согласуем условия</h3><p>Называем объём, стоимость и сроки. Новые работы — только после отдельного согласования.</p></article><article><span class="large-index">03</span><h3>Выполняем и отчитываемся</h3><p>Рассказываем, что сделано и что стоит учесть дальше.</p></article></div>
+        </div>
+      </section>
+      <section id="faq" class="section faq-section" aria-labelledby="faq-title">
+        <div class="container faq-layout"><div><p class="eyebrow section-number">03 / Вопросы</p><h2 id="faq-title">Частые вопросы</h2><p class="section-lead">Что стоит уточнить до начала работы.</p></div><div class="faq-list">
+          <details><summary>Как узнать стоимость?<span aria-hidden="true">+</span></summary><p>Опишите задачу удобным способом связи. Стоимость и условия согласуются до начала работ.</p></details>
+          <details><summary>Если я не знаю, какая услуга нужна?<span aria-hidden="true">+</span></summary><p>Расскажите о задаче своими словами — подскажем подходящий вариант и следующий шаг.</p></details>
+          <details><summary>Можно изменить объём после согласования?<span aria-hidden="true">+</span></summary><p>Да. Дополнительные работы выполняются только после отдельного согласования с вами.</p></details>
+        </div></div>
+      </section>
+      <section id="contact" class="section contact-section" aria-labelledby="contact-title"><div class="container"><div class="section-heading"><div><p class="eyebrow section-number">04 / Контакты</p><h2 id="contact-title">Свяжитесь с нами</h2></div></div>
+        <div class="contact-grid"><div><span class="contact-label">Город и адрес</span><p data-frontsmith-text="cityState"></p><p class="contact-muted" data-frontsmith-text="address">Адрес уточняйте перед визитом</p></div><div><span class="contact-label">Режим работы</span><p data-frontsmith-text="hoursLabel">Время работы уточняйте перед визитом</p></div><div><span class="contact-label">Контакты</span><p data-frontsmith-text="phone"></p><p class="contact-muted" data-frontsmith-text="email"></p></div></div>
+        <details class="question-panel"><summary>Задать вопрос <span aria-hidden="true">+</span></summary><p>Форма проверяет заполнение локально и ничего не отправляет, пока владелец не настроит доставку заявок.</p>
+          <form class="intake-form" data-intake-form data-demo-mode="true" data-frontsmith-attrs="data-fallback-action:emailMailto" data-fallback-action="mailto:" action="/api/contact" method="post" novalidate>
+            <label class="form-trap" aria-hidden="true">Сайт<input name="website" tabindex="-1" autocomplete="off" /></label>
+            <label>Имя<input name="name" autocomplete="off" /></label>
+            <label>Эл. почта<input name="email" type="email" autocomplete="off" placeholder="name@example.com" aria-describedby="intake-error" data-contact-email /></label>
+            <label>Телефон<input name="phone" type="tel" autocomplete="off" aria-describedby="intake-error" data-contact-phone /></label>
+            <label class="full-span">Ваш вопрос<textarea name="project_notes" rows="3" placeholder="Кратко опишите задачу"></textarea></label>
+            <p class="form-error full-span" id="intake-error" data-intake-error aria-live="polite" hidden></p><p class="form-status full-span" id="intake-status" data-intake-status aria-live="polite" hidden></p>
+            <div class="full-span form-bottom"><p>Укажите эл. почту или телефон для проверки формы</p><button class="button primary" type="submit" data-intake-submit>Проверить вопрос</button></div>
+          </form>
+        </details>
+        <p class="demo-notice" data-frontsmith-text="demoNotice"></p>
+      </div></section>
+    </main>
+    <footer class="site-footer"><div class="container footer-inner"><a class="footer-brand" href="#top"><img data-frontsmith-attrs="src:logoImage" src="/frontsmith-mark.svg" alt="" width="30" height="30" /><strong data-frontsmith-text="businessName">Новая компания</strong></a><span>Цифровой офис Frontsmith</span><span>© <span data-frontsmith-text="currentYear">2026</span></span></div></footer>
+    <script src="./script.js"></script>
+  </body>
+</html>

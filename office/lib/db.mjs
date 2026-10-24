@@ -5,15 +5,29 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { businessPath } from "../../scripts/lib/paths.mjs";
+import { protectDir } from "../../services/crm/runtime.mjs";
+import { dataRoot } from "../../services/privacy/runtime.mjs";
 
 const migrationsDir = fileURLToPath(new URL("../db/migrations/", import.meta.url));
+const projectRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 export function officeDbPath() {
   return businessPath("office.sqlite");
 }
 
+// Копии офисной базы могут содержать контакты клиентов (схема до 004) и свободные тексты,
+// поэтому по умолчанию лежат в каталоге данных Frontsmith вне репозитория и рабочей области Codex
 export function officeBackupDir() {
-  return businessPath("backups");
+  return path.join(dataRoot(), "backups", "office");
+}
+
+// Копия внутри репозитория попала бы в рабочую область Codex: явный --to туда отклоняется
+export function assertBackupOutsideWorkspace(target) {
+  const relative = path.relative(projectRoot, path.resolve(target));
+  if (!relative.startsWith("..") && !path.isAbsolute(relative)) {
+    throw Object.assign(new Error(`Копия базы не сохраняется в рабочей области Codex (${projectRoot}). Укажите путь вне репозитория или не передавайте --to: ${officeBackupDir()}`), { code: "BACKUP_IN_WORKSPACE" });
+  }
+  return target;
 }
 
 export function officeDbExists(file = officeDbPath()) {
@@ -126,8 +140,9 @@ export function assertHealthy(db) {
 
 export async function backupOfficeDb({ file = officeDbPath(), destination } = {}) {
   if (!existsSync(file)) throw new OfficeDbMissingError(file);
-  const target = destination ?? path.join(officeBackupDir(), `office-${stamp()}.sqlite`);
-  await mkdir(path.dirname(target), { recursive: true });
+  const target = assertBackupOutsideWorkspace(destination ?? path.join(officeBackupDir(), `office-${stamp()}.sqlite`));
+  if (destination) await mkdir(path.dirname(target), { recursive: true });
+  else protectDir(path.dirname(target));
   if (existsSync(target)) throw new Error(`Файл копии уже существует: ${target}`);
 
   const db = openOfficeDb({ file, readonly: true });

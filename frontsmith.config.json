@@ -1,7 +1,7 @@
 {
   "product": "Frontsmith",
   "version": "1.0.0",
-  "defaultBlueprint": "auto-service",
+  "defaultBlueprint": "generic-service",
   "defaultWorkspace": ".frontsmith/business",
   "privateWebsite": ".frontsmith/business/website",
   "primaryInterface": "codex",

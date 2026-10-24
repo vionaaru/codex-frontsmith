@@ -1,0 +1,12 @@
+{
+  "id": "generic-service",
+  "name": "Цифровой офис сервисной компании",
+  "version": "1.0.0",
+  "description": "Универсальный стартовый профиль Frontsmith: пустая клиентская база, базовый профиль компании и нейтральный сайт без отраслевых модулей.",
+  "exampleProfile": "blueprints/generic-service/business.example.json",
+  "websiteTemplate": "blueprints/generic-service/website/index.html",
+  "officeModules": [],
+  "requiredProfileFields": ["businessName", "businessType", "services", "contact", "timeZone"],
+  "defaultPages": ["home"],
+  "capabilities": ["business-setup", "owner-brief", "website", "customer-desk", "ongoing-customer-communication", "estimates-proposals", "launch-plan", "activity-log", "settings-integrations", "extension-planning", "connected-action-receipts"]
+}

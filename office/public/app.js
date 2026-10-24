@@ -70,6 +70,11 @@ function quantity(milli) {
   return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 3 }).format(milli / 1000);
 }
 
+// Разделы бизнес-профиля из /api/meta. До первого ответа — все: прежнее поведение панели
+const has = (module) => !state.meta?.modules || state.meta.modules.includes(module);
+const bookingSynced = () => Boolean(state.meta?.business?.booking_url);
+const text = (value) => (typeof value === "function" ? value() : value);
+
 function vehicleName(row, prefix = "vehicle_") {
   const make = row[`${prefix}make`];
   if (!make) return null;
@@ -100,19 +105,19 @@ function setParam(key, value) {
 }
 
 const views = {
-  overview: { nav: "overview", title: "Обзор офиса", intro: "Выполненные работы за месяц, активные заказы и ближайшие действия", endpoint: (p) => `/api/overview?${pick(p, ["month"])}`, render: renderOverview },
-  customers: { nav: "customers", title: "Клиенты", intro: "Поиск по имени, телефону, email или автомобилю. Контакты хранятся в CRM Frontsmith", controls: customerControls, endpoint: (p) => `/api/customers?${pick(p, ["q"])}`, render: renderCustomers },
+  overview: { nav: "overview", title: "Обзор офиса", intro: () => has("work-orders") ? "Выполненные работы за месяц, активные заказы и ближайшие действия" : "Активные обращения, задачи и ближайшие записи", endpoint: (p) => `/api/overview?${pick(p, ["month"])}`, render: renderOverview },
+  customers: { nav: "customers", title: "Клиенты", intro: () => `Поиск по имени, телефону, email${has("vehicles") ? " или автомобилю" : ""}. Контакты хранятся в CRM Frontsmith`, controls: customerControls, endpoint: (p) => `/api/customers?${pick(p, ["q"])}`, render: renderCustomers },
   customer: { nav: "customers", endpoint: (p, id) => `/api/customers/${id}`, render: renderCustomer },
   "customer-new": { nav: "customers", form: true, title: "Новый клиент", intro: "Контакты сохраняются в CRM Frontsmith. В базе офиса остаётся только идентификатор клиента", render: () => customerForm(null) },
   customerEdit: { nav: "customers", form: true, endpoint: (p, id) => `/api/customers/${id}`, render: (c) => customerForm(c) },
-  vehicle: { nav: "customers", endpoint: (p, id) => `/api/vehicles/${id}`, render: renderVehicle },
-  work: { nav: "work", title: "Обращения и заказы", intro: "Обращение — запрос клиента. Заказ работ — отдельная запись с позициями и согласованием стоимости", controls: workControls, endpoint: workEndpoint, render: renderWork },
-  results: { nav: "results", title: "Выполненные работы", intro: "Ремонты по дню выполнения, итоговая стоимость и фактические трудозатраты", controls: resultControls, endpoint: (p) => `/api/orders?performed=yes&${pick(p, ["q", "from", "to", "status"])}`, render: renderResults },
+  vehicle: { nav: "customers", module: "vehicles", endpoint: (p, id) => `/api/vehicles/${id}`, render: renderVehicle },
+  work: { nav: "work", title: () => has("work-orders") ? "Обращения и заказы" : "Обращения", intro: () => has("work-orders") ? "Обращение — запрос клиента. Заказ работ — отдельная запись с позициями и согласованием стоимости" : "Запросы клиентов: статус, услуга, ответственный и следующие действия", controls: workControls, endpoint: workEndpoint, render: renderWork },
+  results: { nav: "results", module: "work-results", title: "Выполненные работы", intro: "Ремонты по дню выполнения, итоговая стоимость и фактические трудозатраты", controls: resultControls, endpoint: (p) => `/api/orders?performed=yes&${pick(p, ["q", "from", "to", "status"])}`, render: renderResults },
   inquiry: { nav: "work", endpoint: (p, id) => `/api/inquiries/${id}`, render: renderInquiry },
-  order: { nav: "work", endpoint: (p, id) => `/api/orders/${id}`, render: renderOrder },
-  tasks: { nav: "tasks", title: "Задачи", intro: "Следующие действия по обращениям и заказам", controls: taskControls, endpoint: (p) => `/api/tasks?${pick(p, ["q", "due"], { status: "open" })}`, render: renderTasks },
+  order: { nav: "work", module: "work-orders", endpoint: (p, id) => `/api/orders/${id}`, render: renderOrder },
+  tasks: { nav: "tasks", title: "Задачи", intro: () => `Следующие действия по обращениям${has("work-orders") ? " и заказам" : ""}`, controls: taskControls, endpoint: (p) => `/api/tasks?${pick(p, ["q", "due"], { status: "open" })}`, render: renderTasks },
   services: { nav: "services", title: "Услуги и цены", intro: "Каталог из базы офиса. Сайт берёт прайс из этого же каталога при npm run update:website", controls: serviceControls, endpoint: (p) => `/api/services?${pick(p, ["q", "category", "active"])}`, render: renderServices },
-  schedule: { nav: "schedule", title: "Расписание", intro: "Записи на время из локальной базы. Внешний Booking Flow сюда не синхронизируется", controls: scheduleControls, endpoint: (p) => `/api/schedule?${pick(p, ["from", "status"], { days: "7" })}`, render: renderSchedule }
+  schedule: { nav: "schedule", title: "Расписание", intro: () => `Записи на время из локальной базы${bookingSynced() ? ". Внешний Booking Flow сюда не синхронизируется" : ""}`, controls: scheduleControls, endpoint: (p) => `/api/schedule?${pick(p, ["from", "status"], { days: "7" })}`, render: renderSchedule }
 };
 const detailRoutes = { customers: "customer", "customer-edit": "customerEdit", vehicles: "vehicle", inquiries: "inquiry", orders: "order" };
 
@@ -126,8 +131,9 @@ function pick(params, keys, defaults = {}) {
 }
 
 function resolveView(route) {
-  if (route.id && detailRoutes[route.name]) return views[detailRoutes[route.name]];
-  return views[route.name] ?? null;
+  const view = route.id && detailRoutes[route.name] ? views[detailRoutes[route.name]] : views[route.name] ?? null;
+  // Раздел, которого нет в бизнес-профиле, не открывается и не запрашивает данные
+  return view?.module && !has(view.module) ? null : view;
 }
 
 function setupRoute() {
@@ -143,7 +149,7 @@ function setupRoute() {
     return;
   }
   if (view.title) {
-    main.append(el("div", { class: "page-head" }, el("div", {}, el("h1", { tabindex: "-1" }, view.title)), view.intro ? el("p", {}, view.intro) : null));
+    main.append(el("div", { class: "page-head" }, el("div", {}, el("h1", { tabindex: "-1" }, text(view.title))), view.intro ? el("p", {}, text(view.intro)) : null));
   }
   if (view.controls) main.append(view.controls(state.route.params));
   state.results = el("div", {}, el("p", { class: "loading" }, "Загрузка данных…"));
@@ -201,6 +207,10 @@ function applyMeta(meta) {
   for (const node of document.querySelectorAll("[data-business-name]")) node.textContent = business?.name ?? "Офис";
   document.title = `${business?.name ?? "Офис"} · панель офиса`;
   document.querySelector("[data-demo-notice]").hidden = !business?.demo_mode;
+  document.querySelector("[data-booking-notice]").hidden = !business?.booking_url;
+  for (const link of document.querySelectorAll("[data-nav-module]")) link.hidden = !has(link.dataset.navModule);
+  const work = document.querySelector('[data-nav="work"]');
+  if (work) work.textContent = has("work-orders") ? "Обращения и заказы" : "Обращения";
 }
 
 function setSync(status, error) {
@@ -321,25 +331,26 @@ function statusOptions(kind, groups) {
 function renderOverview(data) {
   const c = data.counts;
   const estimate = data.activeOrdersEstimate;
+  const orders = has("work-orders");
   const fragment = el("div");
-  fragment.append(renderMonthlyWork(data.monthlyWork));
+  if (has("work-results")) fragment.append(renderMonthlyWork(data.monthlyWork));
   fragment.append(el("div", { class: "kpis" },
     kpi("Активные обращения", c.activeInquiries, "#/work?kind=inquiries&status=active", "новые, в работе, ждут клиента"),
-    kpi("Активные заказы", c.activeWorkOrders, "#/work?kind=orders&status=active", "от черновика до выдачи"),
+    !orders ? null : kpi("Активные заказы", c.activeWorkOrders, "#/work?kind=orders&status=active", "от черновика до выдачи"),
     kpi("Просрочено задач", c.overdueTasks, "#/tasks?due=overdue", "срок прошёл", c.overdueTasks > 0),
     kpi("Задачи сегодня", c.todayTasks, "#/tasks?due=today", "до конца дня"),
-    kpi("Стоимость активных заказов", estimate.mixedCurrencies ? "разные валюты" : money(estimate.total, estimate.currency ?? currency()) ?? money(0), "#/work?kind=orders&status=active", "итог, согласованная сумма или оценка; оплаты не учитываются")));
+    !orders ? null : kpi("Стоимость активных заказов", estimate.mixedCurrencies ? "разные валюты" : money(estimate.total, estimate.currency ?? currency()) ?? money(0), "#/work?kind=orders&status=active", "итог, согласованная сумма или оценка; оплаты не учитываются")));
   if (c.demoRecords > 0) {
     fragment.append(el("p", { class: "note" }, `В базе ${c.demoRecords} учебных и ${c.realRecords} рабочих записей клиентов, обращений, заказов, задач и записей на время`));
   }
   fragment.append(el("div", { class: "grid-2" },
-    panel("Последние выполненные работы", data.recentPerformedWork.map(orderRow), "Ремонтов с днём выполнения пока нет", ["#/results", "все"]),
+    !has("work-results") ? null : panel("Последние выполненные работы", data.recentPerformedWork.map(orderRow), "Ремонтов с днём выполнения пока нет", ["#/results", "все"]),
     panel("Просроченные задачи", data.overdueTasks.map(taskRow), "Просроченных задач нет", ["#/tasks?due=overdue", "все"]),
     panel("Задачи на сегодня", data.todayTasks.map(taskRow), "На сегодня задач со сроком нет", ["#/tasks?due=today", "все"]),
-    panel("Ближайшие записи", data.upcomingAppointments.map(appointmentRow), "Ближайших записей нет. Booking Flow не синхронизируется: внешние записи здесь не видны", ["#/schedule", "расписание"]),
+    panel("Ближайшие записи", data.upcomingAppointments.map(appointmentRow), bookingSynced() ? "Ближайших записей нет. Booking Flow не синхронизируется: внешние записи здесь не видны" : "Ближайших записей нет", ["#/schedule", "расписание"]),
     panel("Последние события", data.recentEvents.map(eventRow), "Журнал пока пуст"),
     panel("Активные обращения", data.activeInquiries.map(inquiryRow), "Активных обращений нет", ["#/work?kind=inquiries&status=active", "все"]),
-    panel("Активные заказы", data.activeWorkOrders.map(orderRow), "Активных заказов нет", ["#/work?kind=orders&status=active", "все"])));
+    !orders ? null : panel("Активные заказы", data.activeWorkOrders.map(orderRow), "Активных заказов нет", ["#/work?kind=orders&status=active", "все"])));
   return fragment;
 }
 
@@ -421,7 +432,7 @@ function kpi(title, value, href, hint, alert = false) {
 // --- Клиенты и автомобили ---
 
 function customerControls(params) {
-  return el("div", { class: "filters" }, searchField(params, "Имя, телефон, email, авто"),
+  return el("div", { class: "filters" }, searchField(params, has("vehicles") ? "Имя, телефон, email, авто" : "Имя, телефон, email"),
     el("a", { class: "primary-button", href: "#/customer-new" }, "Новый клиент"));
 }
 
@@ -436,12 +447,12 @@ const customerTitle = (c) => c.displayName ?? el("span", { class: "unknown" }, `
 function renderCustomers(rows) {
   if (!rows.length) return el("p", { class: "empty panel" }, state.route.params.get("q") ? "По запросу никого не найдено" : "Клиентов пока нет. Нажмите «Новый клиент»");
   return el("div", { class: "table-wrap" }, el("table", { class: "stack" },
-    el("thead", {}, el("tr", {}, el("th", {}, "Клиент"), el("th", {}, "Телефон"), el("th", {}, "Автомобили"), el("th", { class: "num" }, "Активно"))),
+    el("thead", {}, el("tr", {}, el("th", {}, "Клиент"), el("th", {}, "Телефон"), has("vehicles") ? el("th", {}, "Автомобили") : null, el("th", { class: "num" }, "Активно"))),
     el("tbody", {}, rows.map((c) => el("tr", {},
       el("td", { class: "wide" }, el("a", { href: `#/customers/${c.id}` }, el("strong", {}, customerTitle(c))), " ", demoBadge(c)),
       el("td", { "data-label": "Телефон" }, valueOr(c.phoneDisplay)),
-      el("td", { "data-label": "Авто", class: "wide" }, valueOr(c.vehicles_label, "нет автомобилей")),
-      el("td", { class: "num", "data-label": "Активно" }, `${c.active_inquiries} обр. · ${c.active_orders} зак.`))))));
+      has("vehicles") ? el("td", { "data-label": "Авто", class: "wide" }, valueOr(c.vehicles_label, "нет автомобилей")) : null,
+      el("td", { class: "num", "data-label": "Активно" }, has("work-orders") ? `${c.active_inquiries} обр. · ${c.active_orders} зак.` : `${c.active_inquiries} обр.`))))));
 }
 
 // Карточка: контакты из CRM и бизнес-данные офиса по одному client_id
@@ -459,11 +470,11 @@ function renderCustomer(c) {
   return el("div", {},
     detailHead(["#/customers", "Клиенты"], contact?.displayName ?? `Клиент ${c.id.slice(0, 8)}`, demoBadge(c)),
     contactBlock,
-    el("h2", { class: "section-title" }, "Автомобили"),
-    panel("Автомобили клиента", c.vehicles.map((v) => row({ href: `#/vehicles/${v.id}`, title: [v.make, v.model, v.year].filter(Boolean).join(" "), side: demoBadge(v), sub: [v.plate ? `номер ${v.plate}` : "номер не указан", v.mileage_km !== null ? `пробег ${v.mileage_km.toLocaleString("ru-RU")} км` : "пробег не указан"].join(" · ") })), "Автомобилей нет"),
+    has("vehicles") ? el("h2", { class: "section-title" }, "Автомобили") : null,
+    !has("vehicles") ? null : panel("Автомобили клиента", c.vehicles.map((v) => row({ href: `#/vehicles/${v.id}`, title: [v.make, v.model, v.year].filter(Boolean).join(" "), side: demoBadge(v), sub: [v.plate ? `номер ${v.plate}` : "номер не указан", v.mileage_km !== null ? `пробег ${v.mileage_km.toLocaleString("ru-RU")} км` : "пробег не указан"].join(" · ") })), "Автомобилей нет"),
     el("div", { class: "grid-2" },
       panel("Обращения", c.inquiries.map(inquiryRow), "Обращений нет"),
-      panel("Заказы работ", c.workOrders.map(orderRow), "Заказов нет")),
+      has("work-orders") ? panel("Заказы работ", c.workOrders.map(orderRow), "Заказов нет") : null),
     el("h2", { class: "section-title" }, "Журнал"),
     panel("События клиента", c.events.map(eventRow), "Событий нет"));
 }
@@ -543,7 +554,7 @@ function customerForm(customer) {
 // --- Обращения и заказы ---
 
 function workKind(params) {
-  return params.get("kind") === "orders" ? "orders" : "inquiries";
+  return params.get("kind") === "orders" && has("work-orders") ? "orders" : "inquiries";
 }
 
 function workEndpoint(params) {
@@ -555,7 +566,7 @@ function workControls(params) {
   const link = (value, caption) => el("a", { href: `#/work?kind=${value}`, "aria-current": kind === value ? "page" : null }, caption);
   const statuses = kind === "orders" ? statusOptions("workOrder", [["active", "Активные"], ["all", "Все"]]) : statusOptions("inquiry", [["active", "Активные"], ["all", "Все"]]);
   return el("div", { class: "filters" },
-    el("nav", { class: "segmented", "aria-label": "Тип записей" }, link("inquiries", "Обращения"), link("orders", "Заказы работ")),
+    has("work-orders") ? el("nav", { class: "segmented", "aria-label": "Тип записей" }, link("inquiries", "Обращения"), link("orders", "Заказы работ")) : null,
     selectField("Статус", "status", params, statuses, "active"),
     searchField(params, kind === "orders" ? "Номер, клиент, авто" : "Клиент, услуга, описание"));
 }
@@ -588,7 +599,7 @@ function renderInquiry(i) {
       el("p", {}, i.description),
       facts([
         ["Клиент", el("a", { href: `#/customers/${i.customer_id}` }, i.customer_name)],
-        ["Автомобиль", i.vehicle_id ? el("a", { href: `#/vehicles/${i.vehicle_id}` }, vehicleName(i)) : unknown()],
+        !has("vehicles") ? null : ["Автомобиль", i.vehicle_id ? el("a", { href: `#/vehicles/${i.vehicle_id}` }, vehicleName(i)) : unknown()],
         ["Услуга", valueOr(i.service_name, "не выбрана")],
         ["Источник", label("inquirySources", i.source)],
         i.external_id ? ["Внешний ID", i.external_id] : null,
@@ -596,7 +607,7 @@ function renderInquiry(i) {
         ["Получено", fmtDateTime(i.received_at)],
         i.closed_at ? ["Закрыто", fmtDateTime(i.closed_at)] : null])),
     el("div", { class: "grid-2" },
-      panel("Заказы из обращения", i.workOrders.map((o) => orderRow({ ...o, customer_name: i.customer_name, vehicle_make: i.vehicle_make, vehicle_model: i.vehicle_model, vehicle_year: i.vehicle_year })), "Заказ не оформлен: обращение не равно заказу"),
+      !has("work-orders") ? null : panel("Заказы из обращения", i.workOrders.map((o) => orderRow({ ...o, customer_name: i.customer_name, vehicle_make: i.vehicle_make, vehicle_model: i.vehicle_model, vehicle_year: i.vehicle_year })), "Заказ не оформлен: обращение не равно заказу"),
       panel("Задачи", i.tasks.map(taskRow), "Задач нет"),
       panel("Записи на время", i.appointments.map(appointmentRow), "Записей нет"),
       panel("Журнал", i.events.map(eventRow), "Событий нет")));
@@ -675,12 +686,12 @@ function serviceControls(params) {
 }
 
 function renderServices(rows) {
-  if (!rows.length) return el("p", { class: "empty panel" }, state.route.params.toString() ? "Под фильтр услуг не попало" : "Каталог пуст. Импортируйте его: npm run office:import");
+  if (!rows.length) return el("p", { class: "empty panel" }, state.route.params.toString() ? "Под фильтр услуг не попало" : "Каталог услуг пуст. Добавьте услуги в профиль компании (business.json) и выполните npm run office:import");
   return el("div", {},
     el("div", { class: "table-wrap" }, el("table", { class: "stack" },
       el("thead", {}, el("tr", {}, el("th", {}, "Услуга"), el("th", {}, "Категория"), el("th", { class: "num" }, "Цена"), el("th", { class: "num" }, "Время"), el("th", {}, "Статус"))),
       el("tbody", {}, rows.map((s) => el("tr", {},
-        el("td", { class: "wide" }, el("strong", {}, s.name), el("div", { class: "note" }, `${s.code} · в заказах: ${s.order_item_count}, в обращениях: ${s.inquiry_count}`)),
+        el("td", { class: "wide" }, el("strong", {}, s.name), el("div", { class: "note" }, has("work-orders") ? `${s.code} · в заказах: ${s.order_item_count}, в обращениях: ${s.inquiry_count}` : `${s.code} · в обращениях: ${s.inquiry_count}`)),
         el("td", { "data-label": "Категория" }, categoryLabels[s.category] ?? s.category),
         el("td", { class: "num", "data-label": "Цена" }, s.base_price_kopecks === null ? unknown("уточняется") : s.base_price_kopecks === 0 ? "бесплатно" : `от ${money(s.base_price_kopecks, s.currency)}`, s.is_demo_price ? el("div", {}, el("span", { class: "badge demo" }, "демо-цена")) : null),
         el("td", { class: "num", "data-label": "Время" }, s.duration_minutes ? `${s.duration_minutes} мин` : unknown("уточняется")),
@@ -701,7 +712,7 @@ function scheduleControls(params) {
 function renderSchedule(data) {
   const items = data.appointments;
   if (!items.length) {
-    return el("p", { class: "empty panel" }, `С ${fmtDay(data.from)} записей нет. Booking Flow не синхронизируется: записи внешнего сервиса здесь не отображаются`);
+    return el("p", { class: "empty panel" }, `С ${fmtDay(data.from)} записей нет${bookingSynced() ? ". Booking Flow не синхронизируется: записи внешнего сервиса здесь не отображаются" : ""}`);
   }
   const days = new Map();
   for (const item of items) {

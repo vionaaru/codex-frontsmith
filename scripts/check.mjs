@@ -12,6 +12,9 @@ const requiredFiles = [
   "frontsmith.config.json",
   "api/contact.js",
   "blueprints/local-service/blueprint.json",
+  "blueprints/generic-service/blueprint.json",
+  "blueprints/generic-service/business.example.json",
+  "blueprints/generic-service/website/index.html",
   "demo/index.html",
   "demo/styles.css",
   "demo/script.js",
@@ -27,6 +30,8 @@ const requiredFiles = [
   "scripts/business-init.mjs",
   "scripts/frontsmith.mjs",
   "scripts/lib/installation.mjs",
+  "scripts/lib/blueprints.mjs",
+  "scripts/backups-relocate.mjs",
   "scripts/prepare-owner-brief.mjs",
   "scripts/update-website.mjs",
   "scripts/prepare-customer-reply.mjs",
@@ -104,7 +109,9 @@ const jsonFiles = [
   "frontsmith.config.json",
   "blueprints/local-service/blueprint.json",
   "blueprints/auto-service/blueprint.json",
-  "blueprints/auto-service/business.example.json"
+  "blueprints/auto-service/business.example.json",
+  "blueprints/generic-service/blueprint.json",
+  "blueprints/generic-service/business.example.json"
 ];
 
 const removedConcept = ["de", "mo"].join("");

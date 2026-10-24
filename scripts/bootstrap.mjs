@@ -3,6 +3,7 @@
 //   npm run bootstrap
 //   npm run bootstrap -- --data-root D:\Frontsmith       каталог данных на другом диске (запоминается)
 //   npm run bootstrap -- --business-name "…" …          флаги профиля бизнеса для первой установки
+//   npm run bootstrap -- --blueprint auto-service        отраслевой профиль вместо generic-service (первая установка)
 //
 //  1. каталог данных Frontsmith          7. миграции офисной базы
 //  2. структура каталогов                8. CustomerProvider (crmkit)
@@ -28,6 +29,7 @@ import { codexAuthStatus } from "../services/codex-host/ai-runtime.mjs";
 import { DATA_ROOT_POINTER, dataRoot, rememberDataRoot, runtimePaths, runtimeStatus, startPrivacyService } from "../services/privacy/runtime.mjs";
 import { LEGACY_HINT, assertDataRootOutsideRepo, foreignCrmLinks, inspectBusinessDb, inspectInstallation, latestSchema, projectRoot } from "./lib/installation.mjs";
 import { businessRoot } from "./lib/paths.mjs";
+import { LEGACY_BLUEPRINT, defaultBlueprintId, officeModules } from "./lib/blueprints.mjs";
 
 const args = process.argv.slice(2);
 const status = { office: "not_ready", business: "not_ready", crm: "not_ready", privacy: "not_ready", customers: "not_ready", codex: "unknown" };
@@ -110,15 +112,19 @@ async function bootstrap() {
   step("6–7", "Профиль бизнеса и офисная база");
   const install = inspectInstallation();
   const profileArgs = args.filter((value, index) => value !== "--data-root" && args[index - 1] !== "--data-root");
+  // Новая установка — профиль по умолчанию (frontsmith.config.json) или явный --blueprint.
+  // Существующий business.json не перенастраивается: только явный --profile
   if (!install.profile) {
-    say("   профиль бизнеса создаётся (npm run business:init)");
+    say(`   профиль бизнеса создаётся (npm run business:init): ${flag("--blueprint") ?? (flag("--profile") ? "--profile" : `${defaultBlueprintId()}, профиль по умолчанию`)}`);
     runNode("scripts/business-init.mjs", profileArgs, "BUSINESS_DB_NOT_READY");
   } else if (profileArgs.includes("--profile")) {
     say("   профиль бизнеса заменяется явным --profile");
     runNode("scripts/business-init.mjs", profileArgs, "BUSINESS_DB_NOT_READY");
   } else {
-    say(`   профиль бизнеса уже есть${profileArgs.length ? "; флаги профиля применяются только при первой установке (замена: npm run business:init -- --profile ФАЙЛ)" : ""}`);
+    say(`   профиль бизнеса уже есть${profileArgs.length ? "; флаги профиля и --blueprint применяются только при первой установке (замена: npm run business:init -- --blueprint ID или --profile ФАЙЛ)" : ""}`);
   }
+  const profile = await readProfile();
+  say(`   бизнес-профиль: ${profile.blueprint ?? `${LEGACY_BLUEPRINT} (профиль без поля blueprint)`}; разделы офиса: ${officeModules(profile).join(", ")}`);
   await prepareBusinessDb(before, crm);
   status.business = "ready";
 

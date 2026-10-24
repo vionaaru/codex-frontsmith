@@ -3,8 +3,8 @@
 Опорная записка: [docs/architecture/privacy-crm-integration.md](../architecture/privacy-crm-integration.md).
 
 ## Текущее состояние
-- Текущий этап: first-run закрыт. `npm run bootstrap` готовит установку одной командой, `npm run frontsmith` запускает crmkit, Privacy Service, Codex App Server и офис одним процессом; чистая установка сразу работает через CustomerProvider.
-- Последний принятый результат: first-run 23.10.2026 (`npm run test:first-run` на пустом каталоге данных, `npm test` — PASS); до него Customer Module 23.10.2026 (`npm test`, `npm run test:crm` на настоящем crmkitd, `npm run smoke:crm-codex` на настоящем pii-guard и Codex по подписке — PASS); до него Privacy Service без Docker (PASS), PoC `services/privacy/` + `services/codex-host/` (PARTIAL), PoC `tools/codex-gateway-poc/` (PASS) и аудит.
+- Текущий этап: универсальный профиль по умолчанию закрыт. Чистая установка создаёт цифровой офис `generic-service` (пустые клиенты и услуги, нейтральный сайт, панель без отраслевых разделов); автосервис — отдельный профиль `auto-service` при явном выборе; существующие установки не перенастраиваются; новые копии офисной базы — вне рабочей области Codex.
+- Последний принятый результат: универсальный профиль 24.10.2026 (`npm run check`, `npm test`, `npm run test:first-run`, `npm run test:crm`); до него first-run 23.10.2026 (`npm run test:first-run` на пустом каталоге данных, `npm test` — PASS); до него Customer Module 23.10.2026 (`npm test`, `npm run test:crm` на настоящем crmkitd, `npm run smoke:crm-codex` на настоящем pii-guard и Codex по подписке — PASS); до него Privacy Service без Docker (PASS), PoC `services/privacy/` + `services/codex-host/` (PARTIAL), PoC `tools/codex-gateway-poc/` (PASS) и аудит.
 - Следующий шаг: перевести оставшиеся универсальные модули Frontsmith на CustomerProvider, затем — универсальный AI-диспетчер.
 - База интеграции: `main`. Универсальная часть офиса перенесена из `autoservice` коммитом 78145b1; навык `register-auto-work`, дизайн сайта, логотип и ссылка записи T-Max остаются в `autoservice`.
 - Блокирующие вопросы: см. раздел «Блокирующие вопросы».
@@ -62,7 +62,20 @@
 - [x] `test:first-run` проходит на пустом data-root — скачивает ~2 ГБ, первый старт NER на 6 ГБ RAM ~6,5 мин
 - [x] README содержит короткий пользовательский first-run
 - [ ] Вход ChatGPT в first-run проверен только как «sign-in required»; путь AI после единого старта покрыт `test:codex-host` и `smoke:crm-codex`
-- [ ] Профиль по умолчанию — учебный автосервис «АвтоРитм» (`blueprints/auto-service`): универсального стартового профиля нет
+- [x] Профиль по умолчанию — универсальный `generic-service` (см. «Универсальный профиль»)
+
+### Универсальный профиль
+- [x] Чистая установка создаёт `generic-service` — `defaultBlueprint` в `frontsmith.config.json`; компания «Новая компания» как поле для заполнения, услуг и клиентов 0, демо-режима нет
+- [x] В профиле нет АвтоРитм, автомобилей, VIN, автомобильного каталога, заказ-нарядов и демонстрационных клиентов; сайт из нейтрального шаблона `blueprints/generic-service/website/index.html`
+- [x] Отраслевые разделы панели включает профиль — `officeModules` в `blueprint.json`, `/api/meta → modules`; generic скрывает автомобили, заказы и выполненные работы, отсутствующие разделы не открываются и не вызывают ошибок
+- [x] `auto-service` сохранён и работает при явном выборе — `npm run bootstrap -- --blueprint auto-service`, `npm run business:init -- --blueprint auto-service`; автосервисные тесты без изменений поведения
+- [x] CustomerProvider, crmkit, Privacy Service и Codex App Server не зависят от профиля; отраслевые таблицы в CustomerProvider не переносились
+- [x] Существующая установка сохраняет профиль — bootstrap создаёт `business.json` только при отсутствии, `--blueprint` на существующей установке не применяется, профиль без поля `blueprint` считается автосервисом со всеми разделами; рабочая установка «Тмаксавто» (`auto-service`) не менялась
+- [x] Новые копии офисной базы — в `<data-root>/backups/office/`, `--to` внутрь репозитория отклоняется
+- [x] Перенос прежних копий подготовлен — `npm run backups:relocate` (план) и `-- --confirm` (копирование с SHA-256 вместе с WAL/SHM, исходники не удаляются)
+- [x] Тесты — `tests/generic-profile.mjs` в `npm test`; `test:first-run` проверяет generic, auto-service, повторный bootstrap и копии на настоящих crmkit и pii-guard, runtime берёт из готового каталога данных через junction
+- [ ] Перенос прежних копий рабочей установки не выполнен — ждёт решения владельца (блокирующий вопрос 2)
+- [ ] Подписи категорий услуг и статусы «Оформлен заказ» в словаре обращений остаются общими для обоих профилей
 
 ### Этап 3: Privacy Service перед Codex App Server
 - [x] Privacy Service запускается с настоящим pii-guard + NER без Docker — `npm run privacy:bootstrap`: uv 0.12.24 → Python 3.11.14 → venv по `requirements.lock` → веса NER c802e8c; `/health ready`, NER=true
@@ -94,7 +107,7 @@
 - Связи: `customers 1─* vehicles`; `inquiries → customers, vehicles, services`; `work_orders → customers, vehicles, inquiries`; `order_items → work_orders, services`; `appointments` и `tasks → inquiries/work_orders`; `activity_events` без FK.
 - Персональные данные хранятся в офисной базе: `customers.full_name` (обязательно), `phone`, `email`, `note`, генерируемый `phone_key`; `vehicles.vin`, `plate`, `plate_key`; свободные тексты `inquiries.description`, `work_orders.note`, `appointments.confirmation_basis`, `activity_events.summary/details_json` (основания и перечни работ из сообщений владельца).
 - Текущее наполнение: 27 клиентов, 27 автомобилей, 24 заказа, 285 событий; все клиенты, автомобили и заказы помечены `is_demo = 1`. 21 ремонт зарегистрирован через навык Codex. Содержимое свободных текстов не просматривалось.
-- Копии: 5 файлов `office*.sqlite` (+`-wal`/`-shm`) в `.frontsmith/business/backups/`.
+- Копии (на момент аудита): 5 файлов `office*.sqlite` (+`-wal`/`-shm`) в `.frontsmith/business/backups/`. С 24.10.2026 новые копии создаются в `<data-root>/backups/office/`.
 
 ### Клиенты и отчёты
 - Собственная модель клиента есть: `customers.id` (UUID) — стабильный внутренний идентификатор, на него ссылаются автомобили, обращения и заказы. Кандидат на `client_id` Frontsmith.
@@ -118,7 +131,7 @@
 | Класс данных | Есть | Путь | Может ли прочитать Codex |
 | --- | --- | --- | --- |
 | Офисная SQLite и WAL/SHM | есть | `.frontsmith/business/office.sqlite*` | да, внутри рабочей области, запись тоже |
-| Копии базы | есть | `.frontsmith/business/backups/` | да, внутри рабочей области |
+| Копии базы | есть | прежние — `.frontsmith/business/backups/`; новые — `<data-root>/backups/office/` | прежние — да; новые — нет, вне репозитория |
 | Контакты клиентов | есть, в офисной базе | `customers` | да, отдельного CRM нет |
 | Таблицы соответствий | нет | — | — |
 | Ключи LLM | есть, у Codex | `D:\CodexData\.codex\auth.json` | вероятно да: `workspace-write` ограничивает запись, не чтение; не проверено |
@@ -166,7 +179,7 @@
 
 ## Блокирующие вопросы
 1. ~~База интеграции~~ — решено: `main`, универсальная часть `office/` перенесена 22.10.2026. Ветки ещё не опубликованы на GitHub.
-2. ~~Персональные данные в рабочей офисной базе~~ — перенесены в crmkit 23.10.2026. Прежние копии в `.frontsmith/business/backups/`: две учебные (6 клиентов «Демо-клиент», синтетические телефоны) вынесены в `D:\Frontsmith\backups\legacy-demo-office\`; `office-20261017-145808Z.sqlite` (27 учебных клиентов, 21 отчёт владельца о работах) и каталоги `tmax-before-customization-*` оставлены: нельзя доказать, что там только учебные данные. Решение — за владельцем.
+2. ~~Персональные данные в рабочей офисной базе~~ — перенесены в crmkit 23.10.2026. Прежние копии в `.frontsmith/business/backups/`: две учебные (6 клиентов «Демо-клиент», синтетические телефоны) вынесены в `D:\Frontsmith\backups\legacy-demo-office\`; `office-20261017-145808Z.sqlite` (27 учебных клиентов, 21 отчёт владельца о работах) и каталоги `tmax-before-customization-*` оставлены: нельзя доказать, что там только учебные данные. 24.10.2026 `npm run backups:relocate` показывает в рабочей области 5 единиц: `office-20261017-145808Z.sqlite` и `office-20261023-092949Z.sqlite` (SQLite + WAL/SHM), два каталога `tmax-before-customization-*` (профиль и база SQLite), `website-before-data-split-20261017` (сайт). Новые копии туда больше не пишутся. Решение владельца: выполнить `npm run backups:relocate -- --confirm` (копия в `<data-root>/backups/workspace-legacy/`) и затем решить, удалять ли исходники из рабочей области.
 3. История Codex в `D:\CodexData\.codex` уже содержит сообщения владельца; отдельный `CODEX_HOME` для агентного процесса проверен в PoC, политика очистки основного не решена.
 4. Плагины Codex с внешним доступом (VK, браузеры, Slack, Calendar, computer use) включены в основном `CODEX_HOME`; в изолированном PoC они отключены флагами `[features]`.
 5. ~~Python для pii-guard~~ — решено: управляемый runtime `npm run privacy:bootstrap` (uv, Python, venv в каталоге данных Frontsmith), Docker не нужен. ~~Место crmkit (Go)~~ — решено: бинарный релиз в `<data-root>/runtime/crmkit/`, база в `<data-root>/crm/`.

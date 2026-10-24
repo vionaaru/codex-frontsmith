@@ -32,7 +32,7 @@ Codex должен помочь с настройкой, при необходи
 
 ## Первый запуск
 
-По умолчанию демонстрация использует автосервис «АвтоРитм». Общий начальный профиль — `blueprints/auto-service/business.example.json`. Его локальная рабочая копия создаётся в `.frontsmith/business/business.json`:
+Новая установка по умолчанию получает универсальный профиль `blueprints/generic-service/business.example.json`: пустые клиенты и услуги, нейтральный сайт. Демонстрация автосервиса «АвтоРитм» — отдельный профиль `blueprints/auto-service/business.example.json`, он выбирается при первой установке: `npm run bootstrap -- --blueprint auto-service`. Локальная рабочая копия профиля создаётся в `.frontsmith/business/business.json`:
 
 ```bash
 npm run bootstrap

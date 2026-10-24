@@ -5,21 +5,29 @@
 // Установка пользователя не используется: свой каталог данных, каталог бизнеса, CODEX_HOME
 // Host и свободные порты. Подписка ChatGPT не используется: в пустом CODEX_HOME входа нет,
 // поэтому проверяется путь «Codex: sign-in required» (офис готов, AI нет).
-// Скачивает зафиксированные crmkit, uv, Python, зависимости pii-guard и веса NER (~2 ГБ):
-// не входит в npm test.
+// Чистая установка получает универсальный профиль generic-service; автосервис проверяется
+// явным --blueprint auto-service во втором каталоге бизнеса того же каталога данных.
+//
+// Runtime (uv, Python, pii-guard, веса NER, crmkitd) по умолчанию берётся из уже подготовленного
+// каталога данных пользователя через junction <тест>/runtime → <data-root>/runtime: повторного
+// скачивания ~2 ГБ нет, CRM, состояние Privacy, CODEX_HOME и бизнес-данные теста — свои.
+// FRONTSMITH_FIRST_RUN_RUNTIME=none — полностью пустой каталог данных со скачиванием (~40 мин).
+// Не входит в npm test.
 //
 //   npm run test:first-run
 //   FRONTSMITH_FIRST_RUN_PARENT=D:\tmp npm run test:first-run   где создать временный каталог
+//   FRONTSMITH_FIRST_RUN_RUNTIME=D:\Frontsmith npm run test:first-run   каталог данных с готовым runtime
 import assert from "node:assert/strict";
 import { fork, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, copyFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, copyFileSync, symlinkSync, unlinkSync } from "node:fs";
 import { createServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DATA_ROOT_POINTER, dataRoot } from "../services/privacy/runtime.mjs";
+import { DATA_ROOT_POINTER, dataRoot, runtimePaths, runtimeStatus } from "../services/privacy/runtime.mjs";
 import { CrmkitClient } from "../services/crm/client.mjs";
-import { freePort } from "../services/crm/runtime.mjs";
+import { crmPaths, freePort } from "../services/crm/runtime.mjs";
+import { CORE_OFFICE_MODULES } from "../scripts/lib/blueprints.mjs";
 import { listMigrations, openOfficeDb } from "../office/lib/db.mjs";
 import { IVAN, IVAN_PII, buildLegacyFixture, scanForPii } from "./fixtures/legacy-customers.mjs";
 
@@ -28,6 +36,10 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const parent = process.env.FRONTSMITH_FIRST_RUN_PARENT ? path.resolve(process.env.FRONTSMITH_FIRST_RUN_PARENT) : path.join(dataRoot(), "runtime", "tmp");
 mkdirSync(parent, { recursive: true });
 const root = mkdtempSync(path.join(parent, "frontsmith-first-run-"));
+const cacheRoot = process.env.FRONTSMITH_FIRST_RUN_RUNTIME === "none" ? null : path.resolve(process.env.FRONTSMITH_FIRST_RUN_RUNTIME ?? dataRoot());
+const runtimeCache = cacheRoot && runtimeStatus(runtimePaths(cacheRoot)).ready && existsSync(crmPaths(cacheRoot).marker) ? path.join(cacheRoot, "runtime") : null;
+if (runtimeCache) symlinkSync(runtimeCache, path.join(root, "runtime"), "junction");
+console.log(runtimeCache ? `runtime: подготовленный ${runtimeCache} (junction, без скачивания)` : "runtime: пустой, скачивается заново");
 const pointerBefore = existsSync(DATA_ROOT_POINTER) ? readFileSync(DATA_ROOT_POINTER, "utf8") : null;
 const ports = { office: await freePort(), crm: await freePort(), privacy: await freePort() };
 const env = {
@@ -42,6 +54,8 @@ const env = {
 delete env.FRONTSMITH_CRM_URL;
 const latest = Math.max(...listMigrations().map((migration) => migration.version));
 const officeDb = path.join(root, "business", "office.sqlite");
+const autoRoot = path.join(root, "auto-business");
+const AUTO_WORDS = /АвтоРитм|автомоб|автосервис|ремонт|VIN|Booking Flow|auto-workshop/i;
 let passed = 0;
 let office = null;
 
@@ -125,7 +139,7 @@ async function api(method, pathname, body) {
 
 try {
   await check("каталог данных пуст, npm run frontsmith без bootstrap прерывается с CRM_NOT_READY", async () => {
-    assert.deepEqual(readdirSync(root), []);
+    assert.deepEqual(readdirSync(root), runtimeCache ? ["runtime"] : []);
     const result = await run("scripts/frontsmith.mjs");
     assert.equal(result.code, 1, result.output);
     assert.match(result.output, /CRM_NOT_READY/);
@@ -139,6 +153,16 @@ try {
     assert.match(first.output, /fresh install/);
     assert.match(first.output, /Frontsmith bootstrap complete/);
     for (const label of ["Business DB:    ready", "CRM:            ready", "Privacy:        ready", "CustomerModule: ready"]) assert.ok(first.output.includes(label), label);
+    assert.match(first.output, /бизнес-профиль: generic-service/);
+  });
+
+  await check("чистая установка — универсальный профиль: не «АвтоРитм», услуг нет, сайт без автосервиса", async () => {
+    const profile = JSON.parse(readFileSync(path.join(root, "business/business.json"), "utf8"));
+    assert.equal(profile.blueprint, "generic-service");
+    assert.notEqual(profile.businessName, "АвтоРитм");
+    assert.deepEqual(profile.services, []);
+    assert.doesNotMatch(JSON.stringify(profile), AUTO_WORDS);
+    assert.doesNotMatch(readFileSync(path.join(root, "business/website/index.html"), "utf8"), AUTO_WORDS);
   });
 
   await check("структура каталога данных: runtime (privacy, crmkit), crm, privacy, codex-host, business", async () => {
@@ -158,7 +182,9 @@ try {
       assert.equal(db.prepare("SELECT count(*) AS n FROM customers").get().n, 0, "bootstrap не создаёт учебных клиентов");
       assert.equal(db.prepare("SELECT count(*) AS n FROM legacy_customer_contacts").get().n, 0);
       assert.equal(db.prepare("SELECT count(*) AS n FROM customer_provider_links").get().n, 0);
-      assert.ok(db.prepare("SELECT count(*) AS n FROM services").get().n > 0, "каталог услуг из профиля");
+      assert.equal(db.prepare("SELECT count(*) AS n FROM services").get().n, 0, "автомобильные услуги не создаются");
+      assert.equal(db.prepare("SELECT count(*) AS n FROM vehicles").get().n, 0);
+      assert.notEqual(db.prepare("SELECT name FROM business").get().name, "АвтоРитм");
       assert.equal(db.pragma("integrity_check", { simple: true }), "ok");
       assert.deepEqual(db.pragma("foreign_key_check"), []);
     } finally {
@@ -184,6 +210,7 @@ try {
     for (const file of files) assert.equal(sha(path.join(root, file)), before[file], `${file} не изменён`);
     assert.equal(statSync(path.join(root, "runtime/crmkit/0.9.1", process.platform === "win32" ? "crmkitd.exe" : "crmkitd")).mtimeMs, binary);
     assert.deepEqual(listing(path.join(root, "privacy")), privacyState, "состояние псевдонимизации не сброшено");
+    assert.equal(JSON.parse(readFileSync(path.join(root, "business/business.json"), "utf8")).blueprint, "generic-service", "профиль сохранён");
   });
 
   let ready;
@@ -202,6 +229,20 @@ try {
     assert.match(out, /CODEX_NOT_AUTHENTICATED|CODEX_NOT_INSTALLED/);
     const credential = JSON.parse(readFileSync(path.join(root, "crm/credential.json"), "utf8"));
     assert.equal(out.includes(credential.token), false, "токен CRM не выводится");
+  });
+
+  await check("панель generic: без отраслевых модулей, все разделы и статика отвечают без ошибок", async () => {
+    const meta = await api("GET", "/api/meta");
+    assert.equal(meta.status, 200);
+    assert.deepEqual(meta.body.data.modules, CORE_OFFICE_MODULES);
+    assert.notEqual(meta.body.data.business.name, "АвтоРитм");
+    for (const route of ["/api/overview", "/api/inquiries", "/api/tasks", "/api/services", "/api/schedule", "/api/events"]) {
+      const response = await api("GET", route);
+      assert.equal(response.status, 200, `${route}: ${JSON.stringify(response.body)}`);
+    }
+    assert.deepEqual((await api("GET", "/api/services")).body.data, [], "демонстрационных услуг нет");
+    for (const file of ["/", "/app.js", "/styles.css"]) assert.equal((await fetch(`http://127.0.0.1:${ports.office}${file}`)).status, 200, file);
+    assert.doesNotMatch(await (await fetch(`http://127.0.0.1:${ports.office}/`)).text(), /автосервис/i);
   });
 
   await check("раздел «Клиенты»: пустой список, поиск без результатов", async () => {
@@ -250,6 +291,19 @@ try {
     assert.deepEqual(scan.bytes, {});
   });
 
+  await check("новая копия базы — в каталоге данных вне рабочей области Codex", async () => {
+    const result = await run("scripts/office.mjs", ["backup"]);
+    assert.equal(result.code, 0, result.output);
+    const file = /: (.+\.sqlite)\s*$/m.exec(result.output)[1].trim();
+    assert.equal(path.dirname(file), path.join(root, "backups", "office"));
+    const relative = path.relative(repo, file);
+    assert.ok(relative.startsWith("..") || path.isAbsolute(relative), "копия вне репозитория");
+    assert.equal(existsSync(path.join(root, "business", "backups")), false, "в каталоге бизнеса копий нет");
+    const rejected = await run("scripts/office.mjs", ["backup", "--to", path.join(repo, ".frontsmith", "first-run-test.sqlite")]);
+    assert.equal(rejected.code, 1);
+    assert.match(rejected.output, /рабочей области Codex/);
+  });
+
   await check("shutdown: офис, Privacy Service и crmkit завершены, порты свободны", async () => {
     office.child.send({ type: "shutdown" });
     const code = await Promise.race([office.exited, new Promise((resolve) => setTimeout(() => resolve("timeout"), 60_000))]);
@@ -258,6 +312,50 @@ try {
     for (const [name, port] of Object.entries(ports)) assert.equal(await portFree(port), true, `порт ${name} ${port} свободен`);
     for (const [name, pid] of Object.entries(ready.pids)) if (pid) assert.equal(alive(pid), false, `процесс ${name} ${pid} завершён`);
     office = null;
+  });
+
+  await check("auto-service явным --blueprint: каталог автосервиса и отраслевые разделы панели", async () => {
+    const result = await run("scripts/bootstrap.mjs", ["--blueprint", "auto-service"], { FRONTSMITH_BUSINESS_ROOT: autoRoot });
+    assert.equal(result.code, 0, result.output);
+    assert.match(result.output, /fresh install/);
+    assert.match(result.output, /бизнес-профиль: auto-service/);
+    const profile = JSON.parse(readFileSync(path.join(autoRoot, "business.json"), "utf8"));
+    assert.equal(profile.blueprint, "auto-service");
+    assert.equal(profile.businessName, "АвтоРитм");
+    const db = openOfficeDb({ file: path.join(autoRoot, "office.sqlite"), readonly: true });
+    try {
+      assert.equal(db.prepare("SELECT count(*) AS n FROM services").get().n, 8);
+      assert.equal(db.prepare("SELECT count(*) AS n FROM customers").get().n, 0, "учебные клиенты не создаются");
+    } finally {
+      db.close();
+    }
+    const port = await freePort();
+    const server = spawn(process.execPath, [path.join(repo, "office/server.mjs"), "--port", String(port)], { cwd: repo, env: { ...env, FRONTSMITH_BUSINESS_ROOT: autoRoot, FRONTSMITH_CRM_URL: `http://127.0.0.1:${await freePort()}` }, stdio: ["ignore", "pipe", "pipe"] });
+    try {
+      await new Promise((resolve, reject) => {
+        server.stdout.on("data", (chunk) => { if (String(chunk).includes("Панель офиса")) resolve(); });
+        server.on("exit", (code) => reject(new Error(`панель завершилась с кодом ${code}`)));
+      });
+      const meta = await (await fetch(`http://127.0.0.1:${port}/api/meta`)).json();
+      assert.deepEqual(meta.data.modules, [...CORE_OFFICE_MODULES, "vehicles", "work-orders", "work-results"]);
+      assert.equal(meta.data.business.name, "АвтоРитм");
+      assert.equal((await (await fetch(`http://127.0.0.1:${port}/api/services`)).json()).data.length, 8);
+      assert.equal((await fetch(`http://127.0.0.1:${port}/api/orders`)).status, 200);
+    } finally {
+      server.kill();
+    }
+  });
+
+  await check("повторный bootstrap существующей установки сохраняет выбранный профиль, --blueprint его не заменяет", async () => {
+    const before = { auto: sha(path.join(autoRoot, "business.json")), generic: sha(path.join(root, "business/business.json")) };
+    for (const extra of [["--blueprint", "generic-service"]]) {
+      const result = await run("scripts/bootstrap.mjs", extra, { FRONTSMITH_BUSINESS_ROOT: autoRoot });
+      assert.equal(result.code, 0, result.output);
+      assert.match(result.output, /existing current install/);
+      assert.match(result.output, /бизнес-профиль: auto-service/);
+      assert.equal(sha(path.join(autoRoot, "business.json")), before.auto, "АвтоРитм не заменён на generic");
+    }
+    assert.equal(sha(path.join(root, "business/business.json")), before.generic);
   });
 
   await check("legacy-установка определяется, контакты не переносятся без явной команды", async () => {
@@ -289,8 +387,14 @@ try {
     office.child.kill();
     await office.exited;
   }
-  // FRONTSMITH_FIRST_RUN_KEEP=1 — оставить каталог для разбора сбоя (повтор не скачивает заново)
+  // FRONTSMITH_FIRST_RUN_KEEP=1 — оставить каталог для разбора сбоя (повтор не скачивает заново).
+  // Junction на общий runtime снимается до удаления: удаление не должно пройти внутрь кэша
+  const link = path.join(root, "runtime");
   if (process.env.FRONTSMITH_FIRST_RUN_KEEP === "1") console.error(`каталог теста оставлен: ${root}`);
-  else rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 500 });
+  else {
+    if (runtimeCache && existsSync(link) && lstatSync(link).isSymbolicLink()) unlinkSync(link);
+    if (runtimeCache && existsSync(link)) console.error(`! junction runtime не снят, каталог теста оставлен: ${root}`);
+    else rmSync(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 500 });
+  }
   if (existsSync(root) && process.env.FRONTSMITH_FIRST_RUN_KEEP !== "1") console.error(`! временный каталог не удалён: ${root}`);
 }

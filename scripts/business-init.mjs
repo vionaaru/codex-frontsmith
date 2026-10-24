@@ -4,8 +4,14 @@ import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { renderWebsite, validatedBookingUrl } from "./lib/render-website.mjs";
 import { businessRoot } from "./lib/paths.mjs";
+import { defaultBlueprintId, exampleProfileFile } from "./lib/blueprints.mjs";
 
-const profileFile = readArg("--profile") ?? "blueprints/auto-service/business.example.json";
+// Стартовый профиль: --profile ФАЙЛ, --blueprint ID или профиль по умолчанию (frontsmith.config.json)
+if (readArg("--profile") !== null && readArg("--blueprint") !== null) {
+  throw new Error("Укажите либо --profile ФАЙЛ, либо --blueprint ID");
+}
+const profileFile = readArg("--profile") ?? exampleProfileFile(readArg("--blueprint") ?? defaultBlueprintId());
+const explicitProfile = readArg("--profile") !== null || readArg("--blueprint") !== null;
 const reset = process.argv.includes("--reset");
 const skipWebsite = process.argv.includes("--skip-website");
 const target = businessRoot();
@@ -30,6 +36,7 @@ async function createBusinessProfile() {
   if (!profile.businessName || !Array.isArray(profile.services) || !profile.contact) {
     throw new Error("Профиль должен содержать businessName, services и contact");
   }
+  if (readArg("--profile") === null) profile.blueprint ??= readArg("--blueprint") ?? defaultBlueprintId();
 
   const overrides = {
     "--business-name": "businessName", "--business-type": "businessType",
@@ -84,8 +91,8 @@ function normalizeWebsiteUrl(value) {
 }
 
 const business = await createBusinessProfile();
-if (await exists(path.join(target, "business.json")) && !reset && readArg("--profile") === null) {
-  throw new Error("Профиль бизнеса уже существует. Для обновления сайта используйте npm run update:website. Для явной замены профиля передайте --profile FILE; --reset удаляет локальные рабочие данные.");
+if (await exists(path.join(target, "business.json")) && !reset && !explicitProfile) {
+  throw new Error("Профиль бизнеса уже существует. Для обновления сайта используйте npm run update:website. Для явной замены профиля передайте --profile FILE или --blueprint ID; --reset удаляет локальные рабочие данные.");
 }
 if (reset) {
   const resolvedTarget = path.resolve(target);

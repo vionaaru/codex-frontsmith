@@ -4,6 +4,8 @@ const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 const config = JSON.parse(await readFile("frontsmith.config.json", "utf8"));
 const blueprint = JSON.parse(await readFile("blueprints/auto-service/blueprint.json", "utf8"));
 const sampleBusiness = JSON.parse(await readFile("blueprints/auto-service/business.example.json", "utf8"));
+const genericBlueprint = JSON.parse(await readFile("blueprints/generic-service/blueprint.json", "utf8"));
+const genericBusiness = JSON.parse(await readFile("blueprints/generic-service/business.example.json", "utf8"));
 const readme = await readFile("README.md", "utf8");
 const operatorGuide = await readFile("docs/operator/start-here.md", "utf8");
 const packageSpec = await readFile("docs/product/package-spec.md", "utf8");
@@ -53,7 +55,7 @@ const requiredScripts = {
   test: "npm run test:launch && npm run test:regression && npm run test:office && npm run test:codex-host",
   "test:launch": "node tests/launch-readiness.mjs",
   "test:regression": "node tests/regression.mjs",
-  "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs",
+  "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs && node tests/generic-profile.mjs",
   "crm:bootstrap": "node services/crm/bootstrap.mjs",
   "crm:start": "node services/crm/start.mjs",
   "crm:migrate-customers": "node scripts/crm-migrate-customers.mjs",
@@ -64,6 +66,9 @@ const requiredScripts = {
 const requiredFiles = [
   "blueprints/auto-service/blueprint.json",
   "blueprints/auto-service/business.example.json",
+  "blueprints/generic-service/blueprint.json",
+  "blueprints/generic-service/business.example.json",
+  "blueprints/generic-service/website/index.html",
   "website/assets/auto-workshop.png",
   "scripts/prepare-extension-plan.mjs",
   "scripts/prepare-connected-action-receipt.mjs",
@@ -107,7 +112,13 @@ for (const [script, command] of Object.entries(requiredScripts)) {
   assertEqual(packageJson.scripts?.[script], command, `npm script ${script}`);
 }
 
-assertEqual(config.defaultBlueprint, "auto-service", "стандартный шаблон автосервиса");
+assertEqual(config.defaultBlueprint, "generic-service", "универсальный профиль по умолчанию");
+assertEqual(genericBusiness.blueprint, "generic-service", "стартовый профиль ссылается на свой blueprint");
+assertEqual(genericBusiness.demoMode, false, "универсальный профиль не учебный");
+assertEqual(genericBusiness.services.length, 0, "универсальный профиль без готового каталога услуг");
+assertEqual(genericBlueprint.officeModules.length, 0, "отраслевые разделы панели выключены");
+assertEqual(/авто|автомоб|АвтоРитм|VIN/i.test(JSON.stringify(genericBusiness)), false, "в универсальном профиле нет автосервисных сведений");
+assertEqual(blueprint.officeModules.join(","), "vehicles,work-orders,work-results", "отраслевые разделы автосервиса");
 assertEqual(sampleBusiness.businessName, "АвтоРитм", "название демонстрационного бизнеса");
 assertEqual(sampleBusiness.businessType, "Автосервис", "тип демонстрационного бизнеса");
 assertEqual(sampleBusiness.demoMode, true, "демонстрационный режим");
@@ -126,6 +137,7 @@ assertEqual(config.safety?.ownerApprovalRequired, true, "owner approval required
 for (const capability of requiredCapabilities) {
   assertIncludes(config.defaultCapabilities, capability, `config capability ${capability}`);
   assertIncludes(blueprint.capabilities, capability, `blueprint capability ${capability}`);
+  assertIncludes(genericBlueprint.capabilities, capability, `generic blueprint capability ${capability}`);
 }
 
 for (const scenario of requiredScenarioLabels) {
