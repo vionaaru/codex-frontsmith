@@ -6,8 +6,8 @@
 
 Версии зафиксированы в `runtime.mjs` (`PINS`) и `requirements.lock`:
 
-- pii-guard commit `24230abb72949a9f85499244dd4f15a0ad0cdd9e` (версия пакета 0.1.0), extra `ner`. Исходники не копируются, ядро не меняется.
-- NER `redmadrobot-rnd/rubert-base-pii-ner` ревизии `c802e8cd26f85d1cf920973ea6f83965a0618d63`; при старте `HF_HUB_OFFLINE=1`.
+- pii-guard commit `24230abb72949a9f85499244dd4f15a0ad0cdd9e` (версия пакета 0.1.0), extra `ner`. Исходники лежат без изменений в `vendor/pii-guard/source`; дополнения Frontsmith — отдельно, в `frontsmith_privacy/`.
+- NER `redmadrobot-rnd/rubert-base-pii-ner` ревизии `c802e8cd26f85d1cf920973ea6f83965a0618d63`: веса, конфигурация и токенизатор в `vendor/ner-model/rubert-base-pii-ner` (Git LFS). Сервис загружает модель из этого каталога, Hugging Face не используется (`HF_HUB_OFFLINE=1`).
 - spaCy `ru_core_news_sm` 3.8.0, torch CPU, Python 3.11.14, uv 0.12.24.
 - Windows: MSVC runtime из пакета `msvc-runtime` в venv (torch требует `msvcp140.dll`); подпись Microsoft проверяется при подготовке.
 
@@ -19,14 +19,14 @@
 npm run privacy:bootstrap
 ```
 
-скачивает uv (SHA-256 сверяется), ставит им Python, создаёт venv по `requirements.lock`, загружает веса NER и проверяет `/health`. Всё в каталоге данных Frontsmith вне Git:
+сверяет поставку с `vendor/manifest.json`, распаковывает uv и Python из `vendor/runtime-assets`, создаёт venv и ставит `requirements.lock` без сети (`uv pip sync --offline --no-index` по wheelhouse, pii-guard собирается из `vendor/pii-guard/source`) и проверяет `/health`. Ничего не скачивается. Runtime лежит в каталоге данных Frontsmith вне Git:
 
 ```text
-%LOCALAPPDATA%\Frontsmith\runtime\{uv,python,privacy-env,privacy-models,cache}
-%LOCALAPPDATA%\Frontsmith\privacy\privacy.sqlite      состояние сессий, права только пользователя
+<каталог данных>\runtime\{uv,python,privacy-env,tmp}
+<каталог данных>\privacy\privacy.sqlite      состояние сессий, права только пользователя
 ```
 
-Если на системном диске меньше 4 ГБ: `npm run privacy:bootstrap -- --data-root D:\Frontsmith` (выбор запоминается в `%LOCALAPPDATA%\Frontsmith\data-root.txt`).
+Каталог данных выбирается при первом `npm run bootstrap` (по умолчанию `%LOCALAPPDATA%\Frontsmith`, выбор запоминается в `%LOCALAPPDATA%\Frontsmith\data-root.txt`). Установки, подготовленные до поставки в `vendor/`, продолжают работать без переустановки.
 
 Обычно сервис поднимает `npm run ai:start` вместе с Codex App Server. Отдельно для диагностики: `npm run privacy:start` (127.0.0.1:4310, токен генерируется на запуск).
 

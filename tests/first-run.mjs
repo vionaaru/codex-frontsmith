@@ -11,7 +11,7 @@
 // Runtime (uv, Python, pii-guard, веса NER, crmkitd) по умолчанию берётся из уже подготовленного
 // каталога данных пользователя через junction <тест>/runtime → <data-root>/runtime: повторного
 // скачивания ~2 ГБ нет, CRM, состояние Privacy, CODEX_HOME и бизнес-данные теста — свои.
-// FRONTSMITH_FIRST_RUN_RUNTIME=none — полностью пустой каталог данных со скачиванием (~40 мин).
+// FRONTSMITH_FIRST_RUN_RUNTIME=none — полностью пустой каталог данных: runtime распаковывается из vendor/ (без сети).
 // Не входит в npm test.
 //
 //   npm run test:first-run
@@ -39,7 +39,7 @@ const root = mkdtempSync(path.join(parent, "frontsmith-first-run-"));
 const cacheRoot = process.env.FRONTSMITH_FIRST_RUN_RUNTIME === "none" ? null : path.resolve(process.env.FRONTSMITH_FIRST_RUN_RUNTIME ?? dataRoot());
 const runtimeCache = cacheRoot && runtimeStatus(runtimePaths(cacheRoot)).ready && existsSync(crmPaths(cacheRoot).marker) ? path.join(cacheRoot, "runtime") : null;
 if (runtimeCache) symlinkSync(runtimeCache, path.join(root, "runtime"), "junction");
-console.log(runtimeCache ? `runtime: подготовленный ${runtimeCache} (junction, без скачивания)` : "runtime: пустой, скачивается заново");
+console.log(runtimeCache ? `runtime: подготовленный ${runtimeCache} (junction, без скачивания)` : "runtime: пустой, ставится из поставки vendor/");
 const pointerBefore = existsSync(DATA_ROOT_POINTER) ? readFileSync(DATA_ROOT_POINTER, "utf8") : null;
 const ports = { office: await freePort(), crm: await freePort(), privacy: await freePort() };
 const env = {
@@ -167,7 +167,7 @@ try {
 
   await check("структура каталога данных: runtime (privacy, crmkit), crm, privacy, codex-host, business", async () => {
     for (const file of [
-      "runtime/privacy-runtime.json", "runtime/privacy-env", "runtime/uv", "runtime/python", "runtime/privacy-models",
+      "runtime/privacy-runtime.json", "runtime/privacy-env", "runtime/uv", "runtime/python",
       "runtime/crmkit/0.9.1/crmkit-runtime.json", "crm/crmkit.db", "crm/crmkit.yaml", "crm/credential.json", "privacy",
       "codex-host/home/config.toml", "business/business.json", "business/office.sqlite"
     ]) assert.ok(existsSync(path.join(root, file)), file);

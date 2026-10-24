@@ -52,10 +52,13 @@ const requiredScripts = {
   "office:backup": "node scripts/office.mjs backup",
   "office:restore": "node scripts/office.mjs restore",
   "office:serve": "node office/server.mjs",
-  test: "npm run test:launch && npm run test:regression && npm run test:office && npm run test:codex-host",
+  test: "npm run test:launch && npm run test:regression && npm run test:office && npm run test:install && npm run test:codex-host",
   "test:launch": "node tests/launch-readiness.mjs",
   "test:regression": "node tests/regression.mjs",
-  "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs && node tests/generic-profile.mjs",
+  "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs && node tests/generic-profile.mjs && node tests/profile-vocabulary.mjs",
+  "test:install": "node tests/vendor.mjs && node tests/data-root.mjs",
+  "release:check": "node scripts/release-check.mjs",
+  diagnostics: "node scripts/diagnostics.mjs",
   "crm:bootstrap": "node services/crm/bootstrap.mjs",
   "crm:start": "node services/crm/start.mjs",
   "crm:migrate-customers": "node scripts/crm-migrate-customers.mjs",
@@ -64,6 +67,10 @@ const requiredScripts = {
 };
 
 const requiredFiles = [
+  "THIRD_PARTY_NOTICES.md",
+  "vendor/manifest.json",
+  "vendor/README.md",
+  "docs/testing/external-first-run.md",
   "blueprints/auto-service/blueprint.json",
   "blueprints/auto-service/business.example.json",
   "blueprints/generic-service/blueprint.json",

@@ -59,7 +59,7 @@
 - [x] Один `npm run frontsmith` запускает необходимые сервисы — crmkit, Privacy Service, Codex App Server (при входе ChatGPT), офис `http://127.0.0.1:4180`
 - [x] Корректный shutdown завершает дочерние процессы — офис, App Server, Privacy Service, crmkit; порты свободны, PID завершены
 - [x] Первый клиент создаётся через CustomerProvider — API панели → CrmkitProvider → crmkit → `client_id`
-- [x] `test:first-run` проходит на пустом data-root — скачивает ~2 ГБ, первый старт NER на 6 ГБ RAM ~6,5 мин
+- [x] `test:first-run` проходит на пустом data-root — до поставки в vendor/ скачивал ~2 ГБ, первый старт NER на 6 ГБ RAM ~6,5 мин
 - [x] README содержит короткий пользовательский first-run
 - [ ] Вход ChatGPT в first-run проверен только как «sign-in required»; путь AI после единого старта покрыт `test:codex-host` и `smoke:crm-codex`
 - [x] Профиль по умолчанию — универсальный `generic-service` (см. «Универсальный профиль»)
@@ -75,7 +75,15 @@
 - [x] Перенос прежних копий подготовлен — `npm run backups:relocate` (план) и `-- --confirm` (копирование с SHA-256 вместе с WAL/SHM, исходники не удаляются)
 - [x] Тесты — `tests/generic-profile.mjs` в `npm test`; `test:first-run` проверяет generic, auto-service, повторный bootstrap и копии на настоящих crmkit и pii-guard, runtime берёт из готового каталога данных через junction
 - [x] Прежние копии рабочей установки убраны из рабочей области по решению владельца 24.10.2026 — отправлены в корзину Windows без переноса в каталог данных (блокирующий вопрос 2)
-- [ ] Подписи категорий услуг и статусы «Оформлен заказ» в словаре обращений остаются общими для обоих профилей
+- [x] Подписи статусов и категорий услуг зависят от профиля — `blueprint.json → vocabulary`, `vocabularyFor()`; generic — «Оформлено», «Закрыто», нейтральные категории; auto-service — прежние подписи; машинные ключи и переходы общие (`tests/profile-vocabulary.mjs`)
+
+### Поставка для публикации (24.10.2026)
+- [x] Сторонние компоненты в репозитории — `vendor/`: crmkit v0.9.1 (исходники и архив Windows amd64), pii-guard 24230ab, модель NER c802e8c, uv 0.12.24, Python 3.11.14, 85 wheels; `vendor/manifest.json` с SHA-256, лицензиями и источниками; 89 объектов Git LFS, ~1 ГБ
+- [x] Bootstrap не скачивает — Python распаковывается из поставки (без `uv python install` и записи в реестр), `uv pip sync --offline --no-index`, pii-guard собирается из копии исходников, NER читается из `vendor/ner-model`, crmkit — из `vendor/crmkit/release`; указатели LFS — ошибка `LFS_OBJECTS_MISSING` до установки
+- [x] Каталог данных выбирается при первом интерактивном bootstrap, запоминается, существующая установка не переносится; вход Codex Host новой установки — в `<data-root>/codex-host`
+- [x] `npm run release:check` и `npm run diagnostics`; инструкция тестировщика — `docs/testing/external-first-run.md`
+- [ ] Установка из чистого клона на другом компьютере — проверяет внешний тестировщик (READY FOR EXTERNAL TESTING)
+- [ ] Перераспространение `msvc-runtime` (Microsoft Visual C++ Distributable Code) — решение владельца перед публикацией
 
 ### Этап 3: Privacy Service перед Codex App Server
 - [x] Privacy Service запускается с настоящим pii-guard + NER без Docker — `npm run privacy:bootstrap`: uv 0.12.24 → Python 3.11.14 → venv по `requirements.lock` → веса NER c802e8c; `/health ready`, NER=true

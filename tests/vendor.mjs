@@ -2,7 +2,7 @@
 // и размеров, отпечатки деревьев исходников, проверка настоящих файлов поставки.
 // Без установки runtime и без сети
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { CRMKIT, crmkitAsset } from "../services/crm/runtime.mjs";
@@ -76,12 +76,20 @@ try {
     assert.notEqual((await treeDigest(dir)).digest, first.digest, "смена концов строк заметна");
   });
 
-  await check("настоящая поставка: crmkit, pii-guard, uv и Python совпадают с manifest", async () => {
-    for (const id of ["crmkit-binary", "crmkit-source", "pii-guard", "uv", "python"]) {
-      assert.deepEqual(await verifyComponent(component(manifest, id)), [], id);
-    }
-    assert.equal(nerModelStatus().ready, true, "веса NER — настоящий файл");
+  await check("исходники crmkit и pii-guard совпадают с зафиксированными версиями", async () => {
+    for (const id of ["crmkit-source", "pii-guard"]) assert.deepEqual(await verifyComponent(component(manifest, id)), [], id);
   });
+
+  // Проверка в CI идёт без объектов Git LFS (они расходуют квоту трафика): там только указатели
+  const lfsReady = manifest.components.flatMap((item) => item.files ?? []).filter((file) => file.lfs).every((file) => existsSync(path.join(projectRoot, file.path)) && !isLfsPointer(path.join(projectRoot, file.path)));
+  if (lfsReady) {
+    await check("настоящая поставка: crmkit, uv и Python совпадают с manifest, веса NER — настоящий файл", async () => {
+      for (const id of ["crmkit-binary", "uv", "python"]) assert.deepEqual(await verifyComponent(component(manifest, id)), [], id);
+      assert.equal(nerModelStatus().ready, true);
+    });
+  } else {
+    console.log("– настоящие файлы Git LFS не получены: сверка архивов пропущена (полная проверка — npm run release:check)");
+  }
 
   await check("поддерживаемая платформа поставки — только Windows x64", async () => {
     assert.doesNotThrow(() => assertBundledPlatform("win32-x64"));

@@ -11,7 +11,12 @@ import { PassThrough } from "node:stream";
 import { fileURLToPath } from "node:url";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const temp = mkdtempSync(path.join(os.tmpdir(), "frontsmith-data-root-"));
+// Выбор каталога данных — часть поддерживаемой установки Windows x64 (%LOCALAPPDATA%, буквы дисков)
+if (process.platform !== "win32") {
+  console.log("Data root: пропущено — поддерживаемая установка этого релиза только для Windows x64");
+  process.exit(0);
+}
+const temp =mkdtempSync(path.join(os.tmpdir(), "frontsmith-data-root-"));
 const local = path.join(temp, "LocalAppData");
 mkdirSync(local, { recursive: true });
 process.env.LOCALAPPDATA = local;

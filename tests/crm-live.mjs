@@ -1,7 +1,7 @@
 // Настоящий crmkitd v0.9.1 без Go и Docker: bootstrap, проверка SHA-256, повторный
 // bootstrap, только 127.0.0.1, штатная авторизация, CrmkitProvider и перенос fixture.
-// Работает во временном каталоге данных (не трогает CRM пользователя); скачивает
-// релиз с GitHub дважды (обычная установка и проверка подменённой суммы).
+// Работает во временном каталоге данных (не трогает CRM пользователя). Архив релиза берётся
+// из поставки Frontsmith (vendor/crmkit/release), сеть не используется.
 //
 //   npm run test:crm
 import assert from "node:assert/strict";
@@ -40,7 +40,7 @@ async function check(name, fn) {
 let crm;
 try {
   let first;
-  await check("crm:bootstrap скачивает зафиксированный релиз, проверяет SHA-256 и готовит CRM", async () => {
+  await check("crm:bootstrap распаковывает зафиксированный релиз из поставки, проверяет SHA-256 и готовит CRM", async () => {
     first = await bootstrapCrm(paths, { log: quiet });
     assert.equal(first.install.downloaded, true);
     assert.equal(first.install.sha256, crmkitAsset().sha256);
@@ -61,7 +61,7 @@ try {
     }
   });
 
-  await check("повторный bootstrap идемпотентен: ничего не скачивает, токен и база те же", async () => {
+  await check("повторный bootstrap идемпотентен: ничего не распаковывает заново, токен и база те же", async () => {
     const before = { binary: statSync(paths.binary).mtimeMs, token: readCredential(paths).token };
     const again = await bootstrapCrm(paths, { log: quiet });
     assert.equal(again.install.downloaded, false);

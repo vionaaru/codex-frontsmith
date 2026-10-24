@@ -52,6 +52,7 @@
     "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs && node tests/generic-profile.mjs && node tests/profile-vocabulary.mjs",
     "test:install": "node tests/vendor.mjs && node tests/data-root.mjs",
     "release:check": "node scripts/release-check.mjs",
+    "diagnostics": "node scripts/diagnostics.mjs",
     "vendor:manifest": "node scripts/vendor-manifest.mjs",
     "test:gateway-poc": "node tools/codex-gateway-poc/gateway.test.mjs",
     "test:codex-host": "node tests/codex-host.mjs",

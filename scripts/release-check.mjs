@@ -160,7 +160,8 @@ const vendorSafe = badFiles.filter((entry) => !entry.startsWith("vendor/"));
 vendorSafe.length ? fail("index", `запрещённые файлы в индексе Git: ${vendorSafe.join(", ")}`) : pass("index", "в индексе нет рабочих баз, резервных копий, учётных данных, runtime и истории диалогов");
 
 const SECRET = /(sk-[A-Za-z0-9_-]{32,}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|xox[abp]-[A-Za-z0-9-]{20,})/;
-const LOCAL_PATH = /[A-Za-z]:[\\/]+(Frontsmith|codex_project)\b/i;
+// Пути компьютера разработки: код и данные этой установки. Примеры E:\Frontsmith в подсказках — не они
+const LOCAL_PATH = /\bD:[\\/]+(Frontsmith|codex_project)\b/i;
 const RUNTIME_DIRS = /^(scripts|services|office|api|packages|blueprints|workflows)\//;
 const secrets = [];
 const localPaths = [];
