@@ -1,0 +1,44 @@
+{
+  "businessName": "Новая компания",
+  "businessType": "Сервисная компания",
+  "demoMode": false,
+  "blueprint": "generic-service",
+  "brandTagline": "Услуги для клиентов",
+  "tagline": "Понятные услуги и согласование до начала работ",
+  "summary": "Расскажите о задаче: объём, сроки и стоимость согласуем заранее",
+  "websiteUrl": "http://localhost:4173",
+  "bookingLabel": "Связаться",
+  "currency": "RUB",
+  "timeZone": "Europe/Moscow",
+  "serviceAreas": [],
+  "contact": {
+    "phone": "",
+    "email": "",
+    "city": "",
+    "state": "",
+    "address": ""
+  },
+  "brandVoice": "Спокойно, конкретно и уважительно. Объяснять варианты простым языком. Не обещать цену, сроки и результат без согласования владельца.",
+  "pricingPolicy": {
+    "mode": "owner",
+    "note": "Стоимость согласуется с владельцем до начала работ.",
+    "ownerApprovedForLiveQuotes": false
+  },
+  "services": [],
+  "media": {
+    "logoImage": "/frontsmith-mark.svg",
+    "heroImage": "/assets/acme-contact-planning.jpg",
+    "heroImageAlt": "Обсуждение задачи с клиентом",
+    "socialImage": "/assets/acme-contact-planning.jpg"
+  },
+  "approvalPolicy": {
+    "ownerApprovalRequiredForLiveActions": true,
+    "liveActionsDefault": "disabled"
+  },
+  "integrations": {
+    "booking": { "status": "not_configured", "localImportEnabled": false },
+    "email": { "status": "disabled" },
+    "calendar": { "status": "not_connected" },
+    "neura": { "status": "not_connected" }
+  }
+}

@@ -43,14 +43,14 @@
 
 ## Профиль бизнеса
 
-`npm run bootstrap` читает `blueprints/auto-service/business.example.json` и создаёт `.frontsmith/business/business.json`. Начальный сценарий — локальная демонстрация автосервиса «АвтоРитм» с восемью услугами. Рабочий профиль — общий источник услуг, цен, контактов, записи и материалов сайта.
+`npm run bootstrap` на новой установке читает стартовый профиль `defaultBlueprint` из `frontsmith.config.json` — `blueprints/generic-service/business.example.json` — и создаёт `.frontsmith/business/business.json`. Локальная демонстрация автосервиса «АвтоРитм» с восемью услугами — профиль `auto-service`: `npm run bootstrap -- --blueprint auto-service` при первой установке. Рабочий профиль — общий источник услуг, цен, контактов, записи и материалов сайта.
 
 | Поле | Что указать |
 | --- | --- |
 | `businessName`, `businessType` | Название и тип бизнеса |
 | `brandTagline`, `tagline`, `summary` | Подпись бренда, заголовок и краткое описание сайта |
 | `websiteUrl` | Адрес сайта; для локальной демонстрации `http://localhost:4173` |
-| `demoMode`, `blueprint` | Учебный режим (`true`) и сценарий `auto-service` |
+| `demoMode`, `blueprint` | Учебный режим и бизнес-профиль: `generic-service` или `auto-service`; профиль включает отраслевые разделы панели |
 | `currency`, `timeZone` | Валюта `RUB` и часовой пояс `Europe/Moscow` |
 | `bookingUrl`, `bookingLabel` | Внешняя ссылка записи `https://example.com/booking` и подпись кнопок; URL допускает только HTTP/HTTPS без учётных данных |
 | `hours.label`, `hours.days`, `hours.start`, `hours.end`, `hours.weekend` | Часы работы: Пн–Пт, 09:00–18:00; суббота и воскресенье — выходные |
@@ -70,7 +70,7 @@
 | `approvalPolicy.ownerApprovalRequiredForLiveActions` | Требуется ли согласие на внешние действия |
 | `approvalPolicy.liveActionsDefault` | Внешние действия по умолчанию отключены |
 
-После изменения профиля выполните `npm run update:website`, затем `npm run first-run:status` и `npm run owner:brief`. Профиль АвтоРитм остаётся учебным, пока владелец не предоставит и не согласует реальные сведения. `update:website` переносит весь каталог, цены, длительности и ссылку записи без сброса этих полей. Повторный bootstrap защищает существующий профиль от перезаписи. Явная замена: `npm run bootstrap -- --profile ПУТЬ-К-ПРОФИЛЮ.json`. Прежние CLI-флаги поддерживаются и переопределяют только явно переданные поля; `--services` заменяет каталог, поэтому для сохранения всех восьми услуг его не передавайте. `--reset` удаляет весь прежний каталог бизнеса, включая рабочие записи.
+После изменения профиля выполните `npm run update:website`, затем `npm run first-run:status` и `npm run owner:brief`. Профиль АвтоРитм остаётся учебным, пока владелец не предоставит и не согласует реальные сведения. `update:website` переносит весь каталог, цены, длительности и ссылку записи без сброса этих полей. Повторный `npm run bootstrap` не перезаписывает существующий профиль. Явная замена: `npm run business:init -- --profile ПУТЬ-К-ПРОФИЛЮ.json`. Прежние CLI-флаги поддерживаются и переопределяют только явно переданные поля; `--services` заменяет каталог, поэтому для сохранения всех восьми услуг его не передавайте. `npm run business:init -- --reset` удаляет весь прежний каталог бизнеса, включая рабочие записи; `npm run bootstrap` этот флаг отклоняет.
 
 `FRONTSMITH_BUSINESS_ROOT` может переопределить каталог данных для тестов или отдельного рабочего окружения. Исходники сайта при этом остаются в `website/`.
 
@@ -102,7 +102,7 @@ npm run preview:website
 
 ## Сборка и подключения
 
-`package.json` хранит команды npm, версию Node и метаданные пакета. `vercel.json` задаёт статический build `dist/frontsmith-demo`, чистые URL, перенаправления и лимит времени обработчика формы. `blueprints/auto-service/business.example.json` хранит начальный профиль АвтоРитм; `blueprints/local-service/blueprint.json` сохраняет описание общего сервисного сценария и требуемых полей.
+`package.json` хранит команды npm, версию Node и метаданные пакета. `vercel.json` задаёт статический build `dist/frontsmith-demo`, чистые URL, перенаправления и лимит времени обработчика формы. `blueprints/generic-service/` хранит универсальный профиль по умолчанию и нейтральный шаблон сайта, `blueprints/auto-service/business.example.json` — профиль АвтоРитм; `blueprints/local-service/blueprint.json` сохраняет описание общего сервисного сценария и требуемых полей.
 
 Локальные настройки интеграций находятся в `.frontsmith/business/settings/integrations.md`. Изменение этого файла не подключает аккаунты. JSON-записи в `connected-actions/` содержат машинные статусы `dry_run`, `not_approved` и `blocked`: пробный режим, отсутствие согласования и запрет выполнения. Их Markdown-пары объясняют состояние по-русски.
 

@@ -2,8 +2,7 @@ import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { businessPath, businessRoot, businessWebsiteRoot, websiteSourceRoot } from "./paths.mjs";
 import { loadServiceCatalog } from "../../office/lib/catalog.mjs";
-
-const websiteFiles = ["index.html"];
+import { websiteTemplateFile } from "./blueprints.mjs";
 
 export async function renderWebsite() {
   const root = businessRoot();
@@ -21,11 +20,11 @@ export async function renderWebsite() {
   await mkdir(launchDir, { recursive: true });
 
   await cp(websiteSourceRoot, websiteRoot, { recursive: true, force: false, errorOnExist: false });
-  // HTML читается из шаблона при каждом обновлении; рабочие значения записываются только в приватную копию.
-  for (const file of websiteFiles) {
-    const current = await readWebsiteFile(file);
-    await writeWebsiteFile(path.join(websiteRoot, file), updateWebsiteFile(current, replacements));
-  }
+  // HTML читается из шаблона профиля при каждом обновлении; рабочие значения записываются только в приватную копию.
+  // Стили, скрипт и изображения общие для всех профилей
+  const template = websiteTemplateFile(profile);
+  const current = await readWebsiteFile(template);
+  await writeWebsiteFile(path.join(websiteRoot, "index.html"), updateWebsiteFile(current, replacements));
   for (const file of ["styles.css", "script.js"]) {
     await cp(path.join(websiteSourceRoot, file), path.join(websiteRoot, file));
   }
@@ -33,7 +32,7 @@ export async function renderWebsite() {
   const reviewPath = path.join(launchDir, "website-review.md");
   const activityPath = path.join(activityDir, "latest-website-update.md");
 
-  await writeFile(reviewPath, websiteReview(business, { root, catalog }));
+  await writeFile(reviewPath, websiteReview(business, { root, catalog, template }));
   await writeFile(activityPath, latestWebsiteUpdate(business, { root }));
 
   return {
@@ -88,7 +87,7 @@ function buildReplacements(business) {
     whatsappUrl: escapeHtml(business.contact.whatsappUrl || "#contact"),
     mapsUrl: escapeHtml(business.contact.mapsUrl || "#contact"),
     reviewsUrl: escapeHtml(business.contact.mapsUrl ? `${business.contact.mapsUrl.replace(/\/+$/, "")}/reviews/` : "#contact"),
-    directionsText: escapeHtml(`${business.contact.city}, ${business.contact.address || "Адрес уточняйте перед визитом"}. Перед первым визитом уточните въезд и расположение бокса.`),
+    directionsText: escapeHtml(`${business.contact.city}, ${business.contact.address || "Адрес уточняйте перед визитом"}. Перед первым визитом уточните, как добраться.`),
     brandTagline: escapeHtml(displayLine(business.brandTagline ?? business.businessType ?? "Услуги")),
     tagline: escapeHtml(displayLine(business.tagline)),
     summary: escapeHtml(displayLine(business.summary)),
@@ -301,7 +300,7 @@ function assertHasMarkers(content, file) {
 }
 
 async function readWebsiteFile(file) {
-  const content = await readRequiredFile(path.join(websiteSourceRoot, file));
+  const content = await readRequiredFile(file);
   assertNoLegacyTokens(content, file);
   assertHasMarkers(content, file);
   return content;
@@ -313,6 +312,7 @@ async function writeWebsiteFile(file, content) {
 }
 
 function serviceCards(services, business) {
+  if (!services.length) return `\n          <p class="service-empty">Список услуг появится после заполнения профиля компании</p>\n        `;
   const bookingUrl = validatedBookingUrl(business.bookingUrl);
   const currency = business.currency || "RUB";
   const cards = services.map((service, index) => {
@@ -386,7 +386,7 @@ function displayLine(value) {
   return String(value).trim().replace(/[.!?]+$/g, "");
 }
 
-function websiteReview(profile, { root, catalog }) {
+function websiteReview(profile, { root, catalog, template }) {
   return `# Проверка сайта
 
 Бизнес: ${profile.businessName}
@@ -417,7 +417,7 @@ function websiteReview(profile, { root, catalog }) {
 ## Связь профиля и сайта
 
 - Исходный профиль: ${businessDisplayPath(root, "business.json")}
-- Шаблон сайта: website/index.html (код в Git)
+- Шаблон сайта: ${toPosix(template)} (код в Git)
 - Рабочий сайт: ${businessDisplayPath(root, "website", "index.html")} (данные вне Git)
 - Проверка запуска: ${businessDisplayPath(root, "launch", "website-review.md")}
 - Запись действия: ${businessDisplayPath(root, "activity", "latest-website-update.md")}
@@ -447,7 +447,7 @@ function websiteReview(profile, { root, catalog }) {
 ## Материалы
 
 - Рабочий сайт: ${businessDisplayPath(root, "website", "index.html")}
-- Исходники сайта: website/index.html
+- Исходники сайта: ${toPosix(template)}
 - Стили сайта: website/styles.css
 - Скрипт сайта: website/script.js
 - Обработчик формы: api/contact.js

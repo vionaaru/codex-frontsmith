@@ -1,0 +1,45 @@
+# ИССЛЕДОВАТЕЛЬСКИЙ PoC. Минимальный config.toml для изолированного CODEX_HOME.
+# Секретов не содержит: FRONTSMITH_POC_KEY — фиктивное значение для локального gateway.
+# Проверено на codex-cli 0.163.0-alpha.10.2 с ключом --strict-config.
+model = "poc-model"
+model_provider = "frontsmith_poc"
+check_for_update_on_startup = false
+web_search = "disabled"
+
+[model_providers.frontsmith_poc]
+name = "Frontsmith PoC gateway"
+base_url = "http://127.0.0.1:{{PORT}}/v1"
+wire_api = "responses"
+env_key = "FRONTSMITH_POC_KEY"
+requires_openai_auth = false
+supports_websockets = false
+request_max_retries = 0
+stream_max_retries = 0
+
+[windows]
+# Без песочницы Windows exec_command отклоняется политикой.
+sandbox = "unelevated"
+
+[history]
+persistence = "none"
+
+[analytics]
+enabled = false
+
+[features]
+apps = false
+plugins = false
+remote_plugin = false
+memories = false
+browser_use = false
+browser_use_external = false
+in_app_browser = false
+computer_use = false
+image_generation = false
+multi_agent = false
+tool_suggest = false
+skill_mcp_dependency_install = false
+realtime_conversation = false
+daemon_auto_start = false
+in_app_updates = false
+unbounded_connection_retries = false

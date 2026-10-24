@@ -1,20 +1,21 @@
 # Офис: локальная база и панель
 
-Учёт одного автосервиса на этом компьютере: клиенты, автомобили, обращения, заказы работ, записи на время, задачи, каталог услуг и журнал действий. Панель только показывает состояние; изменения вносятся через Codex и узкие CLI-команды.
+Учёт одного автосервиса на этом компьютере: клиенты, автомобили, обращения, заказы работ, записи на время, задачи, каталог услуг и журнал действий. Бизнес-данные панель только показывает; в панели создаются и редактируются карточки клиентов, остальное меняется через Codex и узкие CLI-команды.
 
-Это не CRM и не облачный сервис. Оплаты, склад, бухгалтерия, роли и синхронизация с Booking Flow не реализованы.
+Контакты клиентов (имя, телефон, email, заметки, теги) хранит встроенный CRM — crmkit, через универсальный Customer Module (`office/customers/`). В офисной базе клиент — только `client_id` (`customers.id`), на который ссылаются бизнес-записи. Подробности — раздел 8.4 `docs/architecture/privacy-crm-integration.md`. Оплаты, склад, бухгалтерия, роли и синхронизация с Booking Flow не реализованы.
 
 ## Быстрый старт
 
 ```bash
 npm install
-npm run office:init      # создать базу или применить новые миграции, обновить проекцию профиля
-npm run office:import    # импортировать каталог услуг и demo-inquiry.json из файлов
+npm run bootstrap        # один раз: CRM, Privacy runtime, профиль, база (схема последней версии), каталог услуг
+npm run frontsmith       # панель http://127.0.0.1:4180 вместе с crmkit, Privacy Service и Codex App Server
 npm run office:seed      # необязательно: учебный набор клиентов, заказов, задач и записей
-npm run office:serve     # панель: http://127.0.0.1:4180
 ```
 
-Все команды можно повторять: повторный запуск ничего не удаляет, не перезаписывает и не дублирует.
+Отдельные шаги для разработки: `npm run office:init` (миграции и проекция профиля), `npm run office:import` (каталог услуг и `demo-inquiry.json`), `npm run office:serve` (только панель, crmkit запускается автоматически). Все команды можно повторять: повторный запуск ничего не удаляет, не перезаписывает и не дублирует.
+
+Новая база создаётся одной командой сразу до схемы последней версии, до появления первого клиента: таблица `customers` содержит только `client_id`, клиенты создаются через CustomerProvider. Прежняя модель с контактами в `customers` встречается только в старых установках; `npm run bootstrap` её определяет, но переносит контакты в CRM только явная команда `npm run crm:migrate-customers -- --dry-run`, затем `--confirm`.
 
 ## Где лежат данные
 
@@ -25,9 +26,10 @@ npm run office:serve     # панель: http://127.0.0.1:4180
 | Что | Где | В Git |
 | --- | --- | --- |
 | База SQLite | `.frontsmith/business/office.sqlite` (+ `-wal`, `-shm`) | нет |
-| Копии | `.frontsmith/business/backups/` | нет |
+| Копии | `<data-root>/backups/office/` вне репозитория и рабочей области Codex; прежние — `.frontsmith/business/backups/` | нет |
 | Профиль бизнеса | `.frontsmith/business/business.json` | нет |
 | Схема | `office/db/migrations/*.sql` | да |
+| Контакты клиентов (CRM) | `<data-root>/crm/` вне репозитория и рабочей области Codex | нет |
 
 Путь к данным меняет `FRONTSMITH_BUSINESS_ROOT`: разрешён внешний каталог либо подкаталог `.frontsmith/`. Базу хранить на постоянном локальном диске, не в сетевой папке и не в serverless-окружении. Путь `.frontsmith/business/office.sqlite` сохранён для совместимости.
 
@@ -150,8 +152,9 @@ activity_events → entity_type + entity_id (без FK, журнал не уда
 
 - VIN уникален и хранится в канонической записи (17 заглавных символов без I, O, Q, проверка триггером). Принимается и хвост VIN из 5–16 символов
 - `vehicles.plate_key` — госномер без пробелов и дефисов, кириллица номерного алфавита заменена латиницей. Номер не уникален
-- `customers.phone_key` — цифры телефона, российский номер приведён к `7XXXXXXXXXX`. Телефон не уникален
-- Ключи — генерируемые колонки с индексами: старые записи получают их без переписывания данных. Правила продублированы в `office/lib/domain.mjs`, тест сверяет SQL и JS
+- Телефон сверяет CustomerProvider по нормализованному `+7XXXXXXXXXX` в CRM; в офисной базе телефона и его ключа нет. Телефон не уникален
+- Ключ госномера — генерируемая колонка с индексом. Правило продублировано в `office/lib/domain.mjs`, тест сверяет SQL и JS
+- Вывод `match` содержит `client_id` и автомобили, без контактов клиента
 
 | `verdict` | Что делать |
 | --- | --- |
@@ -165,8 +168,10 @@ activity_events → entity_type + entity_id (без FK, журнал не уда
 
 ```bash
 npm run office -- help
-npm run office -- list customers --q Ирина
-npm run office -- customer:add --name "Иван" --phone "+7 900 000-00-00"
+npm run office -- list customers --q Ирина --contacts   # без --contacts — только client_id
+npm run office -- customer:add --name "Иван" --phone "+7 900 000-00-00"   # контакт уходит в CRM
+npm run office -- customer:update --id <ID> --phone "8 900 000 00 01"
+npm run crm:migrate-customers -- --dry-run                                 # перенос контактов старой модели в CRM
 npm run office -- vehicle:add --customer <ID> --make Kia --model Rio --year 2018
 npm run office -- inquiry:add --customer <ID> --vehicle <ID> --service computer-diagnostics --source phone --description "Горит Check Engine"
 npm run office -- order:create --inquiry <ID> --start "2026-10-15 10:00" --end "2026-10-15 12:00"
@@ -206,17 +211,19 @@ API: `/api/health`, `/api/meta`, `/api/overview`, `/api/customers[/:id]`, `/api/
 ## Резервная копия и восстановление
 
 ```bash
-npm run office:backup                                   # .frontsmith/business/backups/office-<время>.sqlite
-npm run office:backup -- --to D:/backups/office.sqlite
+npm run office:backup                                   # <data-root>/backups/office/office-<время>.sqlite
+npm run office:backup -- --to D:/backups/office.sqlite  # путь вне репозитория
 npm run office:restore -- --from <файл копии> --confirm
+npm run backups:relocate                                # план переноса прежних копий из .frontsmith/business/backups/
 ```
 
 - Копия делается через SQLite backup API драйвера: она включает изменения из WAL и не требует остановки CLI
 - Каждая копия проверяется `integrity_check` и `foreign_key_check`
-- Перед восстановлением текущая база сохраняется в `backups/office-before-restore-*.sqlite`
+- Перед восстановлением текущая база сохраняется в `<data-root>/backups/office/office-before-restore-*.sqlite`
 - Перед восстановлением остановите панель: на Windows открытый файл нельзя заменить
 - Не копируйте `office.sqlite` вручную во время работы: без `-wal` копия может быть неполной
-- Каталог `backups/` лежит рядом с базой. Для защиты от потери диска копируйте файлы копий на другой носитель
+- Копия может содержать персональные данные (контакты до схемы 004, свободные тексты), поэтому по умолчанию лежит в каталоге данных Frontsmith с доступом только текущему пользователю; `--to` внутрь репозитория отклоняется. Для защиты от потери диска копируйте файлы копий на другой носитель
+- `npm run backups:relocate -- --confirm` копирует прежние копии из рабочей области в `<data-root>/backups/workspace-legacy/` байт в байт вместе с `-wal`/`-shm`, сверяет SHA-256 и пишет манифест без содержимого; исходники не удаляет
 
 ## Проверки
 

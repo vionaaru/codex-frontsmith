@@ -190,3 +190,15 @@ tfoot td { font-weight: 700; }
   .table-wrap table.stack td[data-label]::before { content: attr(data-label) ": "; color: var(--muted); font-size: 12px; }
   .table-wrap table.stack td.wide { grid-column: 1 / -1; }
 }
+
+/* Карточка и формы клиента */
+.primary-button { display: inline-flex; align-items: center; min-height: 42px; padding: 8px 16px; border: 1px solid var(--ink); background: var(--accent); color: var(--ink); font-weight: 700; font-size: 14px; text-decoration: none; cursor: pointer; }
+.primary-button:hover { background: #ec9132; }
+.primary-button:disabled { opacity: .6; cursor: wait; }
+.card-actions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.customer-form { display: grid; gap: 14px; max-width: 640px; }
+.customer-form .field input, .customer-form .field textarea { width: 100%; }
+.field textarea { min-height: 96px; padding: 8px 10px; border: 1px solid #bfbfb7; background: var(--white); color: var(--ink); font: 15px/1.5 Arial, sans-serif; resize: vertical; }
+.form-message { padding: 10px 12px; background: var(--danger-bg); color: var(--danger); font-size: 14px; display: grid; gap: 4px; }
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.notice-inline { font-size: 14px; color: var(--muted); }

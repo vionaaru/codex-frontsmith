@@ -34,12 +34,34 @@ for (const file of websiteFiles) {
 try {
   await run("npm", ["run", "check"]);
   await runRejected(process.execPath, ["--input-type=module", "-e", "import { businessRoot } from './scripts/lib/paths.mjs'; businessRoot();"], { ...testEnv, FRONTSMITH_BUSINESS_ROOT: "website" });
-  await run("npm", ["run", "bootstrap"]);
+  // Профиль по умолчанию — универсальный: без автосервиса, учебных услуг и клиентов
+  await run("npm", ["run", "business:init"]);
+  const genericProfile = JSON.parse(await readFile(path.join(root, "business.json"), "utf8"));
+  assertEqual(genericProfile.blueprint, "generic-service", "универсальный профиль по умолчанию");
+  assertEqual(genericProfile.businessName, "Новая компания", "нейтральное название компании");
+  assertEqual(genericProfile.services.length, 0, "каталог услуг не заполняется примерами");
+  assertEqual(genericProfile.demoMode, false, "универсальный профиль не учебный");
+  const genericWebsite = await readFile(path.join(websiteRoot, "index.html"), "utf8");
+  for (const word of ["АвтоРитм", "автомоб", "Автосервис", "ремонт", "Booking Flow", "auto-workshop"]) {
+    assertDoesNotInclude(genericWebsite, word, `универсальный сайт без «${word}»`);
+  }
+  assertIncludes(genericWebsite, "Новая компания", "название компании на сайте");
+  assertIncludes(genericWebsite, "Список услуг появится после заполнения профиля компании", "пустой каталог услуг на сайте");
+  await run("npm", ["run", "first-run:status"]);
+  const genericReadiness = await readFile(path.join(root, "launch", "first-run-readiness.md"), "utf8");
+  assertIncludes(genericReadiness, "До запуска владелец должен заполнить поля: 8.", "поля универсального профиля требуют заполнения владельцем");
+  await runRejected("npm", ["run", "business:init"]);
+  assertEqual(JSON.parse(await readFile(path.join(root, "business.json"), "utf8")).blueprint, "generic-service", "повторная настройка не меняет профиль");
+  await rm(root, { recursive: true, force: true });
+
+  // Автосервис — отдельный профиль при явном выборе
+  await run("npm", ["run", "business:init", "--", "--blueprint", "auto-service"]);
   await assertExists(path.join(root, "business.json"));
   await assertExists(path.join(websiteRoot, "index.html"));
   await run("npm", ["run", "launch:status"]);
 
   const defaultProfile = JSON.parse(await readFile(path.join(root, "business.json"), "utf8"));
+  assertEqual(defaultProfile.blueprint, "auto-service", "явно выбранный профиль автосервиса");
   assertEqual(defaultProfile.businessType, "Автосервис", "тип бизнеса автосервиса");
   assertEqual(defaultProfile.businessName, "АвтоРитм", "название демонстрационного автосервиса");
   assertEqual(defaultProfile.demoMode, true, "демонстрационный режим профиля");
@@ -60,7 +82,7 @@ try {
   assertDoesNotInclude(defaultWebsite, "acme-kitchen-remodel", "сайт не содержит фотографии кухни");
   assertAutoServices(defaultWebsite, defaultProfile);
   const defaultProfileBefore = await readFile(path.join(root, "business.json"), "utf8");
-  await runRejected("npm", ["run", "bootstrap"]);
+  await runRejected("npm", ["run", "business:init"]);
   assertEqual(await readFile(path.join(root, "business.json"), "utf8"), defaultProfileBefore, "повторная настройка не перезаписывает профиль");
   assertEqual(await readFile(path.join(websiteRoot, "index.html"), "utf8"), defaultWebsite, "отказ повторной настройки не меняет сайт");
 
@@ -68,7 +90,7 @@ try {
   await writeFile(malformedProfilePath, JSON.stringify({ ...defaultProfile, bookingUrl: "/booking" }));
   const publicFilesBefore = new Map();
   for (const file of websiteFiles) publicFilesBefore.set(file, await readFile(path.join(websiteSourceRoot, file), "utf8"));
-  await runRejected("npm", ["run", "bootstrap", "--", "--profile", malformedProfilePath]);
+  await runRejected("npm", ["run", "business:init", "--", "--profile", malformedProfilePath]);
   assertEqual(await readFile(path.join(root, "business.json"), "utf8"), defaultProfileBefore, "неверный адрес записи не заменяет приватный профиль");
   for (const [file, before] of publicFilesBefore) {
     assertEqual(await readFile(path.join(websiteSourceRoot, file), "utf8"), before, "неверный адрес записи не меняет публичный файл " + file);
@@ -93,7 +115,8 @@ try {
   await rm(root, { recursive: true, force: true });
 
   await run("npm", [
-    "run", "bootstrap", "--",
+    "run", "business:init", "--",
+    "--blueprint", "auto-service",
     "--business-name", "АвтоРитм",
     "--business-type", "Автосервис",
     "--service-areas", "Москва,Ближайшие районы",

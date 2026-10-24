@@ -4,6 +4,8 @@ const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 const config = JSON.parse(await readFile("frontsmith.config.json", "utf8"));
 const blueprint = JSON.parse(await readFile("blueprints/auto-service/blueprint.json", "utf8"));
 const sampleBusiness = JSON.parse(await readFile("blueprints/auto-service/business.example.json", "utf8"));
+const genericBlueprint = JSON.parse(await readFile("blueprints/generic-service/blueprint.json", "utf8"));
+const genericBusiness = JSON.parse(await readFile("blueprints/generic-service/business.example.json", "utf8"));
 const readme = await readFile("README.md", "utf8");
 const operatorGuide = await readFile("docs/operator/start-here.md", "utf8");
 const packageSpec = await readFile("docs/product/package-spec.md", "utf8");
@@ -30,6 +32,8 @@ const requiredCapabilities = [
 const requiredScripts = {
   check: "node scripts/check.mjs",
   bootstrap: "node scripts/bootstrap.mjs",
+  "business:init": "node scripts/business-init.mjs",
+  frontsmith: "node scripts/frontsmith.mjs",
   "owner:brief": "node scripts/prepare-owner-brief.mjs",
   "prepare:reply": "node scripts/prepare-customer-reply.mjs",
   "prepare:estimate": "node scripts/prepare-estimate-draft.mjs",
@@ -48,15 +52,30 @@ const requiredScripts = {
   "office:backup": "node scripts/office.mjs backup",
   "office:restore": "node scripts/office.mjs restore",
   "office:serve": "node office/server.mjs",
-  test: "npm run test:launch && npm run test:regression && npm run test:office",
+  test: "npm run test:launch && npm run test:regression && npm run test:office && npm run test:install && npm run test:codex-host",
   "test:launch": "node tests/launch-readiness.mjs",
   "test:regression": "node tests/regression.mjs",
-  "test:office": "node tests/office.mjs && node tests/work-reports.mjs"
+  "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs && node tests/generic-profile.mjs && node tests/profile-vocabulary.mjs",
+  "test:install": "node tests/vendor.mjs && node tests/data-root.mjs",
+  "release:check": "node scripts/release-check.mjs",
+  diagnostics: "node scripts/diagnostics.mjs",
+  "crm:bootstrap": "node services/crm/bootstrap.mjs",
+  "crm:start": "node services/crm/start.mjs",
+  "crm:migrate-customers": "node scripts/crm-migrate-customers.mjs",
+  "test:codex-host": "node tests/codex-host.mjs",
+  "test:first-run": "node tests/first-run.mjs"
 };
 
 const requiredFiles = [
+  "THIRD_PARTY_NOTICES.md",
+  "vendor/manifest.json",
+  "vendor/README.md",
+  "docs/testing/external-first-run.md",
   "blueprints/auto-service/blueprint.json",
   "blueprints/auto-service/business.example.json",
+  "blueprints/generic-service/blueprint.json",
+  "blueprints/generic-service/business.example.json",
+  "blueprints/generic-service/website/index.html",
   "website/assets/auto-workshop.png",
   "scripts/prepare-extension-plan.mjs",
   "scripts/prepare-connected-action-receipt.mjs",
@@ -100,7 +119,13 @@ for (const [script, command] of Object.entries(requiredScripts)) {
   assertEqual(packageJson.scripts?.[script], command, `npm script ${script}`);
 }
 
-assertEqual(config.defaultBlueprint, "auto-service", "стандартный шаблон автосервиса");
+assertEqual(config.defaultBlueprint, "generic-service", "универсальный профиль по умолчанию");
+assertEqual(genericBusiness.blueprint, "generic-service", "стартовый профиль ссылается на свой blueprint");
+assertEqual(genericBusiness.demoMode, false, "универсальный профиль не учебный");
+assertEqual(genericBusiness.services.length, 0, "универсальный профиль без готового каталога услуг");
+assertEqual(genericBlueprint.officeModules.length, 0, "отраслевые разделы панели выключены");
+assertEqual(/авто|автомоб|АвтоРитм|VIN/i.test(JSON.stringify(genericBusiness)), false, "в универсальном профиле нет автосервисных сведений");
+assertEqual(blueprint.officeModules.join(","), "vehicles,work-orders,work-results", "отраслевые разделы автосервиса");
 assertEqual(sampleBusiness.businessName, "АвтоРитм", "название демонстрационного бизнеса");
 assertEqual(sampleBusiness.businessType, "Автосервис", "тип демонстрационного бизнеса");
 assertEqual(sampleBusiness.demoMode, true, "демонстрационный режим");
@@ -119,6 +144,7 @@ assertEqual(config.safety?.ownerApprovalRequired, true, "owner approval required
 for (const capability of requiredCapabilities) {
   assertIncludes(config.defaultCapabilities, capability, `config capability ${capability}`);
   assertIncludes(blueprint.capabilities, capability, `blueprint capability ${capability}`);
+  assertIncludes(genericBlueprint.capabilities, capability, `generic blueprint capability ${capability}`);
 }
 
 for (const scenario of requiredScenarioLabels) {
@@ -127,6 +153,8 @@ for (const scenario of requiredScenarioLabels) {
 
 for (const command of [
   "npm run bootstrap",
+  "npm run codex-host:login",
+  "npm run frontsmith",
   "npm run owner:brief",
   "npm run prepare:reply",
   "npm run prepare:estimate",

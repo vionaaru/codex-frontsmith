@@ -12,6 +12,9 @@ const requiredFiles = [
   "frontsmith.config.json",
   "api/contact.js",
   "blueprints/local-service/blueprint.json",
+  "blueprints/generic-service/blueprint.json",
+  "blueprints/generic-service/business.example.json",
+  "blueprints/generic-service/website/index.html",
   "demo/index.html",
   "demo/styles.css",
   "demo/script.js",
@@ -24,6 +27,11 @@ const requiredFiles = [
   "workflows/deploy-website.md",
   "workflows/launch-plan.md",
   "scripts/bootstrap.mjs",
+  "scripts/business-init.mjs",
+  "scripts/frontsmith.mjs",
+  "scripts/lib/installation.mjs",
+  "scripts/lib/blueprints.mjs",
+  "scripts/backups-relocate.mjs",
   "scripts/prepare-owner-brief.mjs",
   "scripts/update-website.mjs",
   "scripts/prepare-customer-reply.mjs",
@@ -101,7 +109,9 @@ const jsonFiles = [
   "frontsmith.config.json",
   "blueprints/local-service/blueprint.json",
   "blueprints/auto-service/blueprint.json",
-  "blueprints/auto-service/business.example.json"
+  "blueprints/auto-service/business.example.json",
+  "blueprints/generic-service/blueprint.json",
+  "blueprints/generic-service/business.example.json"
 ];
 
 const removedConcept = ["de", "mo"].join("");
@@ -236,8 +246,10 @@ async function isTracked(file) {
   }
 }
 
+// vendor/ — неизменённый сторонний код и бинарные артефакты: формулировки Frontsmith к нему не
+// применяются, комплектность проверяет npm run release:check
 function shouldScan(file) {
-  return !file.startsWith(".frontsmith/") && !file.startsWith(".git/");
+  return !file.startsWith(".frontsmith/") && !file.startsWith(".git/") && !file.startsWith("vendor/");
 }
 
 async function listProjectFiles(dir) {

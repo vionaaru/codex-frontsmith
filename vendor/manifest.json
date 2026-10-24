@@ -1,0 +1,963 @@
+{
+  "schema": 1,
+  "product": "Frontsmith",
+  "platform": "win32-x64",
+  "note": "Сторонние компоненты в поставке Frontsmith. Bootstrap проверяет SHA-256 перед установкой и не скачивает их повторно. Обновление: vendor/README.md",
+  "components": [
+    {
+      "id": "crmkit-source",
+      "name": "crmkit",
+      "version": "0.9.1",
+      "kind": "source",
+      "source": {
+        "repository": "https://github.com/crmkit/crmkit",
+        "tag": "v0.9.1",
+        "commit": "59f21852597bd2de5090293f10f0330151291d05",
+        "gitTree": "31652c59d378d7b996f3f35ccf38280813f911f0"
+      },
+      "license": "MIT",
+      "licenseFiles": [
+        "vendor/crmkit/source/LICENSE"
+      ],
+      "path": "vendor/crmkit/source",
+      "tree": {
+        "digest": "3fe1ff964fce7ca1b7374574b33be9c175380de62d6f53f8f7994663d4338e0a",
+        "files": 124
+      },
+      "bootstrap": "не используется: исходники зафиксированной версии для аудита и сборки (сборка требует Go)",
+      "offline": true
+    },
+    {
+      "id": "crmkit-binary",
+      "name": "crmkitd (Windows amd64)",
+      "version": "0.9.1",
+      "kind": "binary",
+      "source": {
+        "url": "https://github.com/crmkit/crmkit/releases/download/v0.9.1/crmkit-v0.9.1-windows-amd64.tar.gz",
+        "checksums": "https://github.com/crmkit/crmkit/releases/download/v0.9.1/checksums.txt"
+      },
+      "license": "MIT",
+      "licenseFiles": [
+        "vendor/crmkit/source/LICENSE"
+      ],
+      "path": "vendor/crmkit/release",
+      "files": [
+        {
+          "path": "vendor/crmkit/release/crmkit-v0.9.1-windows-amd64.tar.gz",
+          "size": 8683761,
+          "sha256": "529e3d153062945287da2a292eb36d325af9b79f5558607d3b6f660820e76dbc",
+          "lfs": true
+        },
+        {
+          "path": "vendor/crmkit/release/checksums.txt",
+          "size": 499,
+          "sha256": "c897d95382f666a162d0568db6068a1bb8708641379b09776435759a5f8f423e"
+        }
+      ],
+      "bootstrap": "распаковывается в <data>/runtime/crmkit; SHA-256 сверяется с зафиксированным и с официальным checksums.txt",
+      "offline": true
+    },
+    {
+      "id": "pii-guard",
+      "name": "pii-guard",
+      "version": "0.1.0",
+      "kind": "source",
+      "source": {
+        "repository": "https://github.com/redmadrobot-rnd/pii-guard",
+        "commit": "24230abb72949a9f85499244dd4f15a0ad0cdd9e",
+        "gitTree": "2cc7c2a1be58ddea4904da07af3fb1d05e8e1d13"
+      },
+      "license": "Apache-2.0",
+      "licenseFiles": [
+        "vendor/pii-guard/source/LICENSE",
+        "vendor/pii-guard/source/NOTICE"
+      ],
+      "path": "vendor/pii-guard/source",
+      "tree": {
+        "digest": "4edf87edf7004d6f35c718d8d5ca85f25355d9442fbd78215a08dcd5d591e383",
+        "files": 101
+      },
+      "bootstrap": "собирается из локальной копии (setuptools и wheel из wheelhouse) и ставится в venv Privacy Service",
+      "offline": true
+    },
+    {
+      "id": "ner-model",
+      "name": "redmadrobot-rnd/rubert-base-pii-ner",
+      "version": "c802e8cd26f85d1cf920973ea6f83965a0618d63",
+      "kind": "model",
+      "source": {
+        "repository": "https://huggingface.co/redmadrobot-rnd/rubert-base-pii-ner",
+        "revision": "c802e8cd26f85d1cf920973ea6f83965a0618d63",
+        "baseModel": "https://huggingface.co/ai-forever/ruBert-base (Apache-2.0)"
+      },
+      "license": "Apache-2.0",
+      "licenseFiles": [
+        "vendor/ner-model/rubert-base-pii-ner/LICENSE"
+      ],
+      "path": "vendor/ner-model/rubert-base-pii-ner",
+      "files": [
+        {
+          "path": "vendor/ner-model/rubert-base-pii-ner/LICENSE",
+          "size": 11358,
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "vendor/ner-model/rubert-base-pii-ner/README.md",
+          "size": 6128,
+          "sha256": "2bfb4bff70ebcf0ece0cd83c96f44e5d179c7fd5dbe20c5fdcaf2592845900c8"
+        },
+        {
+          "path": "vendor/ner-model/rubert-base-pii-ner/config.json",
+          "size": 2831,
+          "sha256": "f4eeba88d1503a56d629195c9307d42c1acf4ce53ab88fdaecfc754fd0745cf9"
+        },
+        {
+          "path": "vendor/ner-model/rubert-base-pii-ner/model.safetensors",
+          "size": 711022548,
+          "sha256": "2b9510cd99101c05800c3b4bcaeaebb26d285aa3152e49bea09dc5c2a38d4b16",
+          "lfs": true
+        },
+        {
+          "path": "vendor/ner-model/rubert-base-pii-ner/tokenizer.json",
+          "size": 3714701,
+          "sha256": "f61eee9d0dc18f14c195321a37eadf9e5aeb3a323bc278dec689adeb89dec1b9"
+        },
+        {
+          "path": "vendor/ner-model/rubert-base-pii-ner/tokenizer_config.json",
+          "size": 322,
+          "sha256": "ffe381e31042ba94cb077bf7d5b9cee944dbd0c2a85079b095bea7e5a5a6058b"
+        }
+      ],
+      "bootstrap": "загружается Privacy Service из этого каталога (local_files_only, HF_HUB_OFFLINE=1)",
+      "offline": true
+    },
+    {
+      "id": "uv",
+      "name": "uv",
+      "version": "0.12.24",
+      "kind": "binary",
+      "source": {
+        "url": "https://github.com/astral-sh/uv/releases/download/0.12.24/uv-x86_64-pc-windows-msvc.zip"
+      },
+      "license": "MIT OR Apache-2.0",
+      "licenseFiles": [],
+      "path": "vendor/runtime-assets/uv",
+      "files": [
+        {
+          "path": "vendor/runtime-assets/uv/uv-x86_64-pc-windows-msvc.zip",
+          "size": 15685515,
+          "sha256": "7c38608c8a18ee137d748a1773053b07ec8f3a30fab49aebaa6f4e4efeceb019",
+          "lfs": true
+        }
+      ],
+      "bootstrap": "распаковывается в <data>/runtime/uv; создаёт venv и ставит wheels без сети",
+      "offline": true
+    },
+    {
+      "id": "python",
+      "name": "CPython (python-build-standalone)",
+      "version": "3.11.14+20260211",
+      "kind": "binary",
+      "source": {
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260211/cpython-3.11.14%2B20260211-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+        "checksums": "https://github.com/astral-sh/python-build-standalone/releases/download/20260211/SHA256SUMS"
+      },
+      "license": "PSF-2.0 (вместе с лицензиями включённых библиотек: архив содержит LICENSE.txt)",
+      "licenseFiles": [],
+      "path": "vendor/runtime-assets/python",
+      "files": [
+        {
+          "path": "vendor/runtime-assets/python/cpython-3.11.14+20260211-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+          "size": 26074488,
+          "sha256": "db4a7b6389961f194ef5c1cb21a46c023dbc13703ac51f7bd7eaa1088740ca72",
+          "lfs": true
+        }
+      ],
+      "bootstrap": "распаковывается в <data>/runtime/python без установки в систему и без записи в реестр",
+      "offline": true
+    },
+    {
+      "id": "wheelhouse",
+      "name": "Python wheels Privacy Service (cp311, win_amd64)",
+      "version": "services/privacy/requirements.lock",
+      "kind": "wheels",
+      "source": {
+        "index": "https://pypi.org/simple",
+        "extraIndex": "https://download.pytorch.org/whl/cpu",
+        "spacyModel": "https://github.com/explosion/spacy-models/releases/tag/ru_core_news_sm-3.8.0"
+      },
+      "license": "по пакетам: поле license у каждого файла",
+      "licenseFiles": [],
+      "path": "vendor/runtime-assets/wheels",
+      "files": [
+        {
+          "path": "vendor/runtime-assets/wheels/annotated_doc-0.0.5-py3-none-any.whl",
+          "size": 5302,
+          "sha256": "117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101",
+          "lfs": true,
+          "name": "annotated-doc",
+          "version": "0.0.5",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/annotated_types-0.8.0-py3-none-any.whl",
+          "size": 13427,
+          "sha256": "f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0",
+          "lfs": true,
+          "name": "annotated-types",
+          "version": "0.8.0",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/anyio-4.15.1-py3-none-any.whl",
+          "size": 132079,
+          "sha256": "6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101",
+          "lfs": true,
+          "name": "anyio",
+          "version": "4.15.1",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/blis-1.3.3-cp311-cp311-win_amd64.whl",
+          "size": 6171233,
+          "sha256": "27f82b8633030f8d095d2b412dffa7eb6dbc8ee43813139909a20012e54422ea",
+          "lfs": true,
+          "name": "blis",
+          "version": "1.3.3",
+          "license": "BSD"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/catalogue-2.0.10-py3-none-any.whl",
+          "size": 17325,
+          "sha256": "58c2de0020aa90f4a2da7dfad161bf7b3b054c86a5f09fcedc0b2b740c109a9f",
+          "lfs": true,
+          "name": "catalogue",
+          "version": "2.0.10",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/certifi-2026.10.19-py3-none-any.whl",
+          "size": 136464,
+          "sha256": "42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b",
+          "lfs": true,
+          "name": "certifi",
+          "version": "2026.10.19",
+          "license": "MPL-2.0"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/cffi-2.1.1-cp311-cp311-win_amd64.whl",
+          "size": 185096,
+          "sha256": "42f6930c31dc7f50732c9ae793c2786c7b6b044195967bbdde40bb9be81c4cc0",
+          "lfs": true,
+          "name": "cffi",
+          "version": "2.1.1",
+          "license": "MIT-0"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/charset_normalizer-3.5.2-cp311-cp311-win_amd64.whl",
+          "size": 214932,
+          "sha256": "87e50a3e7cb90af586b6c5faf23e302a970415ac73bd7bd90a515a04b427ef96",
+          "lfs": true,
+          "name": "charset-normalizer",
+          "version": "3.5.2",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/click-8.5.0-py3-none-any.whl",
+          "size": 125251,
+          "sha256": "255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360",
+          "lfs": true,
+          "name": "click",
+          "version": "8.5.0",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/cloudpathlib-0.26.0-py3-none-any.whl",
+          "size": 66408,
+          "sha256": "abcd7f54bcbb2fbb79c0e96b79241f08866760aee6276586882b3558672d571b",
+          "lfs": true,
+          "name": "cloudpathlib",
+          "version": "0.26.0",
+          "license": "MIT License"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/colorama-0.4.6-py2.py3-none-any.whl",
+          "size": 25335,
+          "sha256": "4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6",
+          "lfs": true,
+          "name": "colorama",
+          "version": "0.4.6",
+          "license": "BSD License"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/confection-1.3.3-py3-none-any.whl",
+          "size": 35902,
+          "sha256": "b9fef9ee84b237ef4611ec3eb5797b70e13063e6310ad9f15536373f5e313c82",
+          "lfs": true,
+          "name": "confection",
+          "version": "1.3.3",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/cryptography-48.0.1-cp311-abi3-win_amd64.whl",
+          "size": 3817138,
+          "sha256": "39489bfca54c7a1f6b297efcd8bc608ab92d16c4ca631b0cad4da46724588b24",
+          "lfs": true,
+          "name": "cryptography",
+          "version": "48.0.1",
+          "license": "Apache-2.0 OR BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/cymem-2.0.13-cp311-cp311-win_amd64.whl",
+          "size": 40116,
+          "sha256": "ce821e6ba59148ed17c4567113b8683a6a0be9c9ac86f14e969919121efb61a5",
+          "lfs": true,
+          "name": "cymem",
+          "version": "2.0.13",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/dawg2_python-0.9.0-py3-none-any.whl",
+          "size": 9331,
+          "sha256": "4fab6fc097bd176cd783cd8421b757348ea5a460789e53b0f6bb64831380bab5",
+          "lfs": true,
+          "name": "DAWG2-Python",
+          "version": "0.9.0",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/fastapi-0.161.1-py3-none-any.whl",
+          "size": 149049,
+          "sha256": "a1363080cf9aeedecd99f4e1a23669d7e77542227f6536f4d7bbd59f07ecaa94",
+          "lfs": true,
+          "name": "fastapi",
+          "version": "0.161.1",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/filelock-4.2.4-py3-none-any.whl",
+          "size": 162475,
+          "sha256": "301241438c57936ef93f4243a94f2559022268bfcf9b375a9a72eb0f8db8358e",
+          "lfs": true,
+          "name": "filelock",
+          "version": "4.2.4",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/fsspec-2026.9.0-py3-none-any.whl",
+          "size": 221738,
+          "sha256": "8dd6e646e99ea382bd85f97a45e6b526a442d79423a7dc673f1e2756d05fcb5f",
+          "lfs": true,
+          "name": "fsspec",
+          "version": "2026.9.0",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/h11-0.16.0-py3-none-any.whl",
+          "size": 37515,
+          "sha256": "63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86",
+          "lfs": true,
+          "name": "h11",
+          "version": "0.16.0",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/hf_xet-1.7.0-cp38-abi3-win_amd64.whl",
+          "size": 3822644,
+          "sha256": "2b7bb5727889b0f2436dbaaad8fc4c3e66b8240d992716989e0c086b4278b1bc",
+          "lfs": true,
+          "name": "hf-xet",
+          "version": "1.7.0",
+          "license": "Apache-2.0"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/httpcore-1.0.9-py3-none-any.whl",
+          "size": 78784,
+          "sha256": "2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55",
+          "lfs": true,
+          "name": "httpcore",
+          "version": "1.0.9",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/httpcore2-2.16.0-py3-none-any.whl",
+          "size": 85070,
+          "sha256": "5c4358319f2602d984ad93182c9fee5160f22e9da7babdda870a5e7c4e2dc34f",
+          "lfs": true,
+          "name": "httpcore2",
+          "version": "2.16.0",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/httpx-0.28.1-py3-none-any.whl",
+          "size": 73517,
+          "sha256": "d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad",
+          "lfs": true,
+          "name": "httpx",
+          "version": "0.28.1",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/httpx2-2.16.0-py3-none-any.whl",
+          "size": 97880,
+          "sha256": "fd2c5d7909e8d86fe92d53020c310ca0e4e431b838c207c5754b9bbf0308d49a",
+          "lfs": true,
+          "name": "httpx2",
+          "version": "2.16.0",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/huggingface_hub-2.2.0-py3-none-any.whl",
+          "size": 839884,
+          "sha256": "1667f145dc56dc210d60966069397df9ecfca9607a5d43db88b308c89dae56b3",
+          "lfs": true,
+          "name": "huggingface_hub",
+          "version": "2.2.0",
+          "license": "Apache-2.0"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/idna-3.20-py3-none-any.whl",
+          "size": 69583,
+          "sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c",
+          "lfs": true,
+          "name": "idna",
+          "version": "3.20",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/iniconfig-2.3.1-py3-none-any.whl",
+          "size": 7552,
+          "sha256": "9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7",
+          "lfs": true,
+          "name": "iniconfig",
+          "version": "2.3.1",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/jinja2-3.1.6-py3-none-any.whl",
+          "size": 134899,
+          "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67",
+          "lfs": true,
+          "name": "Jinja2",
+          "version": "3.1.6",
+          "license": "BSD License"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/lingua_language_detector-2.1.1-cp311-cp311-win_amd64.whl",
+          "size": 95870960,
+          "sha256": "fa3c9cfe7f7d9dc857ba22f14c2dfc7834e2dac131afaa737f3a59adae3ea553",
+          "lfs": true,
+          "name": "lingua-language-detector",
+          "version": "2.1.1",
+          "license": "Apache-2.0"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/markdown_it_py-4.2.0-py3-none-any.whl",
+          "size": 91687,
+          "sha256": "9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a",
+          "lfs": true,
+          "name": "markdown-it-py",
+          "version": "4.2.0",
+          "license": "MIT License"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/markupsafe-3.0.4-cp311-cp311-win_amd64.whl",
+          "size": 14328,
+          "sha256": "fdb4ca07ab75ffadab4a8b135ad59cdbb3156b99310f3d565370da74a15d6bd3",
+          "lfs": true,
+          "name": "MarkupSafe",
+          "version": "3.0.4",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/mdurl-0.1.2-py3-none-any.whl",
+          "size": 9979,
+          "sha256": "84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8",
+          "lfs": true,
+          "name": "mdurl",
+          "version": "0.1.2",
+          "license": "MIT License"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/mpmath-1.3.0-py3-none-any.whl",
+          "size": 536198,
+          "sha256": "a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c",
+          "lfs": true,
+          "name": "mpmath",
+          "version": "1.3.0",
+          "license": "BSD"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/msvc_runtime-14.44.35112-cp311-cp311-win_amd64.whl",
+          "size": 1921911,
+          "sha256": "aba7fbe71897d25ed53fbb7f391e9f50289378a8a9ae218ba18530c663448391",
+          "lfs": true,
+          "name": "msvc_runtime",
+          "version": "14.44.35112",
+          "license": "Proprietary"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/murmurhash-1.0.15-cp311-cp311-win_amd64.whl",
+          "size": 25241,
+          "sha256": "e43a69496342ce530bdd670264cb7c8f45490b296e4764c837ce577e3c7ebd53",
+          "lfs": true,
+          "name": "murmurhash",
+          "version": "1.0.15",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/networkx-3.6.1-py3-none-any.whl",
+          "size": 2068504,
+          "sha256": "d47fbf302e7d9cbbb9e2555a0d267983d2aa476bac30e90dfbe5669bd57f3762",
+          "lfs": true,
+          "name": "networkx",
+          "version": "3.6.1",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/numpy-2.4.6-cp311-cp311-win_amd64.whl",
+          "size": 12608406,
+          "sha256": "1e254a00cdf42b1e4d5b3d68d33af63268d41340d8885df2ab6470f2e1500147",
+          "lfs": true,
+          "name": "numpy",
+          "version": "2.4.6",
+          "license": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/opentelemetry_api-1.45.1-py3-none-any.whl",
+          "size": 60256,
+          "sha256": "b31553efa588ae44bc306f863c785c5333a9ecc091248c6ee68b4b6c87fdedfb",
+          "lfs": true,
+          "name": "opentelemetry-api",
+          "version": "1.45.1",
+          "license": "Apache-2.0"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/packaging-26.3-py3-none-any.whl",
+          "size": 129956,
+          "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c",
+          "lfs": true,
+          "name": "packaging",
+          "version": "26.3",
+          "license": "Apache-2.0 OR BSD-2-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/phonenumbers-9.0.41-py2.py3-none-any.whl",
+          "size": 2594658,
+          "sha256": "ccf2ea44f8aa35c487f26146a31520ecedf8e1af1f57c803678ecb5ef5c01668",
+          "lfs": true,
+          "name": "phonenumbers",
+          "version": "9.0.41",
+          "license": "Apache-2.0"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/pluggy-1.7.0-py3-none-any.whl",
+          "size": 27082,
+          "sha256": "7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec",
+          "lfs": true,
+          "name": "pluggy",
+          "version": "1.7.0",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/preshed-3.0.13-cp311-cp311-win_amd64.whl",
+          "size": 122219,
+          "sha256": "de87fbabb0f37c3c92d4dd9b94fc82ab73cdab4247cdfbd57ab3926caa983919",
+          "lfs": true,
+          "name": "preshed",
+          "version": "3.0.13",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/presidio_analyzer-2.2.364-py3-none-any.whl",
+          "size": 266299,
+          "sha256": "0a9eeb60ccc416c505367b4989d056becb84ef082703ee3361c046fb75941739",
+          "lfs": true,
+          "name": "presidio_analyzer",
+          "version": "2.2.364",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/presidio_anonymizer-2.2.364-py3-none-any.whl",
+          "size": 38128,
+          "sha256": "f3edfe80b5e83a22976439727e9d449c796b12efdf6cd70a6db860d4942a6b72",
+          "lfs": true,
+          "name": "presidio_anonymizer",
+          "version": "2.2.364",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/pycparser-3.12-py3-none-any.whl",
+          "size": 62600,
+          "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e",
+          "lfs": true,
+          "name": "pycparser",
+          "version": "3.12",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/pydantic-2.14.1-py3-none-any.whl",
+          "size": 488106,
+          "sha256": "9195d967ec791692a04438115466764fb8b9a27b31f14a760437694f40d6b454",
+          "lfs": true,
+          "name": "pydantic",
+          "version": "2.14.1",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/pydantic_core-2.50.1-cp311-cp311-win_amd64.whl",
+          "size": 2176332,
+          "sha256": "0048b6dddc8ef4b64fccaad878bd143b0c3882ea9936279dc11d613f6b7dd1bc",
+          "lfs": true,
+          "name": "pydantic_core",
+          "version": "2.50.1",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/pygments-2.21.0-py3-none-any.whl",
+          "size": 1250147,
+          "sha256": "2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9",
+          "lfs": true,
+          "name": "Pygments",
+          "version": "2.21.0",
+          "license": "BSD-2-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/pymorphy3-2.0.6-py3-none-any.whl",
+          "size": 53900,
+          "sha256": "0254317c02ce3ea17e080b7fc9d675e44662b3a5296bae68605b7a41d25b36c3",
+          "lfs": true,
+          "name": "pymorphy3",
+          "version": "2.0.6",
+          "license": "MIT license"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/pymorphy3_dicts_ru-2.4.417150.4580142-py2.py3-none-any.whl",
+          "size": 8442043,
+          "sha256": "718bac64c73c10c16073a199402657283d9b64c04188b694f6d3e9b0d85440f4",
+          "lfs": true,
+          "name": "pymorphy3-dicts-ru",
+          "version": "2.4.417150.4580142",
+          "license": "MIT license"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/pytest-8.4.2-py3-none-any.whl",
+          "size": 365750,
+          "sha256": "872f880de3fc3a5bdc88a11b39c9710c3497a547cfa9320bc3c5e62fbf272e79",
+          "lfs": true,
+          "name": "pytest",
+          "version": "8.4.2",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/pyyaml-6.0.3-cp311-cp311-win_amd64.whl",
+          "size": 158763,
+          "sha256": "9f3bfb4965eb874431221a3ff3fdcddc7e74e3b07799e0e84ca4a0f867d449bf",
+          "lfs": true,
+          "name": "PyYAML",
+          "version": "6.0.3",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/rapidfuzz-3.14.6-cp311-cp311-win_amd64.whl",
+          "size": 1738042,
+          "sha256": "737a57cbca3e5c16decac86e205727bcd4b99c52f77c48bb44123078c5cd9a7a",
+          "lfs": true,
+          "name": "RapidFuzz",
+          "version": "3.14.6",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/regex-2026.9.29-cp311-cp311-win_amd64.whl",
+          "size": 280641,
+          "sha256": "1043aedf5917caa861bcb25a9c11460049656bdf0017a90a309fa8f255467725",
+          "lfs": true,
+          "name": "regex",
+          "version": "2026.9.29",
+          "license": "Apache-2.0 AND CNRI-Python"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/requests-2.34.2-py3-none-any.whl",
+          "size": 73075,
+          "sha256": "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0",
+          "lfs": true,
+          "name": "requests",
+          "version": "2.34.2",
+          "license": "Apache-2.0"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/requests_file-3.0.1-py2.py3-none-any.whl",
+          "size": 4514,
+          "sha256": "d0f5eb94353986d998f80ac63c7f146a307728be051d4d1cd390dbdb59c10fa2",
+          "lfs": true,
+          "name": "requests-file",
+          "version": "3.0.1",
+          "license": "Apache 2.0"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/rich-15.0.0-py3-none-any.whl",
+          "size": 310654,
+          "sha256": "33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb",
+          "lfs": true,
+          "name": "rich",
+          "version": "15.0.0",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/ru_core_news_sm-3.8.0-py3-none-any.whl",
+          "size": 15259622,
+          "sha256": "69978d47b43e2c4f329bebdb155e8e9d3861bba1a58ba25551419dae7d7e07fc",
+          "lfs": true,
+          "name": "ru_core_news_sm",
+          "version": "3.8.0",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/safetensors-0.8.0-cp310-abi3-win_amd64.whl",
+          "size": 355540,
+          "sha256": "096ec1a98435df7beb08853bb5aa9081a84f23d0adc67ed1a0a10550f608373f",
+          "lfs": true,
+          "name": "safetensors",
+          "version": "0.8.0",
+          "license": "Apache Software License"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/setuptools-84.2.1-py3-none-any.whl",
+          "size": 876263,
+          "sha256": "ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2",
+          "lfs": true,
+          "name": "setuptools",
+          "version": "84.2.1",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/shellingham-1.5.4-py2.py3-none-any.whl",
+          "size": 9755,
+          "sha256": "7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686",
+          "lfs": true,
+          "name": "shellingham",
+          "version": "1.5.4",
+          "license": "ISC License"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/smart_open-8.0.4-py3-none-any.whl",
+          "size": 73881,
+          "sha256": "8a3a67679942fa40d1a93ed3aea37619b4b4ec5458f1d5a9228dfc301db11b4c",
+          "lfs": true,
+          "name": "smart_open",
+          "version": "8.0.4",
+          "license": "MIT License"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/spacy-3.8.16-cp311-cp311-win_amd64.whl",
+          "size": 16342860,
+          "sha256": "9e89bebe168ec8714b21f0225950f0525d0ef87109cfcb11e5d18ebb1f4e658a",
+          "lfs": true,
+          "name": "spacy",
+          "version": "3.8.16",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/spacy_legacy-3.0.12-py2.py3-none-any.whl",
+          "size": 29971,
+          "sha256": "476e3bd0d05f8c339ed60f40986c07387c0a71479245d6d0f4298dbd52cda55f",
+          "lfs": true,
+          "name": "spacy-legacy",
+          "version": "3.0.12",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/spacy_loggers-1.0.5-py3-none-any.whl",
+          "size": 22343,
+          "sha256": "196284c9c446cc0cdb944005384270d775fdeaf4f494d8e269466cfa497ef645",
+          "lfs": true,
+          "name": "spacy-loggers",
+          "version": "1.0.5",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/srsly-2.5.4-cp311-cp311-win_amd64.whl",
+          "size": 674359,
+          "sha256": "c6849bdda42fdb9028328c63998f710da720a2c04c62d1394e9b408c7a3de34c",
+          "lfs": true,
+          "name": "srsly",
+          "version": "2.5.4",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/starlette-1.9.0-py3-none-any.whl",
+          "size": 80335,
+          "sha256": "fd3f159936e882d06c1108f84688f7cda2cf85fc6a592a50edbd175e882c2ddc",
+          "lfs": true,
+          "name": "starlette",
+          "version": "1.9.0",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/sympy-1.14.0-py3-none-any.whl",
+          "size": 6299353,
+          "sha256": "e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5",
+          "lfs": true,
+          "name": "sympy",
+          "version": "1.14.0",
+          "license": "BSD"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/thefuzz-0.22.1-py3-none-any.whl",
+          "size": 8245,
+          "sha256": "59729b33556850b90e1093c4cf9e618af6f2e4c985df193fdf3c5b5cf02ca481",
+          "lfs": true,
+          "name": "thefuzz",
+          "version": "0.22.1",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/thinc-8.3.13-cp311-cp311-win_amd64.whl",
+          "size": 1795058,
+          "sha256": "0a0fa13dcfe4b319c3a396432c1dbff30d3de37dbbdee559e76600ee2b9486df",
+          "lfs": true,
+          "name": "thinc",
+          "version": "8.3.13",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/tldextract-5.4.0-py3-none-any.whl",
+          "size": 107482,
+          "sha256": "7f02aed30bd3b6ad5717192eb859a39b20aafc7caf3917d9cf6cb00a58efb34f",
+          "lfs": true,
+          "name": "tldextract",
+          "version": "5.4.0",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/tokenizers-0.23.3-cp310-abi3-win_amd64.whl",
+          "size": 2872101,
+          "sha256": "1f0823bb00c5fdc98e487354d54dd55a03848d61a1a0bf29a68c77f24f3b26c3",
+          "lfs": true,
+          "name": "tokenizers",
+          "version": "0.23.3",
+          "license": "Apache Software License"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/torch-2.14.1+cpu-cp311-cp311-win_amd64.whl",
+          "size": 123978347,
+          "sha256": "d14b0c8a66345b7ba43adfa86fc20d89087a0a92e440004755d49d2468ddc6e0",
+          "lfs": true,
+          "name": "torch",
+          "version": "2.14.1+cpu",
+          "license": "Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0 AND MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/tqdm-4.70.1-py3-none-any.whl",
+          "size": 80199,
+          "sha256": "c293e525e6fef9c20e8728fd4612df02a0aa31bb5fe91ecd93e123b1b7bffa73",
+          "lfs": true,
+          "name": "tqdm",
+          "version": "4.70.1",
+          "license": "MPL-2.0 AND MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/transformers-5.20.2-py3-none-any.whl",
+          "size": 12844921,
+          "sha256": "7ae75dbc1fb3922aff1b6c97b9e5479d6cf26fd86a8866bfb71324190479f807",
+          "lfs": true,
+          "name": "transformers",
+          "version": "5.20.2",
+          "license": "Apache 2.0 License"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/truststore-0.10.5-py3-none-any.whl",
+          "size": 19017,
+          "sha256": "9aaaedaefaf06d8b206278cf8b5012bc897f485a874503501e12d776df78951c",
+          "lfs": true,
+          "name": "truststore",
+          "version": "0.10.5",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/typer-0.27.3-py3-none-any.whl",
+          "size": 123312,
+          "sha256": "e50022f28b82a86313e54501317a1db64bf8f8d036ff8cfe5ca7e47675454aff",
+          "lfs": true,
+          "name": "typer",
+          "version": "0.27.3",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/typing_extensions-4.16.0-py3-none-any.whl",
+          "size": 45571,
+          "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8",
+          "lfs": true,
+          "name": "typing_extensions",
+          "version": "4.16.0",
+          "license": "PSF-2.0"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/typing_inspection-0.4.4-py3-none-any.whl",
+          "size": 14750,
+          "sha256": "65b8397ba37ccbce054456aaccddfc91e6e3083c92824df348d96ca832f3f147",
+          "lfs": true,
+          "name": "typing-inspection",
+          "version": "0.4.4",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/urllib3-2.8.0-py3-none-any.whl",
+          "size": 135717,
+          "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3",
+          "lfs": true,
+          "name": "urllib3",
+          "version": "2.8.0",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/uvicorn-0.54.0-py3-none-any.whl",
+          "size": 87427,
+          "sha256": "505bdb0f318731d45f1f712071fc781a8981f6847a31c902c9f5e652d4f67faf",
+          "lfs": true,
+          "name": "uvicorn",
+          "version": "0.54.0",
+          "license": "BSD-3-Clause"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/wasabi-1.1.3-py3-none-any.whl",
+          "size": 27880,
+          "sha256": "f76e16e8f7e79f8c4c8be49b4024ac725713ab10cd7f19350ad18a8e3f71728c",
+          "lfs": true,
+          "name": "wasabi",
+          "version": "1.1.3",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/weasel-1.0.0-py3-none-any.whl",
+          "size": 50713,
+          "sha256": "89518acee027f49d743126c3502d35e6dd14f5768be5c37c9af47c171b6005cc",
+          "lfs": true,
+          "name": "weasel",
+          "version": "1.0.0",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/wheel-0.48.0-py3-none-any.whl",
+          "size": 33320,
+          "sha256": "3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab",
+          "lfs": true,
+          "name": "wheel",
+          "version": "0.48.0",
+          "license": "MIT"
+        },
+        {
+          "path": "vendor/runtime-assets/wheels/wrapt-2.5.1-cp311-cp311-win_amd64.whl",
+          "size": 105878,
+          "sha256": "ce3889e3815f97d46414eb574bffdd9bdb41ff70f503097e2707615a87d4e92c",
+          "lfs": true,
+          "name": "wrapt",
+          "version": "2.5.1",
+          "license": "BSD-2-Clause"
+        }
+      ],
+      "bootstrap": "uv pip sync --offline --no-index --find-links по requirements.lock",
+      "offline": true
+    }
+  ]
+}

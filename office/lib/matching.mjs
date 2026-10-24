@@ -1,14 +1,32 @@
 // Сопоставление автомобиля из отчёта о работах по VIN, госномеру и телефону клиента.
 // Только чтение. Решение «тот же автомобиль» принимает вызывающий: при verdict ≠ match
-// или confidence = weak нужно уточнить у владельца, а не создавать дубль и не выбирать наугад
-import { OfficeValidationError, phoneKey, plateKey, vinKey } from "./domain.mjs";
-import { customersByPhoneKey, vehicleMatchCandidates } from "./repositories.mjs";
+// или confidence = weak нужно уточнить у владельца, а не создавать дубль и не выбирать наугад.
+// Телефона в офисной базе нет: его сверяет CustomerProvider, сюда приходят client_id
+import { normalizePhone } from "../customers/contract.mjs";
+import { OfficeValidationError, plateKey, vinKey } from "./domain.mjs";
+import { customersWithVehicleCounts, vehicleMatchCandidates } from "./repositories.mjs";
+
+// Телефон → client_id точным совпадением нормализованного номера в CustomerProvider
+export async function matchVehicleWithCustomers(db, provider, { vin, plate, phone } = {}) {
+  let phoneClientIds = null;
+  if (phone) {
+    let normalized;
+    try {
+      normalized = normalizePhone(phone);
+    } catch {
+      throw new OfficeValidationError("Телефон: нужно не меньше 10 цифр без букв");
+    }
+    const { items } = await provider.listCustomers({ q: normalized });
+    phoneClientIds = items.filter((customer) => customer.phone === normalized).map((customer) => customer.id);
+  }
+  return matchVehicle(db, { vin, plate, phoneClientIds });
+}
 
 const weights = { vin: 8, plate: 4, vin_suffix: 2, phone: 1 };
 
-export function matchVehicle(db, { vin, plate, phone } = {}) {
-  const input = { vin: vinKey(vin), plate: plateKey(plate), phone: phoneKey(phone) };
-  if (phone && !input.phone) throw new OfficeValidationError("Телефон: нужно не меньше 10 цифр без букв");
+// phoneClientIds: null — телефон не указан; [] — указан, но клиентов с ним нет
+export function matchVehicle(db, { vin, plate, phoneClientIds = null } = {}) {
+  const input = { vin: vinKey(vin), plate: plateKey(plate), phone: phoneClientIds !== null };
   let fullVin = null;
   let vinSuffix = null;
   if (input.vin) {
@@ -19,7 +37,8 @@ export function matchVehicle(db, { vin, plate, phone } = {}) {
   }
   if (!fullVin && !vinSuffix && !input.plate && !input.phone) throw new OfficeValidationError("Укажите хотя бы VIN, госномер или телефон");
 
-  const candidates = vehicleMatchCandidates(db, { vin: fullVin, vinSuffix, plate: input.plate, phone: input.phone })
+  const phoneIds = new Set(phoneClientIds ?? []);
+  const candidates = vehicleMatchCandidates(db, { vin: fullVin, vinSuffix, plate: input.plate, phoneClientIds: [...phoneIds] })
     .map((row) => {
       const matchedBy = [];
       const conflicts = [];
@@ -31,11 +50,12 @@ export function matchVehicle(db, { vin, plate, phone } = {}) {
       compare(fullVin, row.vin, row.vin === fullVin, "vin");
       compare(vinSuffix, row.vin, Boolean(row.vin?.endsWith(vinSuffix)), "vin_suffix");
       compare(input.plate, row.plate_key, row.plate_key === input.plate, "plate");
-      compare(input.phone, row.phone_key, row.phone_key === input.phone, "phone");
+      // Телефон всегда известен у клиента-владельца только провайдеру: несовпадение — конфликт
+      compare(input.phone, true, phoneIds.has(row.customer_id), "phone");
       return { ...row, matchedBy, conflicts, score: matchedBy.reduce((sum, key) => sum + weights[key], 0) };
     })
     .sort((a, b) => b.score - a.score || String(b.last_order_at ?? "").localeCompare(String(a.last_order_at ?? "")));
-  const customers = input.phone ? customersByPhoneKey(db, input.phone) : [];
+  const customers = input.phone ? customersWithVehicleCounts(db, [...phoneIds]) : [];
 
   return { input: { vin: fullVin, vinSuffix, plate: input.plate, phone: input.phone }, ...verdict(candidates, customers), candidates, customers };
 }

@@ -5,15 +5,29 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { businessPath } from "../../scripts/lib/paths.mjs";
+import { protectDir } from "../../services/crm/runtime.mjs";
+import { dataRoot } from "../../services/privacy/runtime.mjs";
 
 const migrationsDir = fileURLToPath(new URL("../db/migrations/", import.meta.url));
+const projectRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 export function officeDbPath() {
   return businessPath("office.sqlite");
 }
 
+// Копии офисной базы могут содержать контакты клиентов (схема до 004) и свободные тексты,
+// поэтому по умолчанию лежат в каталоге данных Frontsmith вне репозитория и рабочей области Codex
 export function officeBackupDir() {
-  return businessPath("backups");
+  return path.join(dataRoot(), "backups", "office");
+}
+
+// Копия внутри репозитория попала бы в рабочую область Codex: явный --to туда отклоняется
+export function assertBackupOutsideWorkspace(target) {
+  const relative = path.relative(projectRoot, path.resolve(target));
+  if (!relative.startsWith("..") && !path.isAbsolute(relative)) {
+    throw Object.assign(new Error(`Копия базы не сохраняется в рабочей области Codex (${projectRoot}). Укажите путь вне репозитория или не передавайте --to: ${officeBackupDir()}`), { code: "BACKUP_IN_WORKSPACE" });
+  }
+  return target;
 }
 
 export function officeDbExists(file = officeDbPath()) {
@@ -62,7 +76,8 @@ export function listMigrations() {
     });
 }
 
-export function migrate(db) {
+// upTo — только для тестов совместимости: собрать базу старой версии схемы
+export function migrate(db, { upTo = Infinity } = {}) {
   db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
     version INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -73,7 +88,7 @@ export function migrate(db) {
   const applied = new Map(db.prepare("SELECT version, name, checksum FROM schema_migrations").all().map((row) => [row.version, row]));
   const result = { applied: [], current: [] };
 
-  for (const migration of listMigrations()) {
+  for (const migration of listMigrations().filter((item) => item.version <= upTo)) {
     const existing = applied.get(migration.version);
     if (existing) {
       if (!migration.acceptedChecksums.includes(existing.checksum)) {
@@ -82,11 +97,23 @@ export function migrate(db) {
       result.current.push(migration.name);
       continue;
     }
-    db.transaction(() => {
-      db.exec(migration.sql);
-      db.prepare("INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (?, ?, ?, ?)")
-        .run(migration.version, migration.name, migration.checksum, nowIso());
-    })();
+    // Пересборка таблицы-родителя требует выключенных FK; PRAGMA внутри транзакции не действует.
+    // Целостность проверяется foreign_key_check до фиксации
+    const rebuild = /^-- frontsmith: foreign_keys=off$/m.test(migration.sql);
+    if (rebuild) db.pragma("foreign_keys = OFF");
+    try {
+      db.transaction(() => {
+        db.exec(migration.sql);
+        if (rebuild) {
+          const problems = db.pragma("foreign_key_check");
+          if (problems.length) throw new Error(`Миграция ${migration.name} нарушает внешние ключи: ${JSON.stringify(problems.slice(0, 5))}`);
+        }
+        db.prepare("INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (?, ?, ?, ?)")
+          .run(migration.version, migration.name, migration.checksum, nowIso());
+      })();
+    } finally {
+      if (rebuild) db.pragma("foreign_keys = ON");
+    }
     result.applied.push(migration.name);
   }
 
@@ -113,8 +140,9 @@ export function assertHealthy(db) {
 
 export async function backupOfficeDb({ file = officeDbPath(), destination } = {}) {
   if (!existsSync(file)) throw new OfficeDbMissingError(file);
-  const target = destination ?? path.join(officeBackupDir(), `office-${stamp()}.sqlite`);
-  await mkdir(path.dirname(target), { recursive: true });
+  const target = assertBackupOutsideWorkspace(destination ?? path.join(officeBackupDir(), `office-${stamp()}.sqlite`));
+  if (destination) await mkdir(path.dirname(target), { recursive: true });
+  else protectDir(path.dirname(target));
   if (existsSync(target)) throw new Error(`Файл копии уже существует: ${target}`);
 
   const db = openOfficeDb({ file, readonly: true });

@@ -17,7 +17,9 @@ function check(name, fn) { fn(); passed++; console.log(`✓ ${name}`); }
 try {
   migrate(db);
   const ctx = ops.createContext(db, { actor: 'тестовый мастер', now: () => new Date('2026-10-16T15:00:00.000Z') });
-  const customer = ops.createCustomer(ctx, { fullName: 'Иван', phone: '+7 900 111-22-33' });
+  // Клиент — только client_id: контакты живут в CustomerProvider и здесь не нужны
+  const customer = { id: '6f1c2a4e-1111-4c3b-9e7a-2a1b3c4d5e6f' };
+  db.prepare("INSERT INTO customers (id, is_demo, created_at, updated_at) VALUES (?, 0, ?, ?)").run(customer.id, '2026-10-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z');
   const bmw = ops.addVehicle(ctx, { customerId: customer.id, make: 'BMW', plate: 'А123ВС77' });
   const mazda = ops.addVehicle(ctx, { customerId: customer.id, make: 'Mazda', model: '3', plate: 'М456ОР77' });
   const base = { vehicleId: bmw.id, identityConfirmed: true, performedOn: '2026-10-11', works: ['Замена масла'], finalTotalKopecks: 250000, actualDurationMinutes: 60, basis: 'Отчёт мастера', costApprovalBasis: 'Иван подтвердил стоимость по телефону' };
@@ -69,7 +71,7 @@ try {
   check('неоднозначная идентификация: вопросы до записи', () => {
     const before = counts();
     assert.throws(() => matchVehicle(db, {}), /VIN, госномер или телефон/);
-    assert.equal(matchVehicle(db, { phone: customer.phone }).verdict, 'ambiguous');
+    assert.equal(matchVehicle(db, { phoneClientIds: [customer.id] }).verdict, 'ambiguous');
     assert.throws(() => registerWorkReport(ctx, { ...base, identityConfirmed: false }), /сопоставление/);
     assert.throws(() => registerWorkReport(ctx, { ...base, vehicleId: 'нет' }), /не найден/);
     assert.deepEqual(counts(), before);

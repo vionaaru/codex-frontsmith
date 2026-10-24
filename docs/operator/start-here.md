@@ -32,16 +32,18 @@ Codex должен помочь с настройкой, при необходи
 
 ## Первый запуск
 
-По умолчанию демонстрация использует автосервис «АвтоРитм». Общий начальный профиль — `blueprints/auto-service/business.example.json`. Его локальная рабочая копия создаётся в `.frontsmith/business/business.json`:
+Новая установка по умолчанию получает универсальный профиль `blueprints/generic-service/business.example.json`: пустые клиенты и услуги, нейтральный сайт. Демонстрация автосервиса «АвтоРитм» — отдельный профиль `blueprints/auto-service/business.example.json`, он выбирается при первой установке: `npm run bootstrap -- --blueprint auto-service`. Локальная рабочая копия профиля создаётся в `.frontsmith/business/business.json`:
 
 ```bash
 npm run bootstrap
+npm run codex-host:login
+npm run frontsmith
 npm run first-run:status
 npm run owner:brief
 npm run preview:website
 ```
 
-Повторный `bootstrap` защищает существующий профиль от случайной перезаписи. Для изменения текущих данных редактируйте `.frontsmith/business/business.json` и выполняйте `npm run update:website`. Для явной замены профиля используйте `npm run bootstrap -- --profile ПУТЬ-К-ПРОФИЛЮ.json`; остальные записи бизнеса остаются в каталоге. `--reset` удаляет прежний каталог бизнеса со всеми рабочими материалами, после чего создаёт его заново.
+`npm run bootstrap` готовит локальные службы офиса, профиль и пустую базу офиса; `npm run frontsmith` открывает офис на `http://127.0.0.1:4180`. Повторный `bootstrap` только проверяет установку и не перезаписывает профиль. Для изменения текущих данных редактируйте `.frontsmith/business/business.json` и выполняйте `npm run update:website`. Для явной замены профиля используйте `npm run business:init -- --profile ПУТЬ-К-ПРОФИЛЮ.json`; остальные записи бизнеса остаются в каталоге. `npm run business:init -- --reset` удаляет прежний каталог бизнеса со всеми рабочими материалами, после чего создаёт его заново.
 
 Сообщите Codex основные сведения о компании:
 

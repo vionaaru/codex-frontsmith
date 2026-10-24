@@ -13,11 +13,15 @@ const root = path.join(testRoot, "business");
 process.env.FRONTSMITH_BUSINESS_ROOT = root;
 process.env.FRONTSMITH_ACTOR = "тест";
 const port = 4187;
+// Клиенты — через CustomerProvider: двойник crmkit в памяти
+const { useFakeCrm } = await import("../services/crm/testing/fake-crmkit.mjs");
+const fakeCrm = await useFakeCrm(path.join(testRoot, "data"));
 
 const { backupOfficeDb, listMigrations, migrate, officeDbPath, openOfficeDb, verifyBackup } = await import("../office/lib/db.mjs");
 const domain = await import("../office/lib/domain.mjs");
 const ops = await import("../office/lib/operations.mjs");
-const { matchVehicle } = await import("../office/lib/matching.mjs");
+const { matchVehicle, matchVehicleWithCustomers } = await import("../office/lib/matching.mjs");
+const { connectCustomers } = await import("../office/customers/index.mjs");
 const { registerWorkReport } = await import("../office/lib/work-reports.mjs");
 const { monthlyWork } = await import("../office/lib/repositories.mjs");
 const { loadServiceCatalog } = await import("../office/lib/catalog.mjs");
@@ -76,7 +80,7 @@ try {
     assert.match(await cli("init"), /новых нет/);
     const db = openOfficeDb();
     try {
-      assert.equal(db.prepare("SELECT count(*) AS n FROM schema_migrations").get().n, 3);
+      assert.equal(db.prepare("SELECT count(*) AS n FROM schema_migrations").get().n, listMigrations().length);
       assert.equal(db.pragma("journal_mode", { simple: true }), "wal");
       assert.equal(db.pragma("foreign_keys", { simple: true }), 1);
       assert.equal(db.prepare("SELECT name FROM business").get().name, "АвтоРитм");
@@ -191,10 +195,10 @@ try {
     try {
       const before = tableCounts(db);
       assert.throws(() => db.transaction(() => {
-        ops.createCustomer(ops.createContext(db, { actor: "тест" }), { fullName: "Откатываемый клиент" });
+        ops.createTask(ops.createContext(db, { actor: "тест" }), { title: "Откатываемая задача" });
         throw new Error("сбой после изменения");
       })(), /сбой/);
-      assert.deepEqual(tableCounts(db), before, "ни клиента, ни события");
+      assert.deepEqual(tableCounts(db), before, "ни задачи, ни события");
     } finally {
       db.close();
     }
@@ -269,10 +273,11 @@ try {
       const schedule = (await get("/api/schedule?days=7")).body.data;
       assert.ok(schedule.appointments.length >= 2);
       for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
-        const response = await get("/api/customers", { method });
+        const response = await get("/api/orders", { method });
         assert.equal(response.status, 405, method);
         assert.equal(response.headers.allow, "GET, HEAD");
       }
+      assert.equal((await get("/api/customers", { method: "POST" })).status, 403, "изменение клиента без заголовка панели отклоняется");
       assert.equal((await get("/api/overview", { host: "attacker.example" })).status, 421);
       for (const route of ["/db/migrations/001_initial.sql", "/lib/db.mjs", "/../business.json", "/%2e%2e/business.json", "/office.sqlite"]) {
         assert.equal((await get(route)).status, 404, route);
@@ -282,9 +287,10 @@ try {
       assert.match(meta.headers["content-security-policy"], /default-src 'self'/);
     });
     const html = await readFile("office/public/index.html", "utf8");
-    assert.ok(!/<form|method=["']post/i.test(html), "в панели нет форм записи");
+    assert.ok(!/<form|method=["']post/i.test(html), "в разметке панели нет форм записи");
     const app = await readFile("office/public/app.js", "utf8");
-    assert.ok(!/method:\s*["'](POST|PUT|PATCH|DELETE)/i.test(app), "интерфейс не отправляет изменения");
+    const writes = [...app.matchAll(/fetch\(([^,]+),/g)].map((match) => match[1].trim());
+    assert.ok(writes.every((target) => target === "url" || /api\/customers/.test(target)), "интерфейс меняет только карточки клиентов");
   });
 
   await check("панель: отчёты без позиций, календарные дни, поиск и стоимость", async () => {
@@ -293,7 +299,7 @@ try {
     let expectedTotal, eventCount;
     try {
       const ctx = ops.createContext(db, { actor: "тест", now: () => new Date("2026-10-16T15:00:00Z") });
-      const customer = ops.createCustomer(ctx, { fullName: "Клиент отчёта панели" });
+      const customer = addClient(db);
       vehicle = ops.addVehicle(ctx, { customerId: customer.id, make: "Mazda", plate: "М456ОР77" });
       const report = { vehicleId: vehicle.id, identityConfirmed: true, performedOn: "2026-10-02", works: ["Замена рейки", "Проверка сход-развала"],
         basis: "Отчёт мастера", costApprovalBasis: "Клиент согласовал", finalTotalKopecks: 1700000, actualDurationMinutes: null,
@@ -335,6 +341,9 @@ try {
       assert.equal(monthly.days[2].orders, 1, "готовые и выданные учитываются по дню выполнения");
       assert.deepEqual(monthly.days[0], { date: "2026-10-01", orders: 0, missingTotals: 0, totalKopecks: 0 });
       const meta = (await get("/api/meta")).body.data;
+      assert.equal(meta.vocabulary.inquiry.converted.label, "Оформлен заказ", "auto-service сохраняет прежние подписи");
+      assert.equal(meta.vocabulary.inquiry.closed.label, "Закрыто без заказа");
+      assert.equal(meta.vocabulary.serviceCategories.diagnostics, "Диагностика");
       assert.equal(overview.monthlyWork.month, meta.today.date.slice(0, 7), "текущий месяц по часовому поясу бизнеса");
       for (const [month, length] of [["2024-02", 29], ["2025-02", 28], ["2100-02", 28], ["2026-04", 30]]) {
         const empty = (await get(`/api/overview?month=${month}`)).body.data.monthlyWork;
@@ -362,7 +371,7 @@ try {
     try {
       migrate(db);
       const ctx = ops.createContext(db, { actor: "тест", now: () => new Date("2026-10-17T15:00:00Z") });
-      const customer = ops.createCustomer(ctx, { fullName: "Клиент месячного графика" });
+      const customer = addClient(db);
       const vehicle = ops.addVehicle(ctx, { customerId: customer.id, make: "Mazda" });
       db.transaction(() => {
         for (let index = 0; index < 205; index++) registerWorkReport(ctx, {
@@ -396,7 +405,7 @@ try {
     let walCustomer;
     try {
       db.pragma("wal_autocheckpoint = 0");
-      walCustomer = ops.createCustomer(ops.createContext(db, { actor: "тест" }), { fullName: "Клиент только в WAL" }).id;
+      walCustomer = addClient(db).id;
       const backupFile = await backupOfficeDb();
       const copy = openOfficeDb({ file: backupFile, readonly: true });
       try {
@@ -409,7 +418,7 @@ try {
       db.close();
     }
     const backupFile = process.env.FRONTSMITH_TEST_BACKUP;
-    assert.deepEqual(verifyBackup(backupFile), { version: 3 });
+    assert.deepEqual(verifyBackup(backupFile), { version: Math.max(...listMigrations().map((migration) => migration.version)) });
 
     const lateCustomer = JSON.parse(jsonPart(await cli("customer:add", "--name", "Появился после копии"))).id;
     await assert.rejects(cli("restore", "--from", backupFile), /--confirm/);
@@ -450,7 +459,7 @@ try {
 
     const db = build(path.join(testRoot, "v1.sqlite"), "2026-10-02T15:00:00.000Z");
     try {
-      assert.deepEqual(migrate(db).applied, ["002_work_results.sql", "003_work_reports.sql"]);
+      assert.deepEqual(migrate(db, { upTo: 3 }).applied, ["002_work_results.sql", "003_work_reports.sql"]);
       assert.equal(db.prepare("SELECT max(version) AS v FROM schema_migrations").get().v, 3);
       const order = db.prepare("SELECT * FROM work_orders WHERE id = 'o1'").get();
       assert.equal(order.completed_at, "2026-10-02T15:00:00.000Z");
@@ -467,7 +476,7 @@ try {
 
     const broken = build(path.join(testRoot, "v1-broken.sqlite"), "02.10.2026 15:00");
     try {
-      assert.throws(() => migrate(broken), /completed_at: ожидается ISO/);
+      assert.throws(() => migrate(broken, { upTo: 3 }), /completed_at: ожидается ISO/);
       assert.equal(broken.prepare("SELECT max(version) AS v FROM schema_migrations").get().v, 1, "миграция откатилась целиком");
       assert.ok(!broken.prepare("SELECT name FROM pragma_table_info('work_orders')").all().some((column) => column.name === "final_total_kopecks"));
     } finally {
@@ -475,22 +484,18 @@ try {
     }
   });
 
-  await check("ключи номера и телефона одинаковы в SQL и JS", () => {
+  await check("ключ госномера одинаков в SQL и JS", () => {
     const db = openOfficeDb();
     try {
       const ctx = ops.createContext(db, { actor: "тест" });
-      const phones = ["+7 (912) 345-67-89", "8 912 345 67 89", "9123456789", "79123456789", "+44 20 7946 0958", "123-45", "912 345 67 89 доб. 2", "", null];
       const plates = ["а 123 вс 77", "A123BC77", "А123ВС-777", "a123bc 777", "ж 001 жж", " ", null];
-      for (const [index, phone] of phones.entries()) {
-        const customer = ops.createCustomer(ctx, { fullName: `Ключи ${index}`, phone });
-        const plate = plates[index] ?? null;
+      for (const plate of plates) {
+        const customer = addClient(db);
         const vehicle = ops.addVehicle(ctx, { customerId: customer.id, make: "Test", plate });
-        assert.equal(db.prepare("SELECT phone_key FROM customers WHERE id = ?").get(customer.id).phone_key, domain.phoneKey(phone), `телефон «${phone}»`);
         assert.equal(db.prepare("SELECT plate_key FROM vehicles WHERE id = ?").get(vehicle.id).plate_key, domain.plateKey(plate), `номер «${plate}»`);
       }
-      assert.equal(domain.phoneKey("8 912 345 67 89"), "79123456789");
       assert.equal(domain.plateKey("а 123 вс 77"), "A123BC77");
-      assert.equal(domain.phoneKey("123-45"), null);
+      assert.ok(!db.prepare("SELECT name FROM pragma_table_info('customers')").all().some((column) => column.name === "phone_key"), "ключа телефона в офисной базе нет");
     } finally {
       db.close();
     }
@@ -501,7 +506,7 @@ try {
     const constraint = (fn, pattern) => assert.throws(fn, (error) => String(error.code).startsWith("SQLITE_CONSTRAINT") && (!pattern || pattern.test(error.message)));
     try {
       const ctx = ops.createContext(db, { actor: "тест" });
-      const customer = ops.createCustomer(ctx, { fullName: "Клиент по отчёту" });
+      const customer = addClient(db);
       const vehicle = ops.addVehicle(ctx, { customerId: customer.id, make: "Lada", vin: " xta 21700 0c 0123456 " });
       assert.equal(vehicle.vin, "XTA217000C0123456", "VIN приводится к канонической записи");
       const order = ops.createWorkOrder(ctx, { customerId: customer.id, vehicleId: vehicle.id });
@@ -569,59 +574,66 @@ try {
 
   await check("сопоставление автомобиля по VIN, госномеру и телефону", async () => {
     const db = openOfficeDb();
+    const connection = await connectCustomers({ db });
+    const customers = connection.provider;
+    const matchVehicle = (input) => matchVehicleWithCustomers(db, customers, input);
+    const create = async (displayName, phone) => (await customers.createCustomer({ displayName, phone }, { allowSharedPhone: true })).customer;
     try {
       const ctx = ops.createContext(db, { actor: "тест" });
-      const anna = ops.createCustomer(ctx, { fullName: "Анна Сопоставление", phone: "+7 (901) 111-22-33" });
+      const anna = await create("Анна Сопоставление", "+7 (901) 111-22-33");
       const annaFocus = ops.addVehicle(ctx, { customerId: anna.id, make: "Ford", model: "Focus", vin: "WF0AXXGCDA1234567", plate: "К 111 КК 77" });
       const annaRio = ops.addVehicle(ctx, { customerId: anna.id, make: "Kia", model: "Rio", plate: "М 222 ММ 77" });
-      const boris = ops.createCustomer(ctx, { fullName: "Борис Сопоставление", phone: "8 901 111 22 33" });
+      const boris = await create("Борис Сопоставление", "8 901 111 22 33");
       ops.addVehicle(ctx, { customerId: boris.id, make: "Lada", plate: "Е 333 ЕЕ 77" });
       const repeat = ops.createWorkOrder(ctx, { customerId: anna.id, vehicleId: annaFocus.id });
 
-      let result = matchVehicle(db, { vin: "wf0axxgcda1234567" });
+      let result = await matchVehicle({ vin: "wf0axxgcda1234567" });
       assert.equal(result.verdict, "match");
       assert.equal(result.confidence, "strong");
       assert.equal(result.candidates[0].vehicle_id, annaFocus.id);
       assert.equal(result.candidates[0].order_count, 1, "видно повторное обращение");
       assert.deepEqual(result.candidates[0].active_orders.map((order) => order.id), [repeat.id]);
 
-      result = matchVehicle(db, { plate: "k111kk77", phone: "89011112233" });
+      result = await matchVehicle({ plate: "k111kk77", phone: "89011112233" });
       assert.equal(result.verdict, "match");
       assert.equal(result.confidence, "strong", "номер и телефон совпали у одной машины");
 
-      result = matchVehicle(db, { plate: "к 111 кк 77" });
+      result = await matchVehicle({ plate: "к 111 кк 77" });
       assert.equal(result.verdict, "match");
       assert.equal(result.confidence, "weak", "только номер — уточнить");
 
-      result = matchVehicle(db, { vin: "1234567" });
+      result = await matchVehicle({ vin: "1234567" });
       assert.equal(result.verdict, "match");
       assert.equal(result.confidence, "weak", "хвост VIN — уточнить");
 
-      result = matchVehicle(db, { phone: "+7 901 111-22-33" });
+      result = await matchVehicle({ phone: "+7 901 111-22-33" });
       assert.equal(result.verdict, "ambiguous", "телефон общий у двух клиентов и трёх машин");
       assert.equal(result.customers.length, 2);
 
-      result = matchVehicle(db, { vin: "WF0AXXGCDA1234567", plate: "М 222 ММ 77" });
+      result = await matchVehicle({ vin: "WF0AXXGCDA1234567", plate: "М 222 ММ 77" });
       assert.equal(result.verdict, "ambiguous", "VIN и номер указывают на разные машины");
       assert.ok(result.candidates.some((candidate) => candidate.vehicle_id === annaRio.id));
 
-      result = matchVehicle(db, { plate: "Е 333 ЕЕ 77", phone: "+7 999 000-00-00" });
+      result = await matchVehicle({ plate: "Е 333 ЕЕ 77", phone: "+7 999 000-00-00" });
       assert.equal(result.verdict, "ambiguous", "номер есть, но телефон владельца другой");
       assert.deepEqual(result.candidates[0].conflicts, ["phone"]);
 
-      const solo = ops.createCustomer(ctx, { fullName: "Без машины", phone: "+7 902 000-00-01" });
-      result = matchVehicle(db, { phone: "89020000001", plate: "Т 999 ТТ 99" });
+      const solo = await create("Без машины", "+7 902 000-00-01");
+      result = await matchVehicle({ phone: "89020000001", plate: "Т 999 ТТ 99" });
       assert.equal(result.verdict, "customer_only");
       assert.equal(result.customers[0].id, solo.id);
 
-      assert.equal(matchVehicle(db, { plate: "О 000 ОО 00" }).verdict, "none");
-      assert.throws(() => matchVehicle(db, {}), /хотя бы/);
-      assert.throws(() => matchVehicle(db, { vin: "ABIO1" }), /без I, O, Q/);
+      assert.equal((await matchVehicle({ plate: "О 000 ОО 00" })).verdict, "none");
+      await assert.rejects(matchVehicle({}), /хотя бы/);
+      await assert.rejects(matchVehicle({ vin: "ABIO1" }), /без I, O, Q/);
+      assert.ok(!JSON.stringify(result).includes("902"), "результат сопоставления без телефона");
     } finally {
+      await connection.stop();
       db.close();
     }
-    const cliResult = JSON.parse(await cli("match", "--plate", "К111КК77", "--phone", "+79011112233"));
-    assert.equal(cliResult.verdict, "match");
+    const cliOutput = await cli("match", "--plate", "К111КК77", "--phone", "+79011112233");
+    assert.equal(JSON.parse(cliOutput).verdict, "match");
+    assert.ok(!/Анна|901/.test(cliOutput), "CLI match не выводит контакты клиента");
   });
 
   await check("часовой пояс бизнеса и ввод времени", () => {
@@ -634,10 +646,19 @@ try {
 
   console.log(`Проверки офиса пройдены: ${passed}. База: ${officeDbPath()}`);
 } finally {
+  await fakeCrm.close();
   await rm(testRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }
 
 // --- помощники ---
+
+// Клиент без контактов: бизнес-проверкам нужен только client_id
+function addClient(db) {
+  const id = domain.newId();
+  const at = new Date().toISOString();
+  db.prepare("INSERT INTO customers (id, is_demo, created_at, updated_at) VALUES (?, 0, ?, ?)").run(id, at, at);
+  return { id };
+}
 
 async function writeDemoInquiry() {
   const { writeFile } = await import("node:fs/promises");

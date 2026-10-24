@@ -1,0 +1,10 @@
+# Сторонние компоненты в поставке хранятся байт в байт: без преобразования концов строк,
+# иначе SHA-256 и отпечатки деревьев из vendor/manifest.json не совпадут в клоне
+vendor/** -text
+
+# Большие файлы поставки — в Git LFS (git lfs install && git lfs pull)
+vendor/runtime-assets/**/*.whl filter=lfs diff=lfs merge=lfs -text
+vendor/runtime-assets/**/*.zip filter=lfs diff=lfs merge=lfs -text
+vendor/runtime-assets/**/*.tar.gz filter=lfs diff=lfs merge=lfs -text
+vendor/crmkit/release/*.tar.gz filter=lfs diff=lfs merge=lfs -text
+vendor/ner-model/**/*.safetensors filter=lfs diff=lfs merge=lfs -text
