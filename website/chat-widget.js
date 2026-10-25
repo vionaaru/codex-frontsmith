@@ -18,7 +18,7 @@
   var siteName = document.querySelector('meta[property="og:site_name"]');
   var name = (siteName && siteName.content) || "Компания";
 
-  ChatCops.init({
+  var widget = ChatCops.init({
     apiUrl: "/api/chat",
     // Ответ Codex может занять больше 30 секунд; сервер держит поток комментариями keepalive
     timeout: 120000,
@@ -252,4 +252,107 @@
     if (message && message.role === "assistant") checkBooking();
   });
   checkBooking();
+
+  // --- Сотрудник в чате ---
+  // Кнопка «Позвать сотрудника» передаёт разговор без участия AI. Ответы сотрудника и
+  // уведомления приходят опросом /api/chat/messages и добавляются в историю виджета:
+  // после перезагрузки страницы они на месте, повторы отбрасываются по номеру сообщения
+
+  var SEQ_PREFIX = "frontsmith-chat-seq:";
+  var STATUS_TEXT = {
+    needs_human: "Разговор ведёт сотрудник. Ответ придёт в этот чат",
+    closed: "Сотрудник завершил разговор. Можно продолжить с AI-помощником"
+  };
+
+  // Диалог для кнопки до первого сообщения: тот же токен и id потом использует виджет
+  function ensureSession() {
+    var saved = session();
+    if (saved) return Promise.resolve(saved);
+    return fetch("/api/chat/session", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
+      .then(function (response) { return response.ok ? response.json() : Promise.reject(new Error("session")); })
+      .then(function (created) {
+        try { localStorage.setItem(SESSION_KEY, JSON.stringify(created)); } catch (error) { /* хранилище недоступно */ }
+        if (widget) widget.conversationId = created.conversationId;
+        return created;
+      });
+  }
+
+  // Сообщение сотрудника или системы в истории виджета ChatCops
+  function showIncoming(message) {
+    if (!widget || !Array.isArray(widget.messages) || !widget.panel || typeof widget.panel.addMessage !== "function") return;
+    var id = "fs-" + message.seq;
+    if (widget.messages.some(function (item) { return item.id === id; })) return;
+    var data = {
+      id: id,
+      role: "assistant",
+      content: message.role === "operator" ? "**Сотрудник:** " + message.text : message.text,
+      status: "complete",
+      timestamp: Date.parse(message.createdAt) || Date.now()
+    };
+    widget.messages.push(data);
+    widget.panel.addMessage(data);
+    if (typeof widget.saveHistory === "function") widget.saveHistory();
+  }
+
+  var bar = el("div", { class: "fs-handoff" });
+  var barText = el("span", { class: "fs-handoff-text" });
+  var callButton = el("button", { type: "button", class: "fs-handoff-button", text: "Позвать сотрудника" });
+  bar.appendChild(barText);
+  bar.appendChild(callButton);
+  var panelNode = shadow && shadow.querySelector(".cc-panel");
+  var inputArea = panelNode && panelNode.querySelector(".cc-input-area");
+  if (panelNode) {
+    var barStyle = document.createElement("style");
+    barStyle.textContent = [
+      ".fs-handoff{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid #d8d8d1;font:13px/1.35 Arial,sans-serif;color:#3c454e;background:#f5f2eb}",
+      ".fs-handoff-text:empty{display:none}",
+      ".fs-handoff-button{font:inherit;font-weight:700;padding:6px 10px;border:1px solid #111820;border-radius:4px;background:transparent;color:#111820;cursor:pointer;white-space:nowrap}",
+      ".fs-handoff-button[hidden]{display:none}",
+      ".fs-handoff-button:disabled{opacity:.6;cursor:wait}"
+    ].join("");
+    shadow.appendChild(barStyle);
+    panelNode.insertBefore(bar, inputArea || null);
+  }
+
+  function setStatus(status) {
+    barText.textContent = STATUS_TEXT[status] || "";
+    callButton.hidden = status === "needs_human";
+  }
+
+  callButton.addEventListener("click", function () {
+    callButton.disabled = true;
+    barText.textContent = "";
+    ensureSession()
+      .then(function () { return api("/api/chat/handoff", {}); })
+      .then(function (result) {
+        if (!result || !result.ok) throw new Error("handoff");
+        // Уведомление о передаче показывается только после того, как сервер её сохранил
+        setStatus(result.data.status);
+        pollFeed();
+      })
+      .catch(function () {
+        barText.textContent = "Не удалось позвать сотрудника. Позвоните нам по контактам на сайте";
+      })
+      .then(function () { callButton.disabled = false; });
+  });
+
+  function pollFeed() {
+    var saved = session();
+    if (!saved) return;
+    var key = SEQ_PREFIX + saved.conversationId;
+    var after = 0;
+    try { after = Number(localStorage.getItem(key) || 0) || 0; } catch (error) { after = 0; }
+    api("/api/chat/messages", { after: after }).then(function (result) {
+      if (!result || !result.ok) return;
+      result.data.messages.forEach(function (message) {
+        showIncoming(message);
+        after = Math.max(after, message.seq);
+      });
+      try { localStorage.setItem(key, String(after)); } catch (error) { /* хранилище недоступно */ }
+      setStatus(result.data.status);
+    }, function () {});
+  }
+
+  pollFeed();
+  setInterval(function () { if (!document.hidden) pollFeed(); }, 4000);
 })();
