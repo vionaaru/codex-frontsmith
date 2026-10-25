@@ -87,15 +87,15 @@ export class CodexHost {
     return this.serverInfo;
   }
 
-  #threadParams(modelInstructions) {
+  #threadParams(instructions, tools) {
     return {
       cwd: this.#options.workspace,
       runtimeWorkspaceRoots: [this.#options.workspace],
       sandbox: "read-only",
       approvalPolicy: "on-request",
       ...(this.#options.model ? { model: this.#options.model } : {}),
-      developerInstructions: [modelInstructions, HOST_INSTRUCTIONS].filter(Boolean).join("\n\n"),
-      dynamicTools: [...this.#tools.values()].map((tool) => ({
+      developerInstructions: [...instructions, HOST_INSTRUCTIONS].filter(Boolean).join("\n\n"),
+      dynamicTools: tools.map((name) => this.#tools.get(name)).map((tool) => ({
         type: "function",
         name: tool.name,
         description: tool.description,
@@ -104,25 +104,47 @@ export class CodexHost {
     };
   }
 
+  // Инструменты диалога: по умолчанию все инструменты Host, [] — без инструментов
+  // (публичный канал). Неизвестное имя — ошибка, а не молчаливое расширение прав.
+  #scope(tools) {
+    if (tools === undefined) return [...this.#tools.keys()];
+    for (const name of tools) if (!this.#tools.has(name)) throw new Error(`unknown host tool: ${name}`);
+    return [...new Set(tools)];
+  }
+
+  // Контекст вызывающего (например, публичные сведения о бизнесе) уходит модели
+  // в developerInstructions и поэтому тоже проходит prepare этой privacy-session.
+  async #context(tenantId, privacySessionId, context) {
+    if (!context) return "";
+    const prepared = await this.#privacy.prepare({ tenantId, privacySessionId, text: context, source: "context" });
+    return prepared.text;
+  }
+
   // Новый диалог: privacy-session + thread App Server.
-  async openConversation({ tenantId, ephemeral = true }) {
+  // modelInstructions в ответе нужен для resumeConversation: это общий текст Privacy Service без ПД.
+  async openConversation({ tenantId, ephemeral = true, tools, context = "" }) {
+    const scope = this.#scope(tools);
     await this.#privacy.assertReady();
     const session = await this.#privacy.createSession(tenantId);
-    const result = await this.#client.request("thread/start", { ...this.#threadParams(session.modelInstructions), ephemeral });
-    return this.#remember({ tenantId, privacySessionId: session.privacySessionId, threadId: result.thread.id });
+    const prepared = await this.#context(tenantId, session.privacySessionId, context);
+    const result = await this.#client.request("thread/start", { ...this.#threadParams([session.modelInstructions, prepared], scope), ephemeral });
+    return { ...this.#remember({ tenantId, privacySessionId: session.privacySessionId, threadId: result.thread.id, tools: scope }), modelInstructions: session.modelInstructions };
   }
 
-  // Возобновление сохранённого thread с той же privacy-session.
-  async resumeConversation({ tenantId, privacySessionId, threadId, modelInstructions = "" }) {
+  // Возобновление сохранённого thread с той же privacy-session. Набор инструментов
+  // thread сохраняет App Server; Host дополнительно проверяет его при каждом вызове.
+  async resumeConversation({ tenantId, privacySessionId, threadId, modelInstructions = "", tools, context = "" }) {
+    const scope = this.#scope(tools);
     await this.#privacy.assertReady();
-    const params = this.#threadParams(modelInstructions);
+    const prepared = await this.#context(tenantId, privacySessionId, context);
+    const params = this.#threadParams([modelInstructions, prepared], scope);
     delete params.dynamicTools;
     const result = await this.#client.request("thread/resume", { threadId, ...params });
-    return this.#remember({ tenantId, privacySessionId, threadId: result.thread.id });
+    return this.#remember({ tenantId, privacySessionId, threadId: result.thread.id, tools: scope });
   }
 
-  #remember({ tenantId, privacySessionId, threadId }) {
-    const conversation = { id: randomUUID(), tenantId, privacySessionId, threadId, turns: 0 };
+  #remember({ tenantId, privacySessionId, threadId, tools }) {
+    const conversation = { id: randomUUID(), tenantId, privacySessionId, threadId, tools: new Set(tools), turns: 0, busy: false };
     this.#conversations.set(conversation.id, conversation);
     this.#byThread.set(threadId, conversation);
     return { conversationId: conversation.id, threadId, privacySessionId };
@@ -156,9 +178,20 @@ export class CodexHost {
   }
 
   // Один ход диалога. Возвращает ответ, восстановленный для адресата.
+  // Второй ход того же диалога до завершения первого отклоняется: conversation_busy.
   async send(conversationId, text, { recipient = "operator" } = {}) {
     const conversation = this.#conversations.get(conversationId);
     if (!conversation) throw new Error("unknown conversation");
+    if (conversation.busy) throw Object.assign(new Error("conversation_busy"), { code: "conversation_busy" });
+    conversation.busy = true;
+    try {
+      return await this.#send(conversation, text, recipient);
+    } finally {
+      conversation.busy = false;
+    }
+  }
+
+  async #send(conversation, text, recipient) {
     // Ошибка prepare пробрасывается как privacy_processing_failed до turn/start.
     const prepared = await this.#privacy.prepare({
       tenantId: conversation.tenantId,
@@ -228,7 +261,7 @@ export class CodexHost {
     const tool = this.#tools.get(name);
     const turn = this.#turn(turnId);
     turn.toolCalls.push(name);
-    if (!conversation || !tool) return { contentItems: [{ type: "inputText", text: "unknown_tool" }], success: false };
+    if (!conversation || !tool || !conversation.tools.has(name)) return { contentItems: [{ type: "inputText", text: "unknown_tool" }], success: false };
     try {
       const raw = await tool.handler(args ?? {}, { tenantId: conversation.tenantId });
       const prepared = await this.#privacy.prepare({

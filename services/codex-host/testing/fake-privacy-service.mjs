@@ -75,7 +75,7 @@ export async function startFakePrivacyService({ token = "fake-token" } = {}) {
       const text = pseudonymize(session, json.text);
       return reply(200, { text, replacements: (text.match(/<PII/g) ?? []).length, mapping: Object.fromEntries(session.mapping), normalized_text: json.text });
     }
-    if (json.recipient !== "operator") return reply(403, { error: "recipient_not_allowed" });
+    if (!["operator", "visitor"].includes(json.recipient)) return reply(403, { error: "recipient_not_allowed" });
     const restored = json.text.replace(/<PII\b[^>]*\/>/g, (tag) => session.mapping.get(tag) ?? "****");
     return reply(200, { text: restored });
   });
