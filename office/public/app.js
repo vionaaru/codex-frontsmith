@@ -7,7 +7,7 @@ const state = { meta: null, route: null, results: null, hasData: false, lastOk: 
 // Категории услуг — из словаря бизнес-профиля (/api/meta → vocabulary.serviceCategories)
 const categoryLabels = () => state.meta?.vocabulary?.serviceCategories ?? {};
 const entityLabels = { business: "Профиль", customer: "Клиент", vehicle: "Автомобиль", service: "Услуга", inquiry: "Обращение", work_order: "Заказ", order_item: "Позиция", appointment: "Запись", task: "Задача", database: "База" };
-const eventSources = { cli: "команда CLI", import: "импорт", seed: "учебный набор", migration: "инициализация", panel: "панель" };
+const eventSources = { cli: "команда CLI", import: "импорт", seed: "учебный набор", migration: "инициализация", panel: "панель", ai_dispatcher: "AI-диспетчер сайта" };
 
 // --- DOM ---
 
@@ -118,9 +118,13 @@ const views = {
   order: { nav: "work", module: "work-orders", endpoint: (p, id) => `/api/orders/${id}`, render: renderOrder },
   tasks: { nav: "tasks", title: "Задачи", intro: () => `Следующие действия по обращениям${has("work-orders") ? " и заказам" : ""}`, controls: taskControls, endpoint: (p) => `/api/tasks?${pick(p, ["q", "due"], { status: "open" })}`, render: renderTasks },
   services: { nav: "services", title: "Услуги и цены", intro: "Каталог из базы офиса. Сайт берёт прайс из этого же каталога при npm run update:website", controls: serviceControls, endpoint: (p) => `/api/services?${pick(p, ["q", "category", "active"])}`, render: renderServices },
-  schedule: { nav: "schedule", title: "Расписание", intro: () => `Записи на время из локальной базы${bookingSynced() ? ". Внешний Booking Flow сюда не синхронизируется" : ""}`, controls: scheduleControls, endpoint: (p) => `/api/schedule?${pick(p, ["from", "status"], { days: "7" })}`, render: renderSchedule }
+  schedule: { nav: "schedule", title: "Расписание", intro: () => `Записи на время из локальной базы${bookingSynced() ? ". Внешний Booking Flow сюда не синхронизируется" : ""}. Предварительные записи с сайта подтверждаются или отклоняются здесь`, controls: scheduleControls, endpoint: (p) => `/api/schedule?${pick(p, ["from", "status"], { days: "7" })}`, render: renderSchedule },
+  dialogs: { nav: "dialogs", title: "Диалоги", intro: "Разговоры посетителей сайта с AI-помощником. Сверху — те, где посетитель ждёт сотрудника", controls: dialogControls, endpoint: (p) => `/api/conversations?${pick(p, ["status"])}`, render: renderDialogs },
+  // Страница диалога не перерисовывается общим обновлением: ответ сотрудника не теряется,
+  // новые сообщения подгружает собственный опрос страницы
+  dialog: { nav: "dialogs", form: true, endpoint: (p, id) => `/api/conversations/${id}`, render: renderDialog }
 };
-const detailRoutes = { customers: "customer", "customer-edit": "customerEdit", vehicles: "vehicle", inquiries: "inquiry", orders: "order" };
+const detailRoutes = { customers: "customer", "customer-edit": "customerEdit", vehicles: "vehicle", inquiries: "inquiry", orders: "order", dialogs: "dialog" };
 
 function pick(params, keys, defaults = {}) {
   const out = new URLSearchParams();
@@ -206,7 +210,7 @@ async function load({ focus = false } = {}) {
 function applyMeta(meta) {
   const business = meta.business;
   for (const node of document.querySelectorAll("[data-business-name]")) node.textContent = business?.name ?? "Офис";
-  document.title = `${business?.name ?? "Офис"} · панель офиса`;
+  document.title = `${state.waiting ? `(${state.waiting}) ` : ""}${business?.name ?? "Офис"} · панель офиса`;
   document.querySelector("[data-demo-notice]").hidden = !business?.demo_mode;
   document.querySelector("[data-booking-notice]").hidden = !business?.booking_url;
   for (const link of document.querySelectorAll("[data-nav-module]")) link.hidden = !has(link.dataset.navModule);
@@ -721,7 +725,156 @@ function renderSchedule(data) {
     if (!days.has(key)) days.set(key, []);
     days.get(key).push(item);
   }
-  return el("div", {}, [...days.values()].map((list) => el("section", { class: "day" }, panel(capitalize(fmtDay(list[0].starts_at)), list.map(appointmentRow), ""))));
+  return el("div", {}, [...days.values()].map((list) => el("section", { class: "day" }, panel(capitalize(fmtDay(list[0].starts_at)), list.map(scheduleRow), ""))));
+}
+
+// Предварительная запись: сотрудник подтверждает или отклоняет её здесь. Сервер повторно
+// проверяет время и пересечения с другими записями
+function scheduleRow(item) {
+  const node = appointmentRow(item);
+  if (item.status !== "tentative") return node;
+  const message = el("p", { class: "form-message", role: "alert", hidden: true });
+  const decide = async (decision, button) => {
+    button.disabled = true;
+    try {
+      await postJson(`/api/appointments/${item.id}/decision`, { decision });
+      load();
+    } catch (error) {
+      message.textContent = error.message;
+      message.hidden = false;
+      button.disabled = false;
+    }
+  };
+  const confirm = el("button", { type: "button", class: "sync-button", onclick: (event) => decide("confirm", event.target) }, "Подтвердить");
+  const reject = el("button", { type: "button", class: "sync-button", onclick: (event) => { if (window.confirm("Отклонить запрос на запись? Время освободится")) decide("reject", event.target); } }, "Отклонить");
+  return el("div", {}, node, el("p", { class: "card-actions inline-actions" }, confirm, reject), message);
+}
+
+async function postJson(url, body) {
+  let response;
+  try {
+    response = await fetch(url, { method: "POST", headers: { "content-type": "application/json", accept: "application/json", "x-frontsmith-office": "1" }, body: JSON.stringify(body) });
+  } catch {
+    throw new Error("Сервер панели недоступен. Повторите действие");
+  }
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(payload?.error?.message ?? `Ошибка ${response.status}`);
+  return payload.data;
+}
+
+// --- Диалоги сайта ---
+
+const dialogStatuses = { needs_human: "Ждёт сотрудника", active: "Ведёт AI", closed: "Закрыт" };
+const handoffBy = { ai: "передал AI-помощник", visitor: "посетитель нажал «Позвать сотрудника»", operator: "сотрудник подключился сам" };
+const roleLabels = { visitor: "Посетитель", assistant: "AI-помощник", operator: "Сотрудник", system: "Уведомление" };
+
+function dialogBadge(status) {
+  return el("span", { class: `badge s-${status === "needs_human" ? "new" : status === "active" ? "in_progress" : "closed"}` }, dialogStatuses[status] ?? status);
+}
+
+const visitorName = (item) => item.customer_id ? item.customer_name : `Посетитель ${item.id.slice(0, 8)}`;
+
+function dialogControls(params) {
+  return el("div", { class: "filters" }, selectField("Статус", "status", params, [["", "Все"], ["needs_human", "Ждут сотрудника"], ["active", "Ведёт AI"], ["closed", "Закрытые"]], ""));
+}
+
+function renderDialogs(rows) {
+  if (!rows.length) return el("p", { class: "empty panel" }, "Разговоров с сайта пока нет");
+  const waiting = rows.filter((item) => item.status === "needs_human");
+  const rest = rows.filter((item) => item.status !== "needs_human");
+  const dialogRow = (item) => row({
+    href: `#/dialogs/${item.id}`,
+    title: visitorName(item),
+    side: [dialogBadge(item.status)],
+    sub: [item.status === "needs_human" ? `причина: ${item.status_reason ?? "не указана"}${item.handoff_by ? ` (${handoffBy[item.handoff_by] ?? item.handoff_by})` : ""}` : null,
+      item.last_message_at ? `последнее сообщение ${fmtDateTime(item.last_message_at)}${item.last_role === "visitor" ? " · от посетителя" : ""}` : null,
+      `сообщений: ${item.message_count}`].filter(Boolean).join(" · ")
+  });
+  return el("div", { class: "grid" },
+    waiting.length ? panel(`Ждут сотрудника · ${waiting.length}`, waiting.map(dialogRow), "") : null,
+    rest.length ? panel("Остальные разговоры", rest.map(dialogRow), "") : null);
+}
+
+function messageNode(message) {
+  return el("li", { class: `chat-msg chat-${message.role}` },
+    el("span", { class: "chat-meta" }, `${roleLabels[message.role] ?? message.role} · ${fmtDateTime(message.createdAt)}`),
+    el("span", { class: "chat-text" }, message.text));
+}
+
+function renderDialog(data) {
+  const conversation = data.conversation;
+  const id = conversation.id;
+  const log = el("ol", { class: "chat-log", "aria-live": "polite" }, data.messages.map(messageNode));
+  let lastSeq = data.messages.at(-1)?.seq ?? 0;
+  const status = el("span", {}, dialogBadge(conversation.status));
+  const reason = el("p", { class: "note" });
+  const describe = (current) => {
+    status.replaceChildren(dialogBadge(current.status));
+    reason.textContent = current.status === "needs_human"
+      ? `Причина передачи: ${current.status_reason ?? "не указана"}${current.handoff_by ? ` — ${handoffBy[current.handoff_by] ?? current.handoff_by}` : ""}. Пока разговор у сотрудника, AI не отвечает`
+      : current.status === "active" ? "Разговор ведёт AI-помощник. Ответ сотрудника переведёт разговор на сотрудника" : "Разговор закрыт. Если посетитель напишет снова, ответит AI-помощник";
+  };
+  describe(conversation);
+
+  const message = el("p", { class: "form-message", role: "alert", hidden: true });
+  const textarea = el("textarea", { name: "text", rows: "4", maxlength: "4000", required: true, placeholder: "Ответ посетителю. Он появится в чате на сайте" });
+  const submit = el("button", { type: "submit", class: "primary-button" }, "Отправить клиенту");
+  const fail = (error) => { message.textContent = error.message; message.hidden = false; };
+  const action = (path, label, confirmText) => el("button", { type: "button", class: "sync-button", onclick: async (event) => {
+    if (confirmText && !window.confirm(confirmText)) return;
+    event.target.disabled = true;
+    try {
+      describe((await postJson(`/api/conversations/${id}/${path}`, {})).conversation);
+      await refresh();
+    } catch (error) { fail(error); } finally { event.target.disabled = false; }
+  } }, label);
+  const form = el("form", { class: "chat-reply" }, el("label", { class: "field" }, "Ответ сотрудника", textarea), message,
+    el("p", { class: "card-actions" }, submit, action("return-ai", "Вернуть AI", "Вернуть разговор AI-помощнику? Он увидит ответы сотрудника"), action("close", "Закрыть обращение", "Закрыть обращение?")));
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const text = textarea.value.trim();
+    if (!text) return;
+    submit.disabled = true;
+    message.hidden = true;
+    try {
+      await postJson(`/api/conversations/${id}/messages`, { text });
+      textarea.value = "";
+      await refresh();
+    } catch (error) { fail(error); } finally { submit.disabled = false; }
+  });
+
+  // Новые сообщения посетителя и статус — без перезагрузки страницы
+  async function refresh() {
+    if (state.route?.name !== "dialogs" || state.route.id !== id) return;
+    const fresh = (await fetchJson(`/api/conversations/${id}`)).data;
+    for (const item of fresh.messages.filter((item) => item.seq > lastSeq)) log.append(messageNode(item));
+    lastSeq = fresh.messages.at(-1)?.seq ?? lastSeq;
+    describe(fresh.conversation);
+  }
+  const timer = setInterval(() => {
+    if (state.route?.name !== "dialogs" || state.route.id !== id) return clearInterval(timer);
+    if (!document.hidden) refresh().catch(() => {});
+  }, 4000);
+
+  return el("div", {},
+    detailHead(["#/dialogs", "Диалоги"], visitorName(conversation), [status]),
+    reason,
+    el("section", { class: "panel" }, el("h2", {}, el("span", {}, "Переписка")), log),
+    el("section", { class: "panel panel-body" }, form));
+}
+
+// Счётчик разговоров, ждущих сотрудника: обновляется на любой странице панели
+async function pollDialogs() {
+  const counter = document.querySelector("[data-dialogs-count]");
+  try {
+    const waiting = (await fetchJson("/api/conversations?status=needs_human")).data.length;
+    state.waiting = waiting;
+    counter.textContent = String(waiting);
+    counter.hidden = waiting === 0;
+    document.title = `${waiting ? `(${waiting}) ` : ""}${document.title.replace(/^\(\d+\) /, "")}`;
+  } catch {
+    counter.hidden = true;
+  }
 }
 
 function capitalize(text) {
@@ -734,6 +887,8 @@ document.querySelector("[data-refresh]").addEventListener("click", () => load())
 window.addEventListener("hashchange", setupRoute);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 setInterval(() => { if (!document.hidden) load(); }, POLL_MS);
+pollDialogs();
+setInterval(() => { if (!document.hidden) pollDialogs(); }, 10000);
 
 // Словарь статусов нужен фильтрам до первой отрисовки; без него раздел всё равно покажет честную ошибку
 fetchJson("/api/meta").then((meta) => { state.meta = meta.data; }).catch(() => {}).finally(setupRoute);

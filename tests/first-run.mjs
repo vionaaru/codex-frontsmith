@@ -41,13 +41,14 @@ const runtimeCache = cacheRoot && runtimeStatus(runtimePaths(cacheRoot)).ready &
 if (runtimeCache) symlinkSync(runtimeCache, path.join(root, "runtime"), "junction");
 console.log(runtimeCache ? `runtime: подготовленный ${runtimeCache} (junction, без скачивания)` : "runtime: пустой, ставится из поставки vendor/");
 const pointerBefore = existsSync(DATA_ROOT_POINTER) ? readFileSync(DATA_ROOT_POINTER, "utf8") : null;
-const ports = { office: await freePort(), crm: await freePort(), privacy: await freePort() };
+const ports = { office: await freePort(), site: await freePort(), crm: await freePort(), privacy: await freePort() };
 const env = {
   ...process.env,
   FRONTSMITH_DATA_ROOT: root,
   FRONTSMITH_BUSINESS_ROOT: path.join(root, "business"),
   FRONTSMITH_CODEX_HOST_ROOT: path.join(root, "codex-host"),
   FRONTSMITH_OFFICE_PORT: String(ports.office),
+  FRONTSMITH_SITE_PORT: String(ports.site),
   FRONTSMITH_CRM_PORT: String(ports.crm),
   FRONTSMITH_PRIVACY_PORT: String(ports.privacy)
 };
@@ -223,6 +224,16 @@ try {
     assert.equal(ready.officeReady, true);
     assert.equal(ready.aiReady, false);
     assert.deepEqual(ready.ports, ports, "внутренние порты из конфигурации");
+    // Сайт компании запущен рядом с офисом; без входа ChatGPT чат честно сообщает о недоступности
+    assert.equal(ready.site, `http://127.0.0.1:${ports.site}`);
+    assert.equal(ready.status.site, "ready");
+    assert.equal((await fetch(`${ready.site}/`)).status, 200);
+    const chat = await fetch(`${ready.site}/api/chat/session`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    assert.equal(chat.status, 200, "сессия чата выдаётся");
+    const { conversationId, token } = await chat.json();
+    const turn = await fetch(`${ready.site}/api/chat`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ conversationId, message: "Здравствуйте" }) });
+    assert.match(await turn.text(), /"code":"provider_unavailable"/, "без входа ChatGPT — настоящая ошибка, а не ответ-заглушка");
+    assert.equal((await fetch(`${ready.site}/api/customers`)).status, 404, "API офиса на порту сайта недоступен");
     assert.ok(alive(ready.pids.crm) && alive(ready.pids.privacy), "crmkit и Privacy Service — дочерние процессы");
     const out = office.output();
     assert.match(out, /Frontsmith ready/);

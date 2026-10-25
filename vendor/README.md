@@ -10,6 +10,7 @@
 | `ner-model/rubert-base-pii-ner/` | веса, конфигурация и токенизатор модели NER | huggingface.co/redmadrobot-rnd/rubert-base-pii-ner, revision `c802e8cd26f85d1cf920973ea6f83965a0618d63` |
 | `runtime-assets/uv/` | uv 0.12.24 | релиз astral-sh/uv |
 | `runtime-assets/python/` | CPython 3.11.14 (python-build-standalone 20260211, install_only_stripped) | релиз astral-sh/python-build-standalone |
+| `chatcops-widget/` | собранный виджет чата `@chatcops/widget` 0.6.0 без изменений: `chatcops.min.js` (из `dist/` пакета, каталог `dist/` игнорируется Git), `LICENSE`, `README.md`, `package.json`; Bootstrap его не ставит, `npm run update:website` копирует в рабочий сайт | пакет npm `@chatcops/widget@0.6.0`, github.com/codercops/chatcops |
 | `runtime-assets/wheels/` | все wheels `services/privacy/requirements.lock` для cp311 / win_amd64, а также setuptools и wheel для сборки pii-guard | PyPI, download.pytorch.org/whl/cpu (torch), релиз ru_core_news_sm-3.8.0 |
 
 Исходники crmkit и pii-guard скопированы командой `git archive` без изменений: их `LICENSE`, `NOTICE` и вложенные `.gitignore` сохранены. Дополнения Frontsmith к pii-guard — в `services/privacy/frontsmith_privacy/`, не здесь. Лицензии — в `THIRD_PARTY_NOTICES.md` в корне репозитория.

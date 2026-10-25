@@ -129,6 +129,7 @@ summary::-webkit-details-marker { display: none; }
 .contact-section { background: #e9e7df; }
 .contact-section .section-heading { grid-template-columns: 1fr auto; }
 .contact-section .section-heading > .button { justify-self: end; }
+[data-chat-open][hidden] { display: none; }
 .contact-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 50px; border-top: 1px solid #c8cac2; padding-top: 28px; }
 .contact-label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 17px; }
 .contact-grid p { font-size: 17px; overflow-wrap: anywhere; }

@@ -170,7 +170,8 @@ export function serviceEnv(paths, { token, dbPath = paths.stateDb, extra = {} } 
   return runtimeEnv(paths, {
     PRIVACY_SERVICE_TOKEN: token,
     PRIVACY_DB_PATH: dbPath,
-    PRIVACY_RESTORE_RECIPIENTS: "operator",
+    // visitor — посетитель публичного веб-канала: restore возвращает ему только значения его же privacy-session
+    PRIVACY_RESTORE_RECIPIENTS: "operator,visitor",
     PII_GUARD_COMMIT: PINS.piiGuardCommit,
     // Локальный каталог модели: Hugging Face Hub не нужен, ревизия — сам каталог поставки.
     // Пустая PII_GUARD_NER_REVISION — «без ревизии Hub» для локального пути

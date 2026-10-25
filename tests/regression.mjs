@@ -383,6 +383,7 @@ try {
   assertIncludes(builtWebsite, 'href="/website/styles.css"', "built website stylesheet path");
   assertIncludes(builtWebsite, 'src="/website/script.js"', "built website script path");
   assertDoesNotInclude(builtWebsite, 'href="./styles.css"', "built website relative stylesheet path");
+  assertDoesNotInclude(builtWebsite, "chatcops", "статическая демонстрация без AI-чата: у неё нет AI runtime");
 
   const demoPreview = spawn(process.execPath, ["scripts/preview-demo.mjs", "--port", demoPort, "--quiet"], {
     env: testEnv,

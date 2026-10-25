@@ -958,6 +958,45 @@
       ],
       "bootstrap": "uv pip sync --offline --no-index --find-links по requirements.lock",
       "offline": true
+    },
+    {
+      "id": "chatcops-widget",
+      "name": "@chatcops/widget",
+      "version": "0.6.0",
+      "kind": "browser-asset",
+      "source": {
+        "package": "https://registry.npmjs.org/@chatcops/widget/-/widget-0.6.0.tgz",
+        "repository": "https://github.com/codercops/chatcops"
+      },
+      "license": "MIT",
+      "licenseFiles": [
+        "vendor/chatcops-widget/LICENSE"
+      ],
+      "path": "vendor/chatcops-widget",
+      "files": [
+        {
+          "path": "vendor/chatcops-widget/LICENSE",
+          "size": 1066,
+          "sha256": "ba542f2b23207db3d138bb0474386b62657f26b6004ddd8e12d966d48d4a3a24"
+        },
+        {
+          "path": "vendor/chatcops-widget/README.md",
+          "size": 4253,
+          "sha256": "42c51e26f1d8efb8463ab99d97dbe22c7433242e2d3ce2b46f542ac980f29b0a"
+        },
+        {
+          "path": "vendor/chatcops-widget/package.json",
+          "size": 1349,
+          "sha256": "c7858afa73e88bc8c89cb46a57f22b465f6722adc344264917a68f7117894ae2"
+        },
+        {
+          "path": "vendor/chatcops-widget/chatcops.min.js",
+          "size": 49158,
+          "sha256": "a3bf7c6d7bbdae41f61fe58bbf93ef65124cf3bb8676e741cfb24ac4d575df17"
+        }
+      ],
+      "bootstrap": "не используется: npm run update:website копирует chatcops.min.js и LICENSE в рабочий сайт (виджет AI-чата)",
+      "offline": true
     }
   ]
 }

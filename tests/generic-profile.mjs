@@ -64,6 +64,19 @@ try {
     assert.match(site, /Новая компания/);
   });
 
+  await check("сайт универсального профиля подключает AI-чат: виджет ChatCops из поставки и лицензия", async () => {
+    const website = path.join(root, "website");
+    const site = await readFile(path.join(website, "index.html"), "utf8");
+    assert.match(site, /<script src="\.\/vendor\/chatcops\/chatcops\.min\.js" defer><\/script><script src="\.\/chat-widget\.js" defer><\/script>/);
+    assert.match(site, /data-chat-open hidden/, "кнопка чата скрыта, пока виджет не загрузился");
+    assert.doesNotMatch(site, /autoOpen|welcomeBubble/);
+    assert.equal(sha(path.join(website, "vendor", "chatcops", "chatcops.min.js")), sha(path.join(repo, "vendor", "chatcops-widget", "chatcops.min.js")));
+    assert.match(readFileSync(path.join(website, "vendor", "chatcops", "LICENSE.txt"), "utf8"), /MIT License[\s\S]*CoderCops/);
+    const widget = readFileSync(path.join(website, "chat-widget.js"), "utf8");
+    assert.match(widget, /apiUrl: "\/api\/chat"/);
+    assert.doesNotMatch(widget, /autoOpen|welcomeBubble/, "чат не всплывает сам");
+  });
+
   await check("офисная база: каталог услуг пуст, клиентов нет", async () => {
     await office("init");
     assert.match(await office("import"), /Каталог: добавлено 0/);

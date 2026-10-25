@@ -258,7 +258,9 @@ try {
     assert.equal(buildLegacyFixture(fixture), 3);
     const legacy = openOfficeDb({ file: fixture });
     try {
-      assert.deepEqual(migrate(legacy).applied, ["004_customer_identity.sql"]);
+      const events = legacy.prepare("SELECT count(*) AS n FROM activity_events").get().n;
+      assert.deepEqual(migrate(legacy).applied, ["004_customer_identity.sql", "005_ai_dispatcher_source.sql"]);
+      assert.equal(legacy.prepare("SELECT count(*) AS n FROM activity_events").get().n, events, "журнал действий сохранён при пересборке");
       assert.deepEqual(legacy.pragma("foreign_key_check"), []);
       assert.equal(legacy.prepare("SELECT count(*) AS n FROM customers").get().n, 2);
       assert.equal(legacy.prepare("SELECT customer_id FROM work_orders WHERE id = 'o-ivan'").get().customer_id, IVAN.id);

@@ -141,7 +141,8 @@ await writeFile(
 );
 
 if (!skipWebsite) {
-  await renderWebsite();
+  // Профиль задан явно: сайт пересобирается из его шаблона, изменённая страница — с резервной копией
+  await renderWebsite({ force: true });
 }
 
 console.log(`Созданы рабочие данные Frontsmith для ${business.businessName}`);

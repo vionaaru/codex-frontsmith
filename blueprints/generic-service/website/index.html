@@ -76,7 +76,7 @@
           <details><summary>Можно изменить объём после согласования?<span aria-hidden="true">+</span></summary><p>Да. Дополнительные работы выполняются только после отдельного согласования с вами.</p></details>
         </div></div>
       </section>
-      <section id="contact" class="section contact-section" aria-labelledby="contact-title"><div class="container"><div class="section-heading"><div><p class="eyebrow section-number">04 / Контакты</p><h2 id="contact-title">Свяжитесь с нами</h2></div></div>
+      <section id="contact" class="section contact-section" aria-labelledby="contact-title"><div class="container"><div class="section-heading"><div><p class="eyebrow section-number">04 / Контакты</p><h2 id="contact-title">Свяжитесь с нами</h2></div><button class="button dark" type="button" data-chat-open hidden><span>Задать вопрос AI</span><span aria-hidden="true">↗</span></button></div>
         <div class="contact-grid"><div><span class="contact-label">Город и адрес</span><p data-frontsmith-text="cityState"></p><p class="contact-muted" data-frontsmith-text="address">Адрес уточняйте перед визитом</p></div><div><span class="contact-label">Режим работы</span><p data-frontsmith-text="hoursLabel">Время работы уточняйте перед визитом</p></div><div><span class="contact-label">Контакты</span><p data-frontsmith-text="phone"></p><p class="contact-muted" data-frontsmith-text="email"></p></div></div>
         <details class="question-panel"><summary>Задать вопрос <span aria-hidden="true">+</span></summary><p>Форма проверяет заполнение локально и ничего не отправляет, пока владелец не настроит доставку заявок.</p>
           <form class="intake-form" data-intake-form data-demo-mode="true" data-frontsmith-attrs="data-fallback-action:emailMailto" data-fallback-action="mailto:" action="/api/contact" method="post" novalidate>
@@ -94,5 +94,6 @@
     </main>
     <footer class="site-footer"><div class="container footer-inner"><a class="footer-brand" href="#top"><img data-frontsmith-attrs="src:logoImage" src="/frontsmith-mark.svg" alt="" width="30" height="30" /><strong data-frontsmith-text="businessName">Новая компания</strong></a><span>Цифровой офис Frontsmith</span><span>© <span data-frontsmith-text="currentYear">2026</span></span></div></footer>
     <script src="./script.js"></script>
+    <!-- frontsmith:chat --><script src="./vendor/chatcops/chatcops.min.js" defer></script><script src="./chat-widget.js" defer></script><!-- /frontsmith:chat -->
   </body>
 </html>
