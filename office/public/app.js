@@ -7,7 +7,7 @@ const state = { meta: null, route: null, results: null, hasData: false, lastOk: 
 // Категории услуг — из словаря бизнес-профиля (/api/meta → vocabulary.serviceCategories)
 const categoryLabels = () => state.meta?.vocabulary?.serviceCategories ?? {};
 const entityLabels = { business: "Профиль", customer: "Клиент", vehicle: "Автомобиль", service: "Услуга", inquiry: "Обращение", work_order: "Заказ", order_item: "Позиция", appointment: "Запись", task: "Задача", database: "База" };
-const eventSources = { cli: "команда CLI", import: "импорт", seed: "учебный набор", migration: "инициализация", panel: "панель" };
+const eventSources = { cli: "команда CLI", import: "импорт", seed: "учебный набор", migration: "инициализация", panel: "панель", ai_dispatcher: "AI-диспетчер сайта" };
 
 // --- DOM ---
 

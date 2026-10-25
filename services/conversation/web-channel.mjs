@@ -3,13 +3,19 @@
 //   POST /api/chat/session   { conversationId, previousToken } → { conversationId, token }
 //   POST /api/chat           Authorization: Bearer <token>, { conversationId, message }
 //                            → text/event-stream: start, text-delta, finish | error
+//   POST /api/chat/booking   Bearer, { conversationId } → { offer } — форма записи, если AI её предложил
+//   POST /api/chat/booking/confirm  Bearer, { conversationId, offerId, start, name, phone, consent }
+//                            → { offer } — контакты идут в CustomerProvider, модели не передаются
 //
 // Посетитель — недоверенный внешний пользователь. Канал принимает только запросы своего
 // сайта (Host и Origin), выдаёт диалог только по его токену, ограничивает размер и частоту
 // запросов и не передаёт модели ничего, кроме текста сообщения: pageContext, locale и
 // userData виджета отбрасываются. В журнал пишутся только события и коды, без текста.
 import { randomUUID } from "node:crypto";
+import { BookingError } from "./booking.mjs";
 import { ConversationError } from "./core.mjs";
+
+const ROUTES = new Set(["/api/chat", "/api/chat/session", "/api/chat/booking", "/api/chat/booking/confirm"]);
 
 export const LIMITS = {
   bodyBytes: 16 * 1024,
@@ -18,6 +24,7 @@ export const LIMITS = {
   sessionsPerIp: [10 * 60_000, 10],
   messagesPerConversation: [60_000, 6],
   messagesPerIp: [60 * 60_000, 60],
+  bookingsPerConversation: [10 * 60_000, 8],
   concurrentTurns: 3,
   keepaliveMs: 10_000
 };
@@ -34,11 +41,13 @@ const ERRORS = {
 };
 
 class ChannelError extends Error {
-  constructor(status, code, message, retryAfterMs) {
+  // extra — дополнительные поля ответа (например, актуальная форма записи)
+  constructor(status, code, message, retryAfterMs, extra = {}) {
     super(message);
     this.status = status;
     this.code = code;
     this.retryAfterMs = retryAfterMs;
+    this.extra = extra;
   }
 }
 
@@ -69,7 +78,8 @@ class RateLimiter {
 
 // allowedHosts — значения Host, под которыми сайт открыт локально (защита от DNS rebinding);
 // Origin, если браузер его прислал, должен совпадать с http://<Host>
-export function createWebChannel({ core, allowedHosts, limits = LIMITS, now = () => Date.now(), log = () => {} }) {
+// booking — BookingDesk или null, если запись через чат не подключена
+export function createWebChannel({ core, booking = null, allowedHosts, limits = LIMITS, now = () => Date.now(), log = () => {} }) {
   const limiter = new RateLimiter(now);
   let turnsInFlight = 0;
 
@@ -124,10 +134,43 @@ export function createWebChannel({ core, allowedHosts, limits = LIMITS, now = ()
     json(res, 200, { conversationId: created.id, token: created.token });
   }
 
-  async function chat(req, res, ip) {
-    const body = await readJson(req);
+  function authorized(req, body) {
     const conversation = core.authorize(body.conversationId, bearer(req));
     if (!conversation) throw new ChannelError(401, "session_required", "Нужен токен диалога");
+    return conversation;
+  }
+
+  // Состояние формы записи: только услуга, время и варианты, без контактов
+  async function bookingState(req, res) {
+    const conversation = authorized(req, await readJson(req));
+    json(res, 200, { offer: booking ? await booking.pending(conversation.id) : null });
+  }
+
+  // Подтверждение записи посетителем. Контакты не попадают в журнал и в ответ
+  async function bookingConfirm(req, res) {
+    const body = await readJson(req);
+    const conversation = authorized(req, body);
+    if (!booking) throw new ChannelError(404, "booking_unavailable", "Запись через чат не подключена");
+    limit(`booking:${conversation.id}`, limits.bookingsPerConversation);
+    const text = (value, max) => (typeof value === "string" ? value.trim().slice(0, max + 1) : "");
+    const name = text(body.name, 200);
+    const phone = text(body.phone, 40);
+    if (!name || name.length > 200) throw new ChannelError(400, "invalid_contact", "Укажите имя");
+    if (!phone || phone.length > 40) throw new ChannelError(400, "invalid_contact", "Укажите телефон");
+    try {
+      const offer = await booking.confirm(conversation.id, { offerId: String(body.offerId ?? ""), start: typeof body.start === "string" ? body.start : undefined, name, phone, consent: body.consent === true });
+      json(res, 200, { offer });
+    } catch (error) {
+      if (!(error instanceof BookingError)) throw error;
+      log({ event: "booking_rejected", conversation: conversation.id, code: error.code });
+      const offer = error.code === "slot_unavailable" ? await booking.pending(conversation.id) : null;
+      throw new ChannelError(error.status, error.code, error.message, undefined, offer ? { offer } : {});
+    }
+  }
+
+  async function chat(req, res, ip) {
+    const body = await readJson(req);
+    const conversation = authorized(req, body);
     if (body.regenerate) throw new ChannelError(400, "invalid_request", "Повторная генерация не поддерживается");
     const text = typeof body.message === "string" ? body.message.trim() : "";
     if (!text) throw new ChannelError(400, "invalid_request", "Пустое сообщение");
@@ -162,11 +205,13 @@ export function createWebChannel({ core, allowedHosts, limits = LIMITS, now = ()
 
   // true — запрос относится к каналу и обработан
   async function handle(req, res, pathname) {
-    if (pathname !== "/api/chat" && pathname !== "/api/chat/session") return false;
+    if (!ROUTES.has(pathname)) return false;
     const ip = req.socket.remoteAddress ?? "unknown";
     try {
       checkRequest(req);
       if (pathname === "/api/chat/session") await session(req, res, ip);
+      else if (pathname === "/api/chat/booking") await bookingState(req, res);
+      else if (pathname === "/api/chat/booking/confirm") await bookingConfirm(req, res);
       else await chat(req, res, ip);
     } catch (error) {
       if (res.headersSent) {
@@ -176,7 +221,7 @@ export function createWebChannel({ core, allowedHosts, limits = LIMITS, now = ()
       const channel = error instanceof ChannelError ? error : new ChannelError(500, "internal_error", "Ошибка канала");
       if (!(error instanceof ChannelError)) log({ event: "channel_error", code: error.code ?? "internal_error" });
       else if (channel.status === 429) log({ event: "rate_limited", path: pathname });
-      json(res, channel.status, { error: { code: channel.code, message: channel.message, ...(channel.retryAfterMs ? { retryAfterMs: channel.retryAfterMs } : {}) } },
+      json(res, channel.status, { error: { code: channel.code, message: channel.message, ...(channel.retryAfterMs ? { retryAfterMs: channel.retryAfterMs } : {}) }, ...(channel.extra ?? {}) },
         channel.retryAfterMs ? { "retry-after": String(Math.ceil(channel.retryAfterMs / 1000)) } : {});
     }
     return true;
@@ -189,7 +234,7 @@ export function createWebChannel({ core, allowedHosts, limits = LIMITS, now = ()
 export function unavailableWebChannel() {
   return {
     async handle(req, res, pathname) {
-      if (pathname !== "/api/chat" && pathname !== "/api/chat/session") return false;
+      if (!ROUTES.has(pathname)) return false;
       json(res, 503, { error: { code: "provider_unavailable", message: "AI-помощник не запущен: используйте npm run frontsmith" } });
       return true;
     }

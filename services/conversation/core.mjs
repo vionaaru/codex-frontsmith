@@ -7,9 +7,10 @@
 // перезапуска Frontsmith thread возобновляется через thread/resume). Ход диалога один за
 // другим: второй ход до завершения первого отклоняется (conversation_busy).
 //
-// Публичные диалоги открываются без инструментов Host (tools: []): CRM и другие
-// привилегированные инструменты оператора посетителю недоступны. Бизнес-инструменты
-// (запись на услугу) добавляются сюда явным списком.
+// Публичные диалоги открываются только с явным списком инструментов Host (tools): CRM и
+// другие привилегированные инструменты оператора посетителю недоступны. Набор фиксируется
+// при открытии thread и сохраняется в хранилище: thread/resume инструменты thread не меняет,
+// поэтому диалог продолжается с тем набором, с которым начат.
 import { PrivacyProcessingError } from "../codex-host/privacy-client.mjs";
 
 export class ConversationError extends Error {
@@ -30,7 +31,8 @@ export class ConversationCore {
   #busy = new Set();
 
   // host() — текущий CodexHost или null, если AI runtime не запущен;
-  // context() — публичные сведения о компании для developerInstructions
+  // context({ booking }) — публичные сведения о компании и правила для developerInstructions;
+  // tools — инструменты Host для новых диалогов (например, BOOKING_TOOLS)
   constructor({ store, host, context, tenantId = "public-web", tools = [], log = () => {} }) {
     this.#store = store;
     this.#host = host;
@@ -92,7 +94,8 @@ export class ConversationCore {
   async #attach(host, row) {
     const live = this.#live.get(row.id);
     if (live?.host === host) return live.handle;
-    const context = await this.#context();
+    const tools = row.codex_thread_id ? this.#store.tools(row) : this.#tools;
+    const context = await this.#context({ booking: tools.length > 0 });
     let opened;
     if (row.codex_thread_id) {
       opened = await host.resumeConversation({
@@ -100,13 +103,13 @@ export class ConversationCore {
         privacySessionId: row.privacy_session_id,
         threadId: row.codex_thread_id,
         modelInstructions: row.model_instructions ?? "",
-        tools: this.#tools,
+        tools,
         context
       });
       this.#log({ event: "conversation_resumed", conversation: row.id });
     } else {
-      opened = await host.openConversation({ tenantId: row.tenant_id, ephemeral: false, tools: this.#tools, context });
-      this.#store.bind(row.id, opened);
+      opened = await host.openConversation({ tenantId: row.tenant_id, ephemeral: false, tools, context });
+      this.#store.bind(row.id, { ...opened, tools });
     }
     this.#live.set(row.id, { host, handle: opened.conversationId });
     return opened.conversationId;

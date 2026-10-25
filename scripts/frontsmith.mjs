@@ -33,7 +33,8 @@ import { codexAuthStatus, startAiRuntime } from "../services/codex-host/ai-runti
 import { getCustomerContextTool } from "../services/codex-host/tools/customer-context.mjs";
 import { ConversationCore } from "../services/conversation/core.mjs";
 import { ConversationStore } from "../services/conversation/store.mjs";
-import { loadPublicBusinessContext } from "../services/conversation/business-context.mjs";
+import { loadBusinessProfile, loadPublicBusinessContext } from "../services/conversation/business-context.mjs";
+import { BOOKING_TOOLS, BookingDesk } from "../services/conversation/booking.mjs";
 import { createWebChannel } from "../services/conversation/web-channel.mjs";
 import { foreignCrmLinks, inspectInstallation } from "./lib/installation.mjs";
 import { previewWebsiteRoot } from "./lib/paths.mjs";
@@ -42,7 +43,7 @@ import { createWebsiteServer } from "./lib/website-server.mjs";
 const host = "127.0.0.1";
 const verbose = process.env.FRONTSMITH_VERBOSE === "1";
 const status = { office: "not_ready", crm: "not_ready", privacy: "not_ready", codex: "not_ready", customers: "not_ready", site: "not_ready" };
-const components = { office: null, ai: null, aiDb: null, privacy: null, crm: null, site: null, conversations: null };
+const components = { office: null, ai: null, aiDb: null, privacy: null, crm: null, site: null, conversations: null, booking: null };
 let stopping = false;
 
 class StartError extends Error {
@@ -112,12 +113,17 @@ async function start() {
   const paths = runtimePaths(install.dataRoot);
   const crmData = crmPaths(install.dataRoot);
   const auth = codexAuthStatus({ forbiddenRoots: [paths.runtime, paths.stateDir, crmData.dataDir, crmData.runtime] });
+  // Диалоги сайта (привязка к thread, предложения записи) — в каталоге данных
+  components.conversations = new ConversationStore();
   if (auth.state === "ready") {
     try {
-      // Доверенный инструмент клиента: CustomerProvider → Privacy Service → Codex
+      // Доверенный инструмент клиента: CustomerProvider → Privacy Service → Codex.
+      // Запись на услугу из диалога сайта — на том же соединении с офисной базой и CRM
       components.aiDb = registerFunctions(openOfficeDb());
       const provider = assertCustomerProvider(new CrmkitProvider({ db: components.aiDb, client: crm.client, workspaceId: crm.workspaceId }));
-      components.ai = await startAiRuntime({ crm, privacyService: privacy, tools: [getCustomerContextTool(provider)] });
+      const booking = new BookingDesk({ db: components.aiDb, provider, store: components.conversations, profile: loadBusinessProfile, log: verbose ? (entry) => console.log(`chat: ${JSON.stringify(entry)}`) : undefined });
+      components.ai = await startAiRuntime({ crm, privacyService: privacy, tools: [getCustomerContextTool(provider), ...booking.tools()] });
+      components.booking = booking;
       status.codex = "ready";
       console.log(`✓ Codex: ${components.ai.codexVersion}, App Server на stdio, вход ChatGPT`);
       components.ai.client.process?.once("exit", () => {
@@ -166,14 +172,15 @@ async function start() {
   try {
     const wanted = Number(process.env.FRONTSMITH_SITE_PORT ?? 4173);
     const sitePort = (await portFree(wanted)) ? wanted : await freePort();
-    components.conversations = new ConversationStore();
+    // Публичный диалог получает только инструменты записи; CRM-инструмент оператора — нет
     const core = new ConversationCore({
       store: components.conversations,
       host: () => (status.codex === "ready" ? components.ai.host : null),
       context: loadPublicBusinessContext,
+      tools: components.booking ? BOOKING_TOOLS : [],
       log: verbose ? (entry) => console.log(`chat: ${JSON.stringify(entry)}`) : undefined
     });
-    const chat = createWebChannel({ core, allowedHosts: new Set([`${host}:${sitePort}`, `localhost:${sitePort}`]) });
+    const chat = createWebChannel({ core, booking: components.booking, allowedHosts: new Set([`${host}:${sitePort}`, `localhost:${sitePort}`]) });
     const site = createWebsiteServer({ root: () => path.resolve(previewWebsiteRoot()), port: sitePort, chat });
     await new Promise((resolve, reject) => {
       site.once("error", reject);

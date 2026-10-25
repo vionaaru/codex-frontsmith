@@ -1,0 +1,63 @@
+{
+  "businessName": "Демо-студия записи",
+  "businessType": "Сервисная компания",
+  "demoMode": true,
+  "blueprint": "generic-service",
+  "brandTagline": "Демонстрация записи через AI",
+  "tagline": "Запишитесь на услугу в разговоре с AI-помощником",
+  "summary": "Учебная компания для проверки записи через AI-чат: услуги, цены и расписание — примеры",
+  "websiteUrl": "http://localhost:4173",
+  "bookingLabel": "Записаться",
+  "currency": "RUB",
+  "timeZone": "Europe/Moscow",
+  "serviceAreas": [],
+  "contact": {
+    "phone": "+7 000 000-00-00",
+    "email": "demo@example.test",
+    "city": "Москва",
+    "state": "",
+    "address": "Адрес — пример"
+  },
+  "hours": {
+    "label": "Пн–Сб · 10:00–19:00",
+    "days": [1, 2, 3, 4, 5, 6],
+    "start": "10:00",
+    "end": "19:00",
+    "weekend": "Воскресенье — выходной"
+  },
+  "booking": {
+    "enabled": true,
+    "autoConfirm": true,
+    "slotStepMinutes": 30,
+    "defaultDurationMinutes": 60,
+    "minNoticeMinutes": 60,
+    "horizonDays": 14
+  },
+  "brandVoice": "Спокойно, конкретно и уважительно. Не обещать цену и результат без согласования.",
+  "pricingPolicy": {
+    "mode": "reference",
+    "note": "Цены — учебные примеры.",
+    "ownerApprovedForLiveQuotes": false
+  },
+  "services": [
+    { "id": "consultation", "name": "Консультация", "category": "consultation", "priceFrom": 1500, "durationMinutes": 60, "description": "Разбор задачи и план работ" },
+    { "id": "express", "name": "Экспресс-услуга", "category": "service", "priceFrom": 800, "durationMinutes": 30, "description": "Короткая услуга по записи" },
+    { "id": "full-service", "name": "Полное обслуживание", "category": "service", "priceFrom": 5000, "durationMinutes": 120, "description": "Обслуживание полного объёма" }
+  ],
+  "media": {
+    "logoImage": "/frontsmith-mark.svg",
+    "heroImage": "/assets/acme-contact-planning.jpg",
+    "heroImageAlt": "Обсуждение задачи с клиентом",
+    "socialImage": "/assets/acme-contact-planning.jpg"
+  },
+  "approvalPolicy": {
+    "ownerApprovalRequiredForLiveActions": true,
+    "liveActionsDefault": "disabled"
+  },
+  "integrations": {
+    "booking": { "status": "not_configured", "localImportEnabled": false },
+    "email": { "status": "disabled" },
+    "calendar": { "status": "not_connected" },
+    "neura": { "status": "not_connected" }
+  }
+}

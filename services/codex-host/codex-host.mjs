@@ -263,7 +263,7 @@ export class CodexHost {
     turn.toolCalls.push(name);
     if (!conversation || !tool || !conversation.tools.has(name)) return { contentItems: [{ type: "inputText", text: "unknown_tool" }], success: false };
     try {
-      const raw = await tool.handler(args ?? {}, { tenantId: conversation.tenantId });
+      const raw = await tool.handler(args ?? {}, { tenantId: conversation.tenantId, threadId });
       const prepared = await this.#privacy.prepare({
         tenantId: conversation.tenantId,
         privacySessionId: conversation.privacySessionId,

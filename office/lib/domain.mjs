@@ -226,7 +226,8 @@ export function zonedDayRange(now, timeZone) {
   return { start: start.toISOString(), end: end.toISOString(), date: `${parts.year}-${parts.month}-${parts.day}` };
 }
 
-function zonedTime(year, month, day, hour, minute, timeZone) {
+// Локальное время timeZone → Date (UTC); устойчиво к переходам на летнее время
+export function zonedTime(year, month, day, hour, minute, timeZone) {
   const guess = Date.UTC(year, month - 1, day, hour, minute);
   const offset = timeZoneOffsetMs(new Date(guess), timeZone);
   const candidate = new Date(guess - offset);

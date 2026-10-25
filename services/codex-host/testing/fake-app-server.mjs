@@ -27,7 +27,15 @@ async function runTurn(threadId, turnId, text) {
   send({ method: "turn/started", params: { threadId, turn: { id: turnId, status: "inProgress", items: [] } } });
   let answer;
   const contextCall = /get_customer_context client_id=([0-9a-f-]{36})/.exec(text);
-  if (contextCall) {
+  // «call <инструмент> <JSON-аргументы>» — вызов любого инструмента Host; ответ модели — его результат
+  const anyCall = /call ([a-z_]+) (\{.*\})/.exec(text);
+  if (anyCall) {
+    const result = await serverRequest("item/tool/call", { threadId, turnId, callId: `call-${turnId}`, namespace: null, tool: anyCall[1], arguments: JSON.parse(anyCall[2]) });
+    const output = result.contentItems.map((item) => item.text).join("\n");
+    record({ kind: "tool_output", threadId, tool: anyCall[1], text: output, success: result.success });
+    thread.history.push(output);
+    answer = result.success ? output : "Инструмент недоступен";
+  } else if (contextCall) {
     const result = await serverRequest("item/tool/call", { threadId, turnId, callId: `call-${turnId}`, namespace: null, tool: "get_customer_context", arguments: { client_id: contextCall[1] } });
     const output = result.contentItems.map((item) => item.text).join("\n");
     record({ kind: "tool_output", threadId, text: output, success: result.success });
