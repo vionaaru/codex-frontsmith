@@ -46,7 +46,7 @@
     "office:restore": "node scripts/office.mjs restore",
     "backups:relocate": "node scripts/backups-relocate.mjs",
     "office:serve": "node office/server.mjs",
-    "test": "npm run test:launch && npm run test:regression && npm run test:office && npm run test:install && npm run test:codex-host",
+    "test": "npm run test:launch && npm run test:regression && npm run test:office && npm run test:install && npm run test:codex-host && npm run test:conversation",
     "test:launch": "node tests/launch-readiness.mjs",
     "test:regression": "node tests/regression.mjs",
     "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs && node tests/generic-profile.mjs && node tests/profile-vocabulary.mjs",
@@ -68,7 +68,8 @@
     "crm:migrate-customers": "node scripts/crm-migrate-customers.mjs",
     "test:crm": "node tests/crm-live.mjs",
     "test:first-run": "node tests/first-run.mjs",
-    "smoke:crm-codex": "node services/codex-host/smoke-customer.mjs"
+    "smoke:crm-codex": "node services/codex-host/smoke-customer.mjs",
+    "test:conversation": "node tests/conversation.mjs"
   },
   "engines": {
     "node": ">=20"
