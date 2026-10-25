@@ -297,9 +297,12 @@ try {
     core.handoff(visitor.conversationId, "test");
     const before = (await current.received()).filter((entry) => entry.kind === "turn_start").length;
     const response = await chat(await startSite({ core }), visitor, "Ещё вопрос");
-    assert.equal(response.error.code, "conversation_busy");
+    assert.equal(response.status, 200);
+    assert.equal(response.error, undefined);
+    assert.equal(response.answer, "", "AI не отвечает, сообщение ждёт сотрудника");
     assert.equal((await current.received()).filter((entry) => entry.kind === "turn_start").length, before);
     assert.equal(store.get(visitor.conversationId).status, "needs_human");
+    assert.equal(store.messages(visitor.conversationId).at(-1).text, "Ещё вопрос");
   });
 
   await check("предпросмотр сайта без AI runtime: чат честно сообщает о недоступности", async () => {

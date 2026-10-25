@@ -17,7 +17,7 @@ const BASE_RULES = [
 ];
 
 const NO_BOOKING_RULES = [
-  "Ты пока не можешь записать на услугу, оформить заказ или передать разговор сотруднику. Не говори, что запись создана или что сотрудник свяжется. Предложи записаться или позвонить по контактам компании."
+  "Ты пока не можешь записать на услугу или оформить заказ. Не говори, что запись создана. Предложи записаться или позвонить по контактам компании."
 ];
 
 // Диалог с инструментами find_booking_slots, offer_booking и get_booking_status
@@ -26,7 +26,17 @@ const BOOKING_RULES = [
   "Называй только свободное время, которое вернул find_booking_slots. Если времени нет или расписание не настроено, так и скажи и предложи связаться с компанией.",
   "Не проси имя, телефон и другие контакты в чате: посетитель вводит их в форме записи.",
   "Говори, что посетитель записан, только если get_booking_status вернул confirmed. Если requested — запрос принят, а время компания подтвердит отдельно. Если форма не отправлена или запись не удалась, не утверждай обратного.",
-  "Ты не можешь оформить заказ и передать разговор сотруднику. Не говори, что сотрудник уже подключился."
+  "Ты не можешь оформить заказ."
+];
+
+// Диалог с инструментом request_human
+const HANDOFF_RULES = [
+  "Передай разговор сотруднику инструментом request_human, если посетитель просит человека, если ты не можешь достоверно ответить, при проблеме с записью, жалобе или запросе, который ты не вправе решать. В reason — коротко суть, без имён и телефонов.",
+  "Говори, что разговор передан сотруднику, только если request_human вернул handoff_saved. Не обещай мгновенный ответ и не говори, что сотрудник уже подключился."
+];
+
+const NO_HANDOFF_RULES = [
+  "Ты не можешь сам передать разговор сотруднику. Если посетитель просит человека, предложи нажать кнопку «Позвать сотрудника» в чате или связаться по контактам компании. Не говори, что сотрудник уже подключился."
 ];
 
 function line(label, value) {
@@ -44,7 +54,8 @@ function serviceLine(service, currency) {
 }
 
 // profile — business.json; services — каталог, как на сайте; booking — у диалога есть инструменты записи
-export function publicBusinessContext(profile, services = profile.services ?? [], { booking = false } = {}) {
+// handoff — у диалога есть инструмент request_human
+export function publicBusinessContext(profile, services = profile.services ?? [], { booking = false, handoff = false } = {}) {
   const contact = profile.contact ?? {};
   const facts = [
     line("Компания", profile.businessName),
@@ -65,7 +76,7 @@ export function publicBusinessContext(profile, services = profile.services ?? []
   ].filter(Boolean);
   const active = services.filter((service) => service?.name);
   return [
-    [...BASE_RULES, ...(booking ? BOOKING_RULES : NO_BOOKING_RULES)].join("\n"),
+    [...BASE_RULES, ...(booking ? BOOKING_RULES : NO_BOOKING_RULES), ...(handoff ? HANDOFF_RULES : NO_HANDOFF_RULES)].join("\n"),
     profile.brandVoice ? `Тон компании: ${profile.brandVoice}` : null,
     `Сведения о компании (опубликованы на сайте):\n${facts.join("\n")}`,
     active.length ? `Услуги:\n${active.map((service) => serviceLine(service, profile.currency)).join("\n")}` : "Список услуг на сайте пока не заполнен."
@@ -77,8 +88,8 @@ export async function loadBusinessProfile() {
   return JSON.parse(await readFile(businessPath("business.json"), "utf8"));
 }
 
-export async function loadPublicBusinessContext({ booking = false } = {}) {
+export async function loadPublicBusinessContext({ booking = false, handoff = false } = {}) {
   const profile = await loadBusinessProfile();
   const catalog = await loadServiceCatalog(profile);
-  return publicBusinessContext(profile, catalog.services, { booking });
+  return publicBusinessContext(profile, catalog.services, { booking, handoff });
 }

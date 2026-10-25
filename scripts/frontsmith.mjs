@@ -31,7 +31,7 @@ import { crmPaths, ensureCrm, freePort } from "../services/crm/runtime.mjs";
 import { runtimePaths, startPrivacyService } from "../services/privacy/runtime.mjs";
 import { codexAuthStatus, startAiRuntime } from "../services/codex-host/ai-runtime.mjs";
 import { getCustomerContextTool } from "../services/codex-host/tools/customer-context.mjs";
-import { ConversationCore } from "../services/conversation/core.mjs";
+import { ConversationCore, HANDOFF_TOOL } from "../services/conversation/core.mjs";
 import { ConversationStore } from "../services/conversation/store.mjs";
 import { loadBusinessProfile, loadPublicBusinessContext } from "../services/conversation/business-context.mjs";
 import { BOOKING_TOOLS, BookingDesk } from "../services/conversation/booking.mjs";
@@ -113,16 +113,30 @@ async function start() {
   const paths = runtimePaths(install.dataRoot);
   const crmData = crmPaths(install.dataRoot);
   const auth = codexAuthStatus({ forbiddenRoots: [paths.runtime, paths.stateDir, crmData.dataDir, crmData.runtime] });
-  // Диалоги сайта (привязка к thread, предложения записи) — в каталоге данных
+  // Диалоги сайта (привязка к thread, переписка, предложения записи) — в каталоге данных.
+  // Переписка хранится ограниченный срок: conversations.retentionDays в business.json, по умолчанию 90
   components.conversations = new ConversationStore();
+  const retentionDays = Number((await loadBusinessProfile().catch(() => ({})))?.conversations?.retentionDays ?? 90);
+  const purged = components.conversations.purge({ days: Number.isFinite(retentionDays) && retentionDays > 0 ? retentionDays : 90 });
+  if (purged.conversations) console.log(`✓ Диалоги сайта: удалено по сроку хранения ${purged.conversations}`);
+  const chatLog = verbose ? (entry) => console.log(`chat: ${JSON.stringify(entry)}`) : undefined;
+  // Ядро диалогов создаётся до AI runtime: его инструмент request_human регистрируется в Host.
+  // Публичный диалог получает только инструменты записи и передачи человеку; CRM-инструмент оператора — нет
+  const core = new ConversationCore({
+    store: components.conversations,
+    host: () => (status.codex === "ready" ? components.ai.host : null),
+    context: loadPublicBusinessContext,
+    log: chatLog
+  });
   if (auth.state === "ready") {
     try {
       // Доверенный инструмент клиента: CustomerProvider → Privacy Service → Codex.
       // Запись на услугу из диалога сайта — на том же соединении с офисной базой и CRM
       components.aiDb = registerFunctions(openOfficeDb());
       const provider = assertCustomerProvider(new CrmkitProvider({ db: components.aiDb, client: crm.client, workspaceId: crm.workspaceId }));
-      const booking = new BookingDesk({ db: components.aiDb, provider, store: components.conversations, profile: loadBusinessProfile, log: verbose ? (entry) => console.log(`chat: ${JSON.stringify(entry)}`) : undefined });
-      components.ai = await startAiRuntime({ crm, privacyService: privacy, tools: [getCustomerContextTool(provider), ...booking.tools()] });
+      const booking = new BookingDesk({ db: components.aiDb, provider, store: components.conversations, profile: loadBusinessProfile, log: chatLog });
+      components.ai = await startAiRuntime({ crm, privacyService: privacy, tools: [getCustomerContextTool(provider), ...booking.tools(), core.handoffTool()] });
+      core.setTools([...BOOKING_TOOLS, HANDOFF_TOOL]);
       components.booking = booking;
       status.codex = "ready";
       console.log(`✓ Codex: ${components.ai.codexVersion}, App Server на stdio, вход ChatGPT`);
@@ -149,7 +163,8 @@ async function start() {
       provider: assertCustomerProvider(new CrmkitProvider({ db: conn, client: crm.client, workspaceId: crm.workspaceId })),
       crm: { exited: crm.exited },
       stop: async () => {}
-    })
+    }),
+    inbox: core
   });
   await new Promise((resolve, reject) => {
     office.server.once("error", (error) => reject(new StartError(error.code === "EADDRINUSE" ? "OFFICE_PORT_BUSY" : "OFFICE_NOT_READY", error.message)));
@@ -172,14 +187,6 @@ async function start() {
   try {
     const wanted = Number(process.env.FRONTSMITH_SITE_PORT ?? 4173);
     const sitePort = (await portFree(wanted)) ? wanted : await freePort();
-    // Публичный диалог получает только инструменты записи; CRM-инструмент оператора — нет
-    const core = new ConversationCore({
-      store: components.conversations,
-      host: () => (status.codex === "ready" ? components.ai.host : null),
-      context: loadPublicBusinessContext,
-      tools: components.booking ? BOOKING_TOOLS : [],
-      log: verbose ? (entry) => console.log(`chat: ${JSON.stringify(entry)}`) : undefined
-    });
     const chat = createWebChannel({ core, booking: components.booking, allowedHosts: new Set([`${host}:${sitePort}`, `localhost:${sitePort}`]) });
     const site = createWebsiteServer({ root: () => path.resolve(previewWebsiteRoot()), port: sitePort, chat });
     await new Promise((resolve, reject) => {

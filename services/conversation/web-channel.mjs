@@ -6,6 +6,9 @@
 //   POST /api/chat/booking   Bearer, { conversationId } → { offer } — форма записи, если AI её предложил
 //   POST /api/chat/booking/confirm  Bearer, { conversationId, offerId, start, name, phone, consent }
 //                            → { offer } — контакты идут в CustomerProvider, модели не передаются
+//   POST /api/chat/handoff   Bearer, { conversationId } → { status } — кнопка «Позвать сотрудника», без модели
+//   POST /api/chat/messages  Bearer, { conversationId, after } → { status, messages } — ответы сотрудника
+//                            и уведомления системы после seq; свои сообщения и ответы AI виджет уже показал
 //
 // Посетитель — недоверенный внешний пользователь. Канал принимает только запросы своего
 // сайта (Host и Origin), выдаёт диалог только по его токену, ограничивает размер и частоту
@@ -15,7 +18,7 @@ import { randomUUID } from "node:crypto";
 import { BookingError } from "./booking.mjs";
 import { ConversationError } from "./core.mjs";
 
-const ROUTES = new Set(["/api/chat", "/api/chat/session", "/api/chat/booking", "/api/chat/booking/confirm"]);
+const ROUTES = new Set(["/api/chat", "/api/chat/session", "/api/chat/booking", "/api/chat/booking/confirm", "/api/chat/handoff", "/api/chat/messages"]);
 
 export const LIMITS = {
   bodyBytes: 16 * 1024,
@@ -25,6 +28,9 @@ export const LIMITS = {
   messagesPerConversation: [60_000, 6],
   messagesPerIp: [60 * 60_000, 60],
   bookingsPerConversation: [10 * 60_000, 8],
+  handoffsPerConversation: [10 * 60_000, 5],
+  // виджет опрашивает новые сообщения раз в несколько секунд
+  feedPerConversation: [60_000, 60],
   concurrentTurns: 3,
   keepaliveMs: 10_000
 };
@@ -168,6 +174,24 @@ export function createWebChannel({ core, booking = null, allowedHosts, limits = 
     }
   }
 
+  // Кнопка «Позвать сотрудника»: передача сохраняется до ответа, модель не участвует
+  async function handoff(req, res) {
+    const conversation = authorized(req, await readJson(req));
+    limit(`handoff:${conversation.id}`, limits.handoffsPerConversation);
+    const result = core.handoff(conversation.id, "Посетитель нажал «Позвать сотрудника»", { by: "visitor" });
+    json(res, 200, { status: result.status });
+  }
+
+  // Новые сообщения сотрудника и системы для виджета; повтор с тем же after возвращает
+  // те же сообщения, виджет отбрасывает уже показанные по seq
+  async function feed(req, res) {
+    const body = await readJson(req);
+    const conversation = authorized(req, body);
+    limit(`feed:${conversation.id}`, limits.feedPerConversation);
+    const after = Number.isInteger(body.after) && body.after >= 0 ? body.after : 0;
+    json(res, 200, core.visitorFeed(conversation.id, after));
+  }
+
   async function chat(req, res, ip) {
     const body = await readJson(req);
     const conversation = authorized(req, body);
@@ -189,7 +213,8 @@ export function createWebChannel({ core, booking = null, allowedHosts, limits = 
     try {
       const answer = await core.reply(conversation.id, text);
       part({ type: "start", protocol: 1, conversationId: conversation.id, messageId });
-      part({ type: "text-delta", id: messageId, delta: answer.text || "Ответ пустой. Попробуйте переформулировать вопрос." });
+      // Разговор ведёт сотрудник: сообщение сохранено для него, ответа AI нет
+      if (answer.text || !answer.handoff) part({ type: "text-delta", id: messageId, delta: answer.text || "Ответ пустой. Попробуйте переформулировать вопрос." });
       part({ type: "finish", reason: "stop" });
     } catch (error) {
       const [, code, message] = ERRORS[error instanceof ConversationError ? error.code : "ai_failed"] ?? ERRORS.ai_failed;
@@ -212,6 +237,8 @@ export function createWebChannel({ core, booking = null, allowedHosts, limits = 
       if (pathname === "/api/chat/session") await session(req, res, ip);
       else if (pathname === "/api/chat/booking") await bookingState(req, res);
       else if (pathname === "/api/chat/booking/confirm") await bookingConfirm(req, res);
+      else if (pathname === "/api/chat/handoff") await handoff(req, res);
+      else if (pathname === "/api/chat/messages") await feed(req, res);
       else await chat(req, res, ip);
     } catch (error) {
       if (res.headersSent) {

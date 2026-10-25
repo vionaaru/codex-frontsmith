@@ -1,10 +1,14 @@
 // Состояние диалогов Conversation Module: <каталог данных>/conversations/conversations.sqlite.
 // Вне репозитория и рабочей области Codex, как CRM и состояние Privacy Service.
 //
-// Хранится только привязка диалога: канал, хэш токена посетителя, статус, thread Codex,
-// privacy-session, набор инструментов thread, client_id и счётчики. Текст сообщений здесь не
-// хранится: видимую историю держит канал (виджет — в браузере посетителя), контекст модели —
-// thread Codex, где ПД заменены тегами <PII .../>. Контакты клиента — только в CustomerProvider.
+// conversations — привязка диалога: канал, хэш токена посетителя, статус и причина передачи
+// человеку, thread Codex, privacy-session, набор инструментов thread, client_id и счётчики.
+//
+// conversation_messages — видимая переписка для оператора и посетителя: сообщения посетителя,
+// ответы AI в том виде, в каком их видел посетитель, ответы сотрудника и уведомления системы.
+// Внутренних инструкций, сообщений инструментов и данных моделей здесь нет: контекст модели —
+// отдельно, в thread Codex, где ПД заменены тегами <PII .../>. Контакты из формы записи сюда
+// не пишутся: они только в CustomerProvider. Срок хранения ограничен: purge().
 //
 // booking_offers — предложения записи, которые посетитель подтверждает в форме канала:
 // услуга, время и результат (обращение и запись офиса). Без имён и телефонов.
@@ -54,12 +58,30 @@ CREATE TABLE IF NOT EXISTS booking_offers (
 );
 
 CREATE INDEX IF NOT EXISTS booking_offers_conversation_idx ON booking_offers (conversation_id, created_at);
+
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  seq INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id TEXT NOT NULL REFERENCES conversations (id),
+  role TEXT NOT NULL CHECK (role IN ('visitor', 'assistant', 'operator', 'system')),
+  text TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS conversation_messages_idx ON conversation_messages (conversation_id, seq);
 `;
+
+export const MESSAGE_ROLES = ["visitor", "assistant", "operator", "system"];
 
 // Столбцы, добавленные после первой версии хранилища
 const COLUMNS = [
   ["tools", "TEXT"],
-  ["client_id", "TEXT"]
+  ["client_id", "TEXT"],
+  // кто передал диалог человеку: ai, visitor или operator
+  ["handoff_by", "TEXT"],
+  ["handoff_at", "TEXT"],
+  ["last_message_at", "TEXT"],
+  // последнее сообщение, которое уже видела модель: остальные она получит в следующем ходе
+  ["ai_synced_seq", "INTEGER NOT NULL DEFAULT 0"]
 ];
 
 const hashToken = (token) => createHash("sha256").update(String(token), "utf8").digest();
@@ -161,10 +183,61 @@ export class ConversationStore {
       .run(error, this.#now().toISOString(), id);
   }
 
-  setStatus(id, status, reason = null) {
+  // by — для needs_human: кто передал диалог человеку
+  setStatus(id, status, reason = null, { by = null } = {}) {
     if (!CONVERSATION_STATUSES.includes(status)) throw new Error(`unknown conversation status: ${status}`);
-    this.#db.prepare("UPDATE conversations SET status = ?, status_reason = ?, updated_at = ? WHERE id = ?")
-      .run(status, reason, this.#now().toISOString(), id);
+    const at = this.#now().toISOString();
+    this.#db.prepare("UPDATE conversations SET status = ?, status_reason = ?, handoff_by = ?, handoff_at = ?, updated_at = ? WHERE id = ?")
+      .run(status, reason, status === "needs_human" ? by : null, status === "needs_human" ? at : null, at, id);
+  }
+
+  addMessage(conversationId, role, text) {
+    if (!MESSAGE_ROLES.includes(role)) throw new Error(`unknown message role: ${role}`);
+    const at = this.#now().toISOString();
+    return this.#db.transaction(() => {
+      const { lastInsertRowid } = this.#db.prepare("INSERT INTO conversation_messages (conversation_id, role, text, created_at) VALUES (?, ?, ?, ?)").run(conversationId, role, text, at);
+      this.#db.prepare("UPDATE conversations SET last_message_at = ?, updated_at = ? WHERE id = ?").run(at, at, conversationId);
+      return { seq: Number(lastInsertRowid), role, text, createdAt: at };
+    })();
+  }
+
+  messages(conversationId, { after = 0, roles = MESSAGE_ROLES, limit = 500 } = {}) {
+    return this.#db.prepare(`SELECT seq, role, text, created_at AS createdAt FROM conversation_messages
+      WHERE conversation_id = ? AND seq > ? AND role IN (${roles.map(() => "?").join(", ")}) ORDER BY seq LIMIT ?`)
+      .all(conversationId, Number(after) || 0, ...roles, limit);
+  }
+
+  lastSeq(conversationId) {
+    return this.#db.prepare("SELECT max(seq) AS seq FROM conversation_messages WHERE conversation_id = ?").get(conversationId)?.seq ?? 0;
+  }
+
+  markAiSynced(id, seq) {
+    this.#db.prepare("UPDATE conversations SET ai_synced_seq = max(ai_synced_seq, ?) WHERE id = ?").run(seq, id);
+  }
+
+  // Список для офиса: без токенов и служебных полей Codex
+  list({ status = null, limit = 200 } = {}) {
+    return this.#db.prepare(`SELECT c.id, c.channel, c.status, c.status_reason, c.handoff_by, c.handoff_at, c.client_id, c.created_at, c.last_message_at,
+        (SELECT count(*) FROM conversation_messages m WHERE m.conversation_id = c.id) AS message_count,
+        (SELECT m.role FROM conversation_messages m WHERE m.conversation_id = c.id ORDER BY m.seq DESC LIMIT 1) AS last_role
+      FROM conversations c WHERE EXISTS (SELECT 1 FROM conversation_messages m WHERE m.conversation_id = c.id)${status ? " AND c.status = ?" : ""}
+      ORDER BY CASE c.status WHEN 'needs_human' THEN 0 WHEN 'active' THEN 1 ELSE 2 END, coalesce(c.last_message_at, c.created_at) DESC LIMIT ?`)
+      .all(...(status ? [status] : []), limit);
+  }
+
+  // Очистка по сроку хранения: диалоги без активности дольше days дней (или все, если all).
+  // Thread Codex на диске App Server этим не удаляется
+  purge({ days = 90, all = false } = {}) {
+    const cutoff = new Date(this.#now().getTime() - days * 86_400_000).toISOString();
+    return this.#db.transaction(() => {
+      const ids = this.#db.prepare(`SELECT id FROM conversations ${all ? "" : "WHERE coalesce(last_message_at, updated_at) < ?"}`).all(...(all ? [] : [cutoff])).map((row) => row.id);
+      for (const id of ids) {
+        this.#db.prepare("DELETE FROM conversation_messages WHERE conversation_id = ?").run(id);
+        this.#db.prepare("DELETE FROM booking_offers WHERE conversation_id = ?").run(id);
+        this.#db.prepare("DELETE FROM conversations WHERE id = ?").run(id);
+      }
+      return { conversations: ids.length };
+    })();
   }
 
   close() {
