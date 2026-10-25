@@ -53,6 +53,8 @@ async function rewriteWebsitePreviewAssets() {
   const rewritten = html
     .replace('href="./styles.css"', 'href="/website/styles.css"')
     .replace('src="./script.js"', 'src="/website/script.js"')
+    // Статическая демонстрация работает без AI runtime: виджет чата в неё не включается
+    .replace(/\s*<!-- frontsmith:chat -->[\s\S]*?<!-- \/frontsmith:chat -->/, "")
     .replace(/<(?:link|meta)\b[^>]*data-frontsmith-attrs="(?:href|content):canonicalUrl"[^>]*>/g,
       (tag) => tag.replace(/\b(href|content)="[^"]*"/, '$1="https://codex-frontsmith.example/website"'))
     .replace(/<meta\b[^>]*data-frontsmith-attrs="content:ogImage"[^>]*>/g,

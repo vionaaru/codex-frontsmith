@@ -4,6 +4,8 @@ import { businessPath, businessRoot, businessWebsiteRoot, websiteSourceRoot } fr
 import { loadServiceCatalog } from "../../office/lib/catalog.mjs";
 import { websiteTemplateFile } from "./blueprints.mjs";
 
+const chatcopsVendorRoot = path.join("vendor", "chatcops-widget");
+
 export async function renderWebsite() {
   const root = businessRoot();
   const websiteRoot = businessWebsiteRoot();
@@ -25,8 +27,13 @@ export async function renderWebsite() {
   const template = websiteTemplateFile(profile);
   const current = await readWebsiteFile(template);
   await writeWebsiteFile(path.join(websiteRoot, "index.html"), updateWebsiteFile(current, replacements));
-  for (const file of ["styles.css", "script.js"]) {
+  for (const file of ["styles.css", "script.js", "chat-widget.js"]) {
     await cp(path.join(websiteSourceRoot, file), path.join(websiteRoot, file));
+  }
+  // Виджет AI-чата: собранный ChatCops из поставки без изменений, вместе с лицензией
+  await mkdir(path.join(websiteRoot, "vendor", "chatcops"), { recursive: true });
+  for (const [from, to] of [["chatcops.min.js", "chatcops.min.js"], ["LICENSE", "LICENSE.txt"]]) {
+    await cp(path.join(chatcopsVendorRoot, from), path.join(websiteRoot, "vendor", "chatcops", to));
   }
 
   const reviewPath = path.join(launchDir, "website-review.md");

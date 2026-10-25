@@ -147,6 +147,19 @@ const manifest = {
       files: wheels,
       bootstrap: "uv pip sync --offline --no-index --find-links по requirements.lock",
       offline: true
+    },
+    {
+      id: "chatcops-widget",
+      name: "@chatcops/widget",
+      version: "0.6.0",
+      kind: "browser-asset",
+      source: { package: "https://registry.npmjs.org/@chatcops/widget/-/widget-0.6.0.tgz", repository: "https://github.com/codercops/chatcops" },
+      license: "MIT",
+      licenseFiles: ["vendor/chatcops-widget/LICENSE"],
+      path: "vendor/chatcops-widget",
+      files: await Promise.all(["LICENSE", "README.md", "package.json", "chatcops.min.js"].map((name) => fileEntry(`vendor/chatcops-widget/${name}`))),
+      bootstrap: "не используется: npm run update:website копирует chatcops.min.js и LICENSE в рабочий сайт (виджет AI-чата)",
+      offline: true
     }
   ]
 };

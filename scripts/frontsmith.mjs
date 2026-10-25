@@ -7,6 +7,7 @@
 //     → Privacy Service на 127.0.0.1, ожидание /health ready
 //     → проверка входа ChatGPT → Codex App Server (stdio)
 //     → сервер офиса http://127.0.0.1:4180
+//     → сайт компании с AI-чатом http://127.0.0.1:4173
 //     → READY
 //
 // crmkit, Privacy Service и Codex App Server — дочерние процессы, сервер офиса работает
@@ -15,7 +16,12 @@
 // любого из них запуск прерывается с кодом причины. Без входа ChatGPT офис работает, а
 // AI-операции недоступны (CODEX_NOT_AUTHENTICATED). Токены CRM и Privacy Service остаются
 // в этом процессе и в вывод не попадают.
+//
+// Сайт компании обслуживается отдельным сервером на своём порту (только 127.0.0.1): статика
+// сайта и веб-канал AI-чата, без маршрутов офиса. Чат использует тот же CodexHost, что и офис,
+// второй AI runtime не запускается; публичные диалоги открываются без инструментов Host.
 import { createServer } from "node:net";
+import path from "node:path";
 import { defaultOfficePort, createOfficeServer } from "../office/server.mjs";
 import { openOfficeDb } from "../office/lib/db.mjs";
 import { registerFunctions } from "../office/lib/repositories.mjs";
@@ -25,12 +31,18 @@ import { crmPaths, ensureCrm, freePort } from "../services/crm/runtime.mjs";
 import { runtimePaths, startPrivacyService } from "../services/privacy/runtime.mjs";
 import { codexAuthStatus, startAiRuntime } from "../services/codex-host/ai-runtime.mjs";
 import { getCustomerContextTool } from "../services/codex-host/tools/customer-context.mjs";
+import { ConversationCore } from "../services/conversation/core.mjs";
+import { ConversationStore } from "../services/conversation/store.mjs";
+import { loadPublicBusinessContext } from "../services/conversation/business-context.mjs";
+import { createWebChannel } from "../services/conversation/web-channel.mjs";
 import { foreignCrmLinks, inspectInstallation } from "./lib/installation.mjs";
+import { previewWebsiteRoot } from "./lib/paths.mjs";
+import { createWebsiteServer } from "./lib/website-server.mjs";
 
 const host = "127.0.0.1";
 const verbose = process.env.FRONTSMITH_VERBOSE === "1";
-const status = { office: "not_ready", crm: "not_ready", privacy: "not_ready", codex: "not_ready", customers: "not_ready" };
-const components = { office: null, ai: null, aiDb: null, privacy: null, crm: null };
+const status = { office: "not_ready", crm: "not_ready", privacy: "not_ready", codex: "not_ready", customers: "not_ready", site: "not_ready" };
+const components = { office: null, ai: null, aiDb: null, privacy: null, crm: null, site: null, conversations: null };
 let stopping = false;
 
 class StartError extends Error {
@@ -149,25 +161,53 @@ async function start() {
   const pending = customers.body.data.filter((row) => row.contactStatus !== "ok").length;
   status.customers = pending ? "legacy" : "ready";
 
+  // ── сайт компании и AI-чат ─────────────────────────────────────
+  let siteUrl = null;
+  try {
+    const wanted = Number(process.env.FRONTSMITH_SITE_PORT ?? 4173);
+    const sitePort = (await portFree(wanted)) ? wanted : await freePort();
+    components.conversations = new ConversationStore();
+    const core = new ConversationCore({
+      store: components.conversations,
+      host: () => (status.codex === "ready" ? components.ai.host : null),
+      context: loadPublicBusinessContext,
+      log: verbose ? (entry) => console.log(`chat: ${JSON.stringify(entry)}`) : undefined
+    });
+    const chat = createWebChannel({ core, allowedHosts: new Set([`${host}:${sitePort}`, `localhost:${sitePort}`]) });
+    const site = createWebsiteServer({ root: () => path.resolve(previewWebsiteRoot()), port: sitePort, chat });
+    await new Promise((resolve, reject) => {
+      site.once("error", reject);
+      site.listen(sitePort, host, resolve);
+    });
+    components.site = site;
+    siteUrl = `http://${host}:${sitePort}`;
+    status.site = "ready";
+  } catch (error) {
+    status.site = "error";
+    console.error(`! Сайт компании не запущен (${error.code ?? "error"}): ${error.message}. Офис работает без сайта`);
+  }
+
   const label = (value) => ({ ready: "ready", login_required: "sign-in required", cli_missing: "CLI not found", error: "error", legacy: `ready, ${pending} клиентов без контакта в CRM` }[value] ?? value);
   const aiReady = status.codex === "ready";
   console.log(`\nFrontsmith ready\n`);
   console.log(`Office:         ${url}`);
+  console.log(`Site:           ${siteUrl ?? "not started"}${siteUrl ? ` (AI-чат: ${aiReady ? "ready" : "unavailable"})` : ""}`);
   console.log(`CRM:            ${label(status.crm)}`);
   console.log(`Privacy:        ${label(status.privacy)}`);
   console.log(`Codex:          ${label(status.codex)}`);
   console.log(`CustomerModule: ${label(status.customers)}`);
   console.log(`\nOffice ready: yes · AI ready: ${aiReady ? "yes" : `no (${status.codex === "login_required" ? "CODEX_NOT_AUTHENTICATED" : status.codex === "cli_missing" ? "CODEX_NOT_INSTALLED" : "CODEX_NOT_READY"})`}`);
   if (pending) console.log("Legacy customer storage detected.\nRun:\nnpm run crm:migrate-customers -- --dry-run");
-  console.log("Ctrl+C — остановка офиса, Codex App Server, Privacy Service и crmkit");
+  console.log("Ctrl+C — остановка сайта, офиса, Codex App Server, Privacy Service и crmkit");
 
   process.send?.({
     type: "ready",
     office: url,
     status: { ...status },
+    site: siteUrl,
     officeReady: true,
     aiReady,
-    ports: { office: officePort, crm: Number(new URL(crm.url).port), privacy: privacy.port },
+    ports: { office: officePort, site: siteUrl ? Number(new URL(siteUrl).port) : null, crm: Number(new URL(crm.url).port), privacy: privacy.port },
     pids: { crm: crm.process?.pid ?? null, privacy: privacy.process.pid, codex: components.ai?.client.process?.pid ?? null }
   });
 }
@@ -200,6 +240,12 @@ async function shutdown(code) {
       console.error(`! ${name}: ${error.message}`);
     }
   };
+  await step("сайт", async () => {
+    if (!components.site) return;
+    const closed = new Promise((resolve) => components.site.close(resolve));
+    components.site.closeAllConnections?.();
+    await closed;
+  });
   await step("офис", async () => {
     if (!components.office) return;
     const closed = components.office.close();
@@ -208,9 +254,10 @@ async function shutdown(code) {
   });
   await step("Codex App Server", async () => components.ai?.stop());
   await step("база AI", async () => components.aiDb?.close());
+  await step("диалоги", async () => components.conversations?.close());
   await step("Privacy Service", async () => components.privacy?.stop());
   await step("crmkit", async () => components.crm?.stop());
-  if (components.crm) console.log("Frontsmith остановлен: офис, Codex App Server, Privacy Service, crmkit");
+  if (components.crm) console.log("Frontsmith остановлен: сайт, офис, Codex App Server, Privacy Service, crmkit");
   process.send?.({ type: "stopped", code });
   process.exit(code);
 }

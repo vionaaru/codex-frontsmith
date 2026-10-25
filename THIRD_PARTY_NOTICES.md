@@ -15,6 +15,7 @@ Frontsmith распространяется по лицензии MIT (`LICENSE`
 | uv | 0.12.24 | MIT OR Apache-2.0 | Astral Software Inc. | `vendor/runtime-assets/uv/` (лицензии внутри архива) |
 | CPython (python-build-standalone) | 3.11.14, сборка 20260211 | PSF-2.0 и лицензии включённых библиотек | Python Software Foundation; сборка Astral (python-build-standalone) | `vendor/runtime-assets/python/` (`LICENSE.txt` внутри архива) |
 | Python wheels Privacy Service | см. таблицу ниже | по пакетам | авторы пакетов | `vendor/runtime-assets/wheels/` (лицензии внутри каждого wheel) |
+| @chatcops/widget | 0.6.0 | MIT | CoderCops | `vendor/chatcops-widget/` (собранный `chatcops.min.js` из `dist/` пакета npm, `LICENSE`); копируется в рабочий сайт как виджет AI-чата |
 
 Дополнения Frontsmith к pii-guard (HTTP-сервис псевдонимизации) находятся отдельно от стороннего кода, в `services/privacy/frontsmith_privacy/`, и распространяются по лицензии Frontsmith.
 
