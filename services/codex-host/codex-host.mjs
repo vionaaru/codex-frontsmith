@@ -254,6 +254,22 @@ export class CodexHost {
     }
   }
 
+  // Аргументы от модели могут содержать теги <PII .../> (например, дату из результата
+  // инструмента). Инструмент выполняется в доверенной части, поэтому строки аргументов
+  // восстанавливаются для адресата operator; восстановленные значения модели не возвращаются
+  async #restoreArgs(conversation, value) {
+    if (typeof value === "string") {
+      if (!/<PII\b[^>]*\/>/i.test(value)) return value;
+      return this.#privacy.restoreFinalForRecipient({ tenantId: conversation.tenantId, privacySessionId: conversation.privacySessionId, text: value, recipient: "operator" });
+    }
+    if (Array.isArray(value)) return Promise.all(value.map((item) => this.#restoreArgs(conversation, item)));
+    if (value && typeof value === "object") {
+      const entries = await Promise.all(Object.entries(value).map(async ([key, item]) => [key, await this.#restoreArgs(conversation, item)]));
+      return Object.fromEntries(entries);
+    }
+    return value;
+  }
+
   // Инструмент Host: оригинал остаётся в доверенной части, модели уходит только
   // результат prepare. При отказе Privacy Service модель получает код ошибки.
   async #callTool({ threadId, turnId, tool: name, arguments: args }) {
@@ -263,7 +279,7 @@ export class CodexHost {
     turn.toolCalls.push(name);
     if (!conversation || !tool || !conversation.tools.has(name)) return { contentItems: [{ type: "inputText", text: "unknown_tool" }], success: false };
     try {
-      const raw = await tool.handler(args ?? {}, { tenantId: conversation.tenantId, threadId });
+      const raw = await tool.handler(await this.#restoreArgs(conversation, args ?? {}), { tenantId: conversation.tenantId, threadId });
       const prepared = await this.#privacy.prepare({
         tenantId: conversation.tenantId,
         privacySessionId: conversation.privacySessionId,

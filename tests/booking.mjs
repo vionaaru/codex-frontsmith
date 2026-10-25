@@ -189,6 +189,9 @@ try {
     const response = await ivan.tool("offer_booking", { service: "consultation", start: "2026-10-26T10:00" });
     assert.match(response.answer, /offer_created/);
     assert.match(response.answer, /компания получит запрос/);
+    // Дата дошла до модели тегом DATE_TIME и вернулась в аргументе тегом: Host восстановил её до вызова
+    const turn = (await current.received()).filter((entry) => entry.kind === "turn_start").at(-1);
+    assert.match(turn.text, /"start":"<PII type="DATE_TIME" id="\d+" \/>T10:00"/);
     offer = await ivan.offer();
     assert.equal(offer.status, "offered");
     assert.equal(offer.mode, "request");

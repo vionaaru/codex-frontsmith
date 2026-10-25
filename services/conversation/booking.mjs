@@ -72,7 +72,10 @@ export class BookingDesk {
       const conversation = this.#store.byThread(threadId);
       if (!conversation || !this.#store.tools(conversation).includes(fn.name)) return "booking_unavailable: в этом диалоге запись недоступна";
       try {
-        return await fn.call(this, args ?? {}, conversation);
+        const result = await fn.call(this, args ?? {}, conversation);
+        // В журнал — только код результата, без аргументов и текста
+        this.#log({ event: "booking_tool", conversation: conversation.id, tool: fn.name, result: String(result).match(/^[a-z_]+(?=:)/)?.[0] ?? "slots" });
+        return result;
       } catch (error) {
         this.#log({ event: "booking_tool_failed", conversation: conversation.id, code: error.code ?? "error" });
         return "booking_unavailable: система записи сейчас недоступна. Не называй время и не обещай запись; предложи связаться с компанией";

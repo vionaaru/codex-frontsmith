@@ -11,7 +11,9 @@ const PATTERNS = [
   ["PERSON", /Иван(?:а|у|ом|е)? Петров(?:а|у|ым|е)?/g, "Иван Петров"],
   ["PERSON", /Мари(?:я|и|ю|ей) Сидоров(?:а|ой|у)/g, "Мария Сидорова"],
   ["PHONE_NUMBER", /\+7 \d{3} \d{3}-\d{2}-\d{2}/g, null],
-  ["EMAIL", /[\w.+-]+@[\w-]+\.[\w.]+/g, null]
+  ["EMAIL", /[\w.+-]+@[\w-]+\.[\w.]+/g, null],
+  // Как настоящий pii-guard: даты — тоже теги (DATE_TIME), модель возвращает их в аргументах инструментов
+  ["DATE_TIME", /\d{4}-\d{2}-\d{2}/g, null]
 ];
 
 export async function startFakePrivacyService({ token = "fake-token" } = {}) {

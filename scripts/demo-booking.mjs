@@ -29,4 +29,6 @@ if (!existsSync(path.join(root, "office.sqlite"))) {
 console.log("Демонстрация записи через AI-чат: учебная компания, автоподтверждение разрешено в профиле");
 const child = fork(path.join(repo, "scripts", "frontsmith.mjs"), [], { cwd: repo, env, stdio: "inherit" });
 for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => child.send?.({ type: "shutdown" }));
+// Управление из других процессов Frontsmith (как у npm run frontsmith): shutdown по IPC
+process.on("message", (message) => child.send?.(message));
 child.on("exit", (code) => process.exit(code ?? 0));

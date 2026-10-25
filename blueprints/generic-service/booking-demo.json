@@ -4,7 +4,7 @@
   "demoMode": true,
   "blueprint": "generic-service",
   "brandTagline": "Демонстрация записи через AI",
-  "tagline": "Запишитесь на услугу в разговоре с AI-помощником",
+  "tagline": "Запись через AI-помощника",
   "summary": "Учебная компания для проверки записи через AI-чат: услуги, цены и расписание — примеры",
   "websiteUrl": "http://localhost:4173",
   "bookingLabel": "Записаться",
@@ -20,7 +20,14 @@
   },
   "hours": {
     "label": "Пн–Сб · 10:00–19:00",
-    "days": [1, 2, 3, 4, 5, 6],
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
     "start": "10:00",
     "end": "19:00",
     "weekend": "Воскресенье — выходной"
@@ -40,9 +47,30 @@
     "ownerApprovedForLiveQuotes": false
   },
   "services": [
-    { "id": "consultation", "name": "Консультация", "category": "consultation", "priceFrom": 1500, "durationMinutes": 60, "description": "Разбор задачи и план работ" },
-    { "id": "express", "name": "Экспресс-услуга", "category": "service", "priceFrom": 800, "durationMinutes": 30, "description": "Короткая услуга по записи" },
-    { "id": "full-service", "name": "Полное обслуживание", "category": "service", "priceFrom": 5000, "durationMinutes": 120, "description": "Обслуживание полного объёма" }
+    {
+      "id": "consultation",
+      "name": "Консультация",
+      "category": "consultation",
+      "priceFrom": 1500,
+      "durationMinutes": 60,
+      "description": "Разбор задачи и план работ"
+    },
+    {
+      "id": "express",
+      "name": "Экспресс-услуга",
+      "category": "service",
+      "priceFrom": 800,
+      "durationMinutes": 30,
+      "description": "Короткая услуга по записи"
+    },
+    {
+      "id": "full-service",
+      "name": "Полное обслуживание",
+      "category": "service",
+      "priceFrom": 5000,
+      "durationMinutes": 120,
+      "description": "Обслуживание полного объёма"
+    }
   ],
   "media": {
     "logoImage": "/frontsmith-mark.svg",
@@ -55,9 +83,18 @@
     "liveActionsDefault": "disabled"
   },
   "integrations": {
-    "booking": { "status": "not_configured", "localImportEnabled": false },
-    "email": { "status": "disabled" },
-    "calendar": { "status": "not_connected" },
-    "neura": { "status": "not_connected" }
+    "booking": {
+      "status": "not_configured",
+      "localImportEnabled": false
+    },
+    "email": {
+      "status": "disabled"
+    },
+    "calendar": {
+      "status": "not_connected"
+    },
+    "neura": {
+      "status": "not_connected"
+    }
   }
 }

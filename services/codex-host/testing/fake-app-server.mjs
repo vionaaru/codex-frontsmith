@@ -30,7 +30,7 @@ async function runTurn(threadId, turnId, text) {
   // «call <инструмент> <JSON-аргументы>» — вызов любого инструмента Host; ответ модели — его результат
   const anyCall = /call ([a-z_]+) (\{.*\})/.exec(text);
   if (anyCall) {
-    const result = await serverRequest("item/tool/call", { threadId, turnId, callId: `call-${turnId}`, namespace: null, tool: anyCall[1], arguments: JSON.parse(anyCall[2]) });
+    const result = await serverRequest("item/tool/call", { threadId, turnId, callId: `call-${turnId}`, namespace: null, tool: anyCall[1], arguments: JSON.parse(anyCall[2].replace(/<PII\b[^>]*\/>/g, (tag) => tag.replace(/"/g, '\\"'))) });
     const output = result.contentItems.map((item) => item.text).join("\n");
     record({ kind: "tool_output", threadId, tool: anyCall[1], text: output, success: result.success });
     thread.history.push(output);

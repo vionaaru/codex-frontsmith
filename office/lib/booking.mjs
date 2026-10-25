@@ -87,11 +87,16 @@ export function slotKey(date, timeZone) {
   return `${local.date}T${String(Math.floor(local.minutes / 60)).padStart(2, "0")}:${String(local.minutes % 60).padStart(2, "0")}`;
 }
 
+// Принимает и близкие записи: «2026-10-27 10:00» и «2026-10-27T10:00:00» — местное время
+// компании; со смещением («…+03:00», «…Z») — точный момент времени
 export function parseSlotKey(value, timeZone) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(String(value ?? "").trim());
+  const text = String(value ?? "").trim();
+  const absolute = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/.test(text) ? new Date(text) : null;
+  if (absolute && !Number.isNaN(absolute.getTime())) return parseSlotKey(slotKey(absolute, timeZone), timeZone);
+  const match = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::00(?:\.0+)?)?$/.exec(text);
   if (!match) throw new OfficeValidationError("Время записи: ожидается ГГГГ-ММ-ДДTЧЧ:ММ");
   const date = zonedTime(Number(match[1]), Number(match[2]), Number(match[3]), Number(match[4]), Number(match[5]), timeZone);
-  if (slotKey(date, timeZone) !== match[0]) throw new OfficeValidationError("Такого времени нет в календаре компании");
+  if (slotKey(date, timeZone) !== `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}`) throw new OfficeValidationError("Такого времени нет в календаре компании");
   return date;
 }
 
