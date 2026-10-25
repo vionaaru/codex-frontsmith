@@ -164,11 +164,24 @@ export class BookingDesk {
     ].join("\n");
   }
 
+  // Статус предложения с учётом решения сотрудника: подтверждённая или отменённая в офисе
+  // предварительная запись меняет итог для посетителя и модели
+  #status(offer) {
+    if (!offer.appointment_id) return offer.status;
+    const appointment = this.#db.prepare("SELECT status FROM appointments WHERE id = ?").get(offer.appointment_id);
+    if (appointment?.status === "cancelled") return "declined";
+    if (["confirmed", "arrived", "completed"].includes(appointment?.status)) return "confirmed";
+    return offer.status;
+  }
+
   async get_booking_status(_args, conversation) {
     const { settings } = await this.#settings();
     const offer = this.#store.latestOffer(conversation.id);
     if (!offer) return "no_booking: в этом диалоге записи нет";
     const when = slotLabel(new Date(offer.starts_at), settings.timeZone);
+    const status = this.#status(offer);
+    if (status === "declined") return `declined: компания отклонила запрос на запись «${offer.service_name}», ${when}. Запись не состоится. Предложи выбрать другое время или связаться с компанией`;
+    if (status === "confirmed" && offer.status === "requested") return `confirmed: компания подтвердила запись — «${offer.service_name}», ${when}, номер ${shortRef(offer.appointment_id)}`;
     if (offer.status === "offered") return `waiting_for_form: посетитель ещё не отправил форму записи на «${offer.service_name}», ${when}. Запись не создана`;
     if (offer.status === "requested") return `requested: запрос на запись «${offer.service_name}», ${when} принят, номер ${shortRef(offer.appointment_id)}. Время ещё НЕ подтверждено: компания подтвердит его отдельно. Не говори, что запись подтверждена`;
     return `confirmed: запись подтверждена — «${offer.service_name}», ${when}, номер ${shortRef(offer.appointment_id)}`;
@@ -182,7 +195,7 @@ export class BookingDesk {
     const startsAt = new Date(offer.starts_at);
     const view = {
       id: offer.id,
-      status: offer.status,
+      status: this.#status(offer),
       service: offer.service_name,
       start: slotKey(startsAt, settings.timeZone),
       label: slotLabel(startsAt, settings.timeZone),

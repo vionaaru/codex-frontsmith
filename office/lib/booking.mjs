@@ -4,7 +4,7 @@
 // шаг и правила — из профиля компании (business.json → booking, иначе hours).
 // Модуль не знает о каналах и AI: его вызывают доверенные процессы Frontsmith.
 import { OfficeValidationError, zonedDayRange, zonedTime } from "./domain.mjs";
-import { createAppointment, createInquiry, setAppointmentStatus } from "./operations.mjs";
+import { createAppointment, createInquiry, setAppointmentStatus, setInquiryStatus } from "./operations.mjs";
 
 export const BUSY_APPOINTMENT_STATUSES = ["tentative", "confirmed", "arrived"];
 
@@ -129,27 +129,32 @@ export function findBookableService(db, query) {
   return { service: partial.length === 1 ? partial[0] : null, matches: partial.length ? partial : services };
 }
 
-function busyIntervals(db, from, to) {
+// ignoreId — запись, которую подтверждают: сама себе она не мешает
+function busyIntervals(db, from, to, ignoreId = null) {
   return db.prepare(`SELECT starts_at, ends_at FROM appointments
-    WHERE status IN (${BUSY_APPOINTMENT_STATUSES.map(() => "?").join(", ")}) AND ends_at > ? AND starts_at < ?`)
-    .all(...BUSY_APPOINTMENT_STATUSES, from.toISOString(), to.toISOString())
+    WHERE status IN (${BUSY_APPOINTMENT_STATUSES.map(() => "?").join(", ")}) AND ends_at > ? AND starts_at < ? AND id IS NOT ?`)
+    .all(...BUSY_APPOINTMENT_STATUSES, from.toISOString(), to.toISOString(), ignoreId)
     .map((row) => [Date.parse(row.starts_at), Date.parse(row.ends_at)]);
 }
 
 // Причина, по которой интервал нельзя занять, или null. Проверяется и при выдаче интервалов,
 // и непосредственно перед сохранением записи
-export function slotProblem(db, settings, service, startsAt, now) {
-  if (!settings.configured) return "schedule_not_configured";
+// confirming — проверка при подтверждении сотрудником: без минимального срока, горизонта и
+// шага записи, но с рабочими часами (если заданы), прошедшим временем и пересечениями
+export function slotProblem(db, settings, service, startsAt, now, { ignoreId = null, confirming = false } = {}) {
+  if (!settings.configured && !confirming) return "schedule_not_configured";
   const duration = durationMinutes(service, settings);
-  const local = localParts(startsAt, settings.timeZone);
-  const { start, end, days } = settings.hours;
-  if (!days.includes(isoWeekday(local.date))) return "outside_hours";
-  if (local.minutes < start || local.minutes + duration > end || (local.minutes - start) % settings.slotStepMinutes !== 0) return "outside_hours";
-  if (startsAt.getTime() < now.getTime() + settings.minNoticeMinutes * 60_000) return "too_soon";
-  const today = zonedDayRange(now, settings.timeZone).date;
-  if (local.date > addDays(today, settings.horizonDays - 1)) return "too_far";
+  if (settings.hours && validTimeZone(settings.timeZone)) {
+    const local = localParts(startsAt, settings.timeZone);
+    const { start, end, days } = settings.hours;
+    if (!days.includes(isoWeekday(local.date))) return "outside_hours";
+    if (local.minutes < start || local.minutes + duration > end || (!confirming && (local.minutes - start) % settings.slotStepMinutes !== 0)) return "outside_hours";
+    const today = zonedDayRange(now, settings.timeZone).date;
+    if (!confirming && local.date > addDays(today, settings.horizonDays - 1)) return "too_far";
+  }
+  if (startsAt.getTime() < now.getTime() + (confirming ? 0 : settings.minNoticeMinutes * 60_000)) return "too_soon";
   const endsAt = startsAt.getTime() + duration * 60_000;
-  if (busyIntervals(db, startsAt, new Date(endsAt)).some(([from, to]) => from < endsAt && to > startsAt.getTime())) return "slot_taken";
+  if (busyIntervals(db, startsAt, new Date(endsAt), ignoreId).some(([from, to]) => from < endsAt && to > startsAt.getTime())) return "slot_taken";
   return null;
 }
 
@@ -198,5 +203,29 @@ export function bookSlot(ctx, { settings, service, startsAt, customerId, externa
     });
     if (autoConfirm) appointment = setAppointmentStatus(ctx, { id: appointment.id, status: "confirmed", basis: confirmationBasis });
     return { appointment, inquiryId: inquiry.id, duplicate: false };
+  }).immediate();
+}
+
+// Решение сотрудника по предварительной записи (запрос на запись с сайта или любая tentative):
+// confirm — повторная проверка времени и подтверждение, reject — отмена записи и закрытие
+// обращения. Одна транзакция с блокировкой записи, как bookSlot
+export function decideAppointment(ctx, { settings, appointmentId, decision }) {
+  const db = ctx.db;
+  return db.transaction(() => {
+    const appointment = db.prepare("SELECT * FROM appointments WHERE id = ?").get(String(appointmentId ?? ""));
+    if (!appointment) throw new OfficeValidationError("Запись не найдена");
+    if (appointment.status !== "tentative") throw new OfficeValidationError("Решение принимается только по предварительной записи");
+    const inquiry = appointment.inquiry_id ? db.prepare("SELECT * FROM inquiries WHERE id = ?").get(appointment.inquiry_id) : null;
+    if (decision === "reject") {
+      const cancelled = setAppointmentStatus(ctx, { id: appointment.id, status: "cancelled", basis: "Запрос на запись отклонён сотрудником в панели офиса" });
+      if (inquiry && ["new", "in_progress", "waiting_customer"].includes(inquiry.status)) setInquiryStatus(ctx, { id: inquiry.id, status: "closed", note: "Запрос на запись отклонён" });
+      return cancelled;
+    }
+    if (decision !== "confirm") throw new OfficeValidationError("Решение: confirm или reject");
+    const service = inquiry?.requested_service_id ? db.prepare("SELECT * FROM services WHERE id = ?").get(inquiry.requested_service_id) : null;
+    const durationMs = Date.parse(appointment.ends_at) - Date.parse(appointment.starts_at);
+    const problem = slotProblem(db, settings, service ?? { duration_minutes: Math.round(durationMs / 60_000) }, new Date(appointment.starts_at), ctx.now(), { ignoreId: appointment.id, confirming: true });
+    if (problem) throw new BookingConflictError(problem === "slot_taken" ? "Время пересекается с другой записью" : problem === "too_soon" ? "Время записи уже прошло" : "Время записи вне рабочего расписания");
+    return setAppointmentStatus(ctx, { id: appointment.id, status: "confirmed", basis: "Подтверждено сотрудником в панели офиса" });
   }).immediate();
 }

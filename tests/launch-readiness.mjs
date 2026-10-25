@@ -63,7 +63,7 @@ const requiredScripts = {
   "crm:start": "node services/crm/start.mjs",
   "crm:migrate-customers": "node scripts/crm-migrate-customers.mjs",
   "test:codex-host": "node tests/codex-host.mjs",
-  "test:conversation": "node tests/conversation.mjs && node tests/booking.mjs",
+  "test:conversation": "node tests/conversation.mjs && node tests/booking.mjs && node tests/handoff.mjs",
   "test:first-run": "node tests/first-run.mjs"
 };
 

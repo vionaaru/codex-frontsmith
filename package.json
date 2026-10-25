@@ -69,8 +69,9 @@
     "test:crm": "node tests/crm-live.mjs",
     "test:first-run": "node tests/first-run.mjs",
     "smoke:crm-codex": "node services/codex-host/smoke-customer.mjs",
-    "test:conversation": "node tests/conversation.mjs && node tests/booking.mjs",
-    "demo:booking": "node scripts/demo-booking.mjs"
+    "test:conversation": "node tests/conversation.mjs && node tests/booking.mjs && node tests/handoff.mjs",
+    "demo:booking": "node scripts/demo-booking.mjs",
+    "conversations:purge": "node scripts/conversations-purge.mjs"
   },
   "engines": {
     "node": ">=20"

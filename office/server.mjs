@@ -1,5 +1,6 @@
 // Локальный сервер панели офиса, только 127.0.0.1. Бизнес-данные — только чтение;
-// единственные изменения из браузера — карточки клиентов через CustomerProvider.
+// изменения из браузера — карточки клиентов через CustomerProvider, ответы сотрудника в
+// диалогах сайта (inbox Conversation Module) и решения по предварительным записям.
 // Браузер получает JSON-представления; SQL, путь к базе, токен CRM и приватные файлы наружу не отдаются.
 // Контакты клиентов в офисной базе не хранятся: сервер добавляет подписи по client_id
 import { createServer } from "node:http";
@@ -17,6 +18,9 @@ import {
 } from "./lib/domain.mjs";
 import * as repo from "./lib/repositories.mjs";
 import { CustomerError } from "./customers/contract.mjs";
+import { BookingConflictError, bookingSettings, decideAppointment } from "./lib/booking.mjs";
+import { createContext } from "./lib/operations.mjs";
+import { OfficeValidationError } from "./lib/domain.mjs";
 import { connectCustomers, enrichCustomerRefs } from "./customers/index.mjs";
 import { officeModules, vocabularyFor } from "../scripts/lib/blueprints.mjs";
 import { businessPath } from "../scripts/lib/paths.mjs";
@@ -52,8 +56,10 @@ class HttpError extends Error {
 
 // connectProvider(db) → { provider, stop } — CustomerProvider на отдельном соединении с записью
 // (идентичность и связи клиентов). По умолчанию — встроенный crmkit
-export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDbPath(), now = () => new Date(), connectProvider = (conn) => connectCustomers({ db: conn }) } = {}) {
+// inbox — диалоги сайта (ConversationCore) или null, если офис запущен без npm run frontsmith
+export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDbPath(), now = () => new Date(), connectProvider = (conn) => connectCustomers({ db: conn }), inbox = null } = {}) {
   let db = null;
+  let writeDb = null;
   let customersDb = null;
   let customers = null;
   let connecting = null;
@@ -104,8 +110,23 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
     db = null;
   }
 
+  // Соединение с записью для решений по записям; открывается при первом решении
+  function writeConnection() {
+    if (writeDb) return writeDb;
+    if (!officeDbExists(dbFile)) throw new OfficeDbMissingError(dbFile);
+    writeDb = repo.registerFunctions(openOfficeDb({ file: dbFile }));
+    return writeDb;
+  }
+
+  function requireInbox() {
+    if (!inbox) throw new HttpError(503, "Диалоги сайта доступны при запуске npm run frontsmith", "inbox_unavailable");
+    return inbox;
+  }
+
   async function closeAll() {
     closeDb();
+    try { writeDb?.close(); } catch { /* уже закрыто */ }
+    writeDb = null;
     const current = customers;
     customers = null;
     connecting = null;
@@ -143,6 +164,18 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
     ["/api/tasks", (conn, ctx) => repo.listTasks(conn, { q: ctx.q, qClientIds: ctx.qClientIds, due: oneOf(ctx.params.get("due"), ["overdue", "today", "later", "none"], "due"), now: ctx.now, dayEnd: ctx.day.end, ...statusFilter(ctx.params, taskStatuses, { open: ["open", "in_progress"] }) })],
     ["/api/services", (conn, ctx) => repo.listServices(conn, { q: ctx.q, active: activeFilter(ctx.params.get("active")), category: ctx.params.get("category") || undefined })],
     ["/api/schedule", (conn, ctx) => schedule(conn, ctx)],
+    // Диалоги сайта: список с причиной передачи и переписка — только видимые сторонам сообщения.
+    // customer_id — client_id записи на услугу: имя клиента сервер добавляет из CRM
+    ["/api/conversations", (conn, ctx) => {
+      const status = oneOf(ctx.params.get("status"), ["needs_human", "active", "closed"], "status");
+      return requireInbox().list({ status: status ?? null }).map(({ client_id: clientId, ...row }) => ({ ...row, customer_id: clientId }));
+    }],
+    [/^\/api\/conversations\/([^/]+)$/, (conn, ctx, id) => {
+      const transcript = requireInbox().transcript(uuid(id));
+      if (!transcript) throw new HttpError(404, "Диалог не найден", "not_found");
+      const { client_id: clientId, ...conversation } = transcript.conversation;
+      return { ...transcript, conversation: { ...conversation, customer_id: clientId } };
+    }],
     ["/api/events", (conn) => repo.listEvents(conn, { limit: 100 })]
   ];
 
@@ -199,17 +232,53 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
     throw new HttpError(405, "Панель меняет только карточки клиентов. Остальные изменения — через Codex и npm run office", "read_only");
   }
 
+  // Действия сотрудника: ответ в диалоге, закрытие, возврат AI, решение по предварительной записи
+  async function writeOperator(req, url) {
+    const conversation = /^\/api\/conversations\/([^/]+)\/(messages|close|return-ai)$/.exec(url.pathname);
+    if (conversation && req.method === "POST") {
+      const id = uuid(decodeURIComponent(conversation[1]));
+      const body = await readJson(req);
+      const desk = requireInbox();
+      if (!desk.transcript(id)) throw new HttpError(404, "Диалог не найден", "not_found");
+      if (conversation[2] === "messages") {
+        const text = typeof body.text === "string" ? body.text.trim() : "";
+        if (!text) throw new HttpError(400, "Пустой ответ", "bad_request");
+        if (text.length > 4000) throw new HttpError(413, "Ответ длиннее 4000 символов", "payload_too_large");
+        return { status: 201, data: { message: desk.operatorReply(id, text) } };
+      }
+      return { status: 200, data: { conversation: conversation[2] === "close" ? desk.closeConversation(id) : desk.returnToAi(id) } };
+    }
+    const appointment = /^\/api\/appointments\/([^/]+)\/decision$/.exec(url.pathname);
+    if (appointment && req.method === "POST") {
+      const { decision } = await readJson(req);
+      if (!["confirm", "reject"].includes(decision)) throw new HttpError(400, "decision: confirm или reject", "bad_request");
+      const profile = currentProfile();
+      const ctx = createContext(writeConnection(), { actor: "оператор панели", source: "panel", now, vocabulary: vocabularyFor(profile) });
+      try {
+        const row = decideAppointment(ctx, { settings: bookingSettings(profile), appointmentId: uuid(decodeURIComponent(appointment[1])), decision });
+        return { status: 200, data: { appointment: { id: row.id, status: row.status } } };
+      } catch (error) {
+        if (error instanceof BookingConflictError) throw new HttpError(409, error.message, "slot_unavailable");
+        if (error instanceof OfficeValidationError) throw new HttpError(409, error.message, "invalid_state");
+        throw error;
+      }
+    }
+    return null;
+  }
+
   async function handle(req, res) {
     try {
       if (!allowedHosts.has(String(req.headers.host ?? "").toLowerCase())) throw new HttpError(421, "Панель доступна только по адресу 127.0.0.1", "host_not_allowed");
       const url = new URL(req.url ?? "/", `http://${host}:${port}`);
       if (req.method !== "GET" && req.method !== "HEAD") {
-        if (!url.pathname.startsWith("/api/customers")) {
+        const operatorPath = url.pathname.startsWith("/api/conversations/") || url.pathname.startsWith("/api/appointments/");
+        if (!url.pathname.startsWith("/api/customers") && !operatorPath) {
           res.setHeader("allow", "GET, HEAD");
           throw new HttpError(405, "Панель только читает данные. Изменения — через Codex и npm run office", "read_only");
         }
         assertSameOrigin(req);
-        const result = await writeCustomer(req, url);
+        const result = operatorPath ? await writeOperator(req, url) : await writeCustomer(req, url);
+        if (!result) throw new HttpError(404, "Нет такого действия", "not_found");
         return sendJson(req, res, result.status, { data: result.data, meta: { generatedAt: now().toISOString() } });
       }
       if (!url.pathname.startsWith("/api/")) return await serveStatic(url.pathname, req, res);
