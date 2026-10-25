@@ -55,7 +55,7 @@ const requiredScripts = {
   test: "npm run test:launch && npm run test:regression && npm run test:office && npm run test:install && npm run test:codex-host && npm run test:conversation",
   "test:launch": "node tests/launch-readiness.mjs",
   "test:regression": "node tests/regression.mjs",
-  "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs && node tests/generic-profile.mjs && node tests/profile-vocabulary.mjs",
+  "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs && node tests/generic-profile.mjs && node tests/profile-vocabulary.mjs && node tests/website-update.mjs",
   "test:install": "node tests/vendor.mjs && node tests/data-root.mjs",
   "release:check": "node scripts/release-check.mjs",
   diagnostics: "node scripts/diagnostics.mjs",

@@ -1,12 +1,48 @@
+import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { dataRoot } from "../../services/privacy/runtime.mjs";
 import { businessPath, businessRoot, businessWebsiteRoot, websiteSourceRoot } from "./paths.mjs";
 import { loadServiceCatalog } from "../../office/lib/catalog.mjs";
 import { websiteTemplateFile } from "./blueprints.mjs";
 
 const chatcopsVendorRoot = path.join("vendor", "chatcops-widget");
 
-export async function renderWebsite() {
+export class WebsiteEditedError extends Error {
+  constructor(file) {
+    super(`${file} изменён после последней генерации (вручную или через Codex). Он не перезаписан. Чтобы заменить его шаблоном профиля с резервной копией в каталоге данных, выполните npm run update:website -- --force`);
+    this.code = "website_edited";
+  }
+}
+
+const sha256 = (text) => createHash("sha256").update(text, "utf8").digest("hex");
+
+// Отпечаток последней сгенерированной страницы — в корне рабочих данных, вне каталога сайта
+function renderRecordPath() {
+  return businessPath(".website-render.json");
+}
+
+// Рабочий index.html, изменённый после последней генерации, не перезаписывается молча:
+// без force генерация останавливается до любых изменений, с force — сначала резервная копия
+// в <каталог данных>/backups/website
+async function guardEditedIndex(file, rendered, { force }) {
+  if (!existsSync(file)) return null;
+  const existing = await readFile(file, "utf8");
+  if (existing === rendered) return null;
+  let record = null;
+  try { record = JSON.parse(await readFile(renderRecordPath(), "utf8")); } catch { record = null; }
+  if (record?.sha256 === sha256(existing)) return null;
+  if (!force) throw new WebsiteEditedError(file);
+  const dir = path.join(dataRoot(), "backups", "website");
+  await mkdir(dir, { recursive: true });
+  const backup = path.join(dir, `index-before-update-${new Date().toISOString().replace(/[:.]/g, "-")}.html`);
+  await writeFile(backup, existing);
+  return backup;
+}
+
+// force — заменить изменённый вручную index.html шаблоном профиля (с резервной копией)
+export async function renderWebsite({ force = false } = {}) {
   const root = businessRoot();
   const websiteRoot = businessWebsiteRoot();
   const profilePath = businessPath("business.json");
@@ -16,6 +52,10 @@ export async function renderWebsite() {
   const activityDir = path.join(root, "activity");
   const launchDir = path.join(root, "launch");
   const replacements = buildReplacements(business);
+  const template = websiteTemplateFile(profile);
+  const rendered = updateWebsiteFile(await readWebsiteFile(template), replacements);
+  const indexPath = path.join(websiteRoot, "index.html");
+  const backupPath = await guardEditedIndex(indexPath, rendered, { force });
 
   await mkdir(websiteRoot, { recursive: true });
   await mkdir(activityDir, { recursive: true });
@@ -24,9 +64,9 @@ export async function renderWebsite() {
   await cp(websiteSourceRoot, websiteRoot, { recursive: true, force: false, errorOnExist: false });
   // HTML читается из шаблона профиля при каждом обновлении; рабочие значения записываются только в приватную копию.
   // Стили, скрипт и изображения общие для всех профилей
-  const template = websiteTemplateFile(profile);
-  const current = await readWebsiteFile(template);
-  await writeWebsiteFile(path.join(websiteRoot, "index.html"), updateWebsiteFile(current, replacements));
+  await writeWebsiteFile(indexPath, rendered);
+  await writeFile(renderRecordPath(), `${JSON.stringify({ sha256: sha256(rendered), template, renderedAt: new Date().toISOString() }, null, 2)}
+`);
   for (const file of ["styles.css", "script.js", "chat-widget.js"]) {
     await cp(path.join(websiteSourceRoot, file), path.join(websiteRoot, file));
   }
@@ -46,6 +86,7 @@ export async function renderWebsite() {
     business: profile,
     catalog,
     websiteDir: websiteRoot,
+    backupPath,
     reviewPath,
     activityPath,
     reviewDisplayPath: businessDisplayPath(root, "launch", "website-review.md"),
