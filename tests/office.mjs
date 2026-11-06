@@ -626,14 +626,15 @@ try {
       assert.equal((await matchVehicle({ plate: "О 000 ОО 00" })).verdict, "none");
       await assert.rejects(matchVehicle({}), /хотя бы/);
       await assert.rejects(matchVehicle({ vin: "ABIO1" }), /без I, O, Q/);
-      assert.ok(!JSON.stringify(result).includes("902"), "результат сопоставления без телефона");
+      assert.ok(!/"(?:phone|phone_key)"\s*:\s*"[^"]+"|9020000001/.test(JSON.stringify(result)), "результат сопоставления без телефона");
     } finally {
       await connection.stop();
       db.close();
     }
     const cliOutput = await cli("match", "--plate", "К111КК77", "--phone", "+79011112233");
     assert.equal(JSON.parse(cliOutput).verdict, "match");
-    assert.ok(!/Анна|901/.test(cliOutput), "CLI match не выводит контакты клиента");
+    // Три цифры 901 могут встретиться в случайном UUID; проверяем контакты и их поля.
+    assert.ok(!/Анна|"(?:phone|phone_key|email|full_name)"\s*:\s*"[^"]+"|9011112233/.test(cliOutput), "CLI match не выводит контакты клиента");
   });
 
   await check("часовой пояс бизнеса и ввод времени", () => {
