@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { cp, mkdir, readFile, writeFile, lstat, realpath, unlink } from "node:fs/promises";
+import { cp, mkdir, readFile, writeFile, lstat, realpath, unlink, rename } from "node:fs/promises";
 import path from "node:path";
 import { dataRoot } from "../../services/privacy/runtime.mjs";
 import { businessPath, businessRoot, businessWebsiteRoot, websiteSourceRoot } from "./paths.mjs";
@@ -8,6 +8,7 @@ import { loadServiceCatalog } from "../../office/lib/catalog.mjs";
 import { websiteTemplateFile } from "./blueprints.mjs";
 import { loadBrand, brandCss, brandAsset } from "./brand.mjs";
 import { assertIntakeFormContract } from "./website-contract.mjs";
+import { indexWebsitePaths, existingPathAlias } from "./website-paths.mjs";
 
 const chatcopsVendorRoot = path.join("vendor", "chatcops-widget");
 
@@ -90,10 +91,26 @@ export async function renderWebsite({ force = false } = {}) {
   const assetBackups = [];
   let previous = {};
   try { previous = JSON.parse(await readFile(renderRecordPath(), "utf8")); } catch { /* old installation */ }
+  const desiredPaths = indexWebsitePaths(managed.keys());
+  const previousPaths = indexWebsitePaths(Object.keys(previous.files ?? {}));
+  const caseRenames = new Map();
+  // Reject destination links before reading or moving any existing public asset.
+  for (const name of managed.keys()) {
+    if (!name.startsWith("brand-assets/")) continue;
+    const file = path.resolve(websiteRoot, name);
+    if (existsSync(path.dirname(file))) {
+      const site = await realpath(websiteRoot);
+      if (await realpath(path.dirname(file)) !== path.join(site, "brand-assets")) throw new Error(`Нельзя записать ресурс по ссылке или вне сайта: ${name}`);
+    }
+    try { if ((await lstat(file)).isSymbolicLink()) throw new Error(`Нельзя записать ресурс по ссылке: ${name}`); }
+    catch (error) { if (error.code !== "ENOENT") throw error; }
+  }
   const retired = [];
   for (const [name, expected] of Object.entries(previous.files ?? {})) {
     if (!/^brand-assets\/[a-zA-Z0-9][a-zA-Z0-9_.-]*\.(?:png|jpe?g|webp|woff2)$/i.test(name) || managed.has(name)) continue;
     const file = path.resolve(websiteRoot, name);
+    const desiredName = desiredPaths.get(name.toLowerCase());
+    if (desiredName && await existingPathAlias(file, path.resolve(websiteRoot, desiredName))) continue;
     let entry;
     try { entry = await lstat(file); } catch (error) { if (error.code === "ENOENT") continue; throw error; }
     const site = await realpath(websiteRoot);
@@ -114,7 +131,12 @@ export async function renderWebsite({ force = false } = {}) {
     const file = path.join(websiteRoot, name);
     if (!existsSync(file)) continue;
     const existing = await readFile(file);
-    const expected = previous.files?.[name];
+    let expected = previous.files?.[name];
+    const previousName = previousPaths.get(name.toLowerCase());
+    if (previousName && previousName !== name && await existingPathAlias(path.resolve(websiteRoot, previousName), file)) {
+      expected = previous.files[previousName];
+      caseRenames.set(name, path.resolve(websiteRoot, previousName));
+    }
     if (sha256(existing) === sha256(bytes) || (expected && sha256(existing) === expected) || (!expected && name === "chat-widget.js" && legacyWidgetHashes.has(sha256(existing)))) continue;
     if (!force) throw new WebsiteEditedError(file);
     const backup = path.join(dataRoot(), "backups", "website", `assets-before-update-${Date.now()}`, name);
@@ -135,6 +157,7 @@ export async function renderWebsite({ force = false } = {}) {
   await writeWebsiteFile(indexPath, rendered);
   for (const [file, bytes] of managed) {
     await mkdir(path.dirname(path.join(websiteRoot, file)), { recursive: true });
+    if (caseRenames.has(file)) await rename(caseRenames.get(file), path.join(websiteRoot, file));
     await writeFile(path.join(websiteRoot, file), bytes);
   }
   // Only receipt-owned, preflighted files are retired. Unknown files are never pruned.

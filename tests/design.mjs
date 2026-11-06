@@ -1,6 +1,7 @@
 // Isolated artificial companies; no production data, AI calls or outbound delivery.
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, writeFile, rm, cp, rename, symlink, unlink } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, mkdir, readFile, writeFile, rm, cp, rename, symlink, unlink, readdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
@@ -9,6 +10,9 @@ import { defaultBrand, validateBrand, brandCss, brandAsset } from "../scripts/li
 import { createOfficeServer } from "../office/server.mjs";
 import { freePort } from "../services/crm/runtime.mjs";
 import { POST as contactPost } from "../api/contact.js";
+import { assertIntakeFormContract } from "../scripts/lib/website-contract.mjs";
+import { indexWebsitePaths } from "../scripts/lib/website-paths.mjs";
+import { contactFormCases } from "./fixtures/contact-form-cases.mjs";
 
 const exec = promisify(execFile);
 const repo = process.cwd();
@@ -96,6 +100,8 @@ try {
         template.replace(`name="${name}"`, `disabled name="${name}"`),
         template.replace(`name="${name}"`, `form="other-form" name="${name}"`),
         template.replace(`name="${name}"`, `name="${name}" data-frontsmith-attrs="name:businessName"`),
+        template.replace(`name="${name}"`, `type="checkbox" name="${name}"`).replace(`type="${name === "email" ? "email" : "tel"}"`, ""),
+        template.replace(new RegExp(`<input\\b[^>]*data-contact-${name}[^>]*>`), '<fieldset disabled>$&</fieldset>'),
         template.replace('</form>', `<input type="hidden" name="${name}"></form>`)
       ]) {
         await writeFile(file, broken);
@@ -124,6 +130,71 @@ try {
     }
     await writeFile(file, template);
     await run("scripts/update-website.mjs");
+  });
+  await check("контракт учитывает типы и disabled fieldset, включая первое legend", async () => {
+    for (const item of contactFormCases) {
+      if (item.accepted) assert.doesNotThrow(() => assertIntakeFormContract(item.html), item.name);
+      else assert.throws(() => assertIntakeFormContract(item.html), /Клиентский шаблон/, item.name);
+    }
+  });
+  await check("переименование ресурса только по регистру сохраняет файл и квитанцию", async () => {
+    await put("public/case-logo.PNG", "case generation one");
+    await run("scripts/update-website.mjs");
+    const sourceUpper = path.join(root, "design/public/case-logo.PNG");
+    const sourceLower = path.join(root, "design/public/case-logo.png");
+    const outputUpper = path.join(root, "website/brand-assets/case-logo.PNG");
+    const outputLower = path.join(root, "website/brand-assets/case-logo.png");
+    await rename(sourceUpper, sourceLower);
+    await writeFile(sourceLower, "case generation two");
+    await run("scripts/update-website.mjs");
+    assert.equal(await readFile(outputLower, "utf8"), "case generation two");
+    const entries = await readdir(path.dirname(outputLower));
+    assert.ok(entries.includes("case-logo.png"));
+    assert.ok(!entries.includes("case-logo.PNG"));
+    const receiptFile = path.join(root, ".website-render.json");
+    let receipt = JSON.parse(await readFile(receiptFile, "utf8"));
+    assert.equal(receipt.files["brand-assets/case-logo.PNG"], undefined);
+    assert.ok(receipt.files["brand-assets/case-logo.png"]);
+    assert.equal(receipt.files["brand-assets/case-logo.png"], createHash("sha256").update(await readFile(outputLower)).digest("hex"));
+    await run("scripts/update-website.mjs");
+    assert.equal(await readFile(outputLower, "utf8"), "case generation two");
+    // A case-only rename cannot bypass a manual edit or lose its backup.
+    await writeFile(outputLower, "manual case edit");
+    await rename(sourceLower, sourceUpper);
+    await writeFile(sourceUpper, "case generation three");
+    const before = await readFile(receiptFile, "utf8");
+    await assert.rejects(run("scripts/update-website.mjs"), (e) => /изменён после последней генерации/.test(e.stderr));
+    assert.equal(await readFile(outputLower, "utf8"), "manual case edit");
+    assert.equal(await readFile(receiptFile, "utf8"), before);
+    const { stdout } = await run("scripts/update-website.mjs", "--force");
+    const backup = /Прежний файл сохранён: (.+)/.exec(stdout)[1].trim();
+    assert.equal(await readFile(backup, "utf8"), "manual case edit");
+    assert.equal(await readFile(outputUpper, "utf8"), "case generation three");
+    assert.ok((await readdir(path.dirname(outputUpper))).includes("case-logo.PNG"));
+    receipt = JSON.parse(await readFile(receiptFile, "utf8"));
+    assert.ok(receipt.files["brand-assets/case-logo.PNG"]);
+    assert.equal(receipt.files["brand-assets/case-logo.PNG"], createHash("sha256").update(await readFile(outputUpper)).digest("hex"));
+    assert.equal(receipt.files["brand-assets/case-logo.png"], undefined);
+    await rm(sourceUpper);
+    await run("scripts/update-website.mjs");
+  });
+  await check("коллизии регистра отклоняются до изменения сайта, даже с force", async () => {
+    assert.throws(() => indexWebsitePaths(["brand-assets/logo.PNG", "brand-assets/logo.png"]), /Коллизия имён/);
+    const file = path.join(root, ".website-render.json");
+    const original = await readFile(file, "utf8");
+    const collision = JSON.parse(original);
+    collision.files["brand-assets/collision.PNG"] = "a".repeat(64);
+    collision.files["brand-assets/collision.png"] = "b".repeat(64);
+    const raw = JSON.stringify(collision);
+    const html = await readFile(path.join(root, "website/index.html"), "utf8");
+    await writeFile(file, raw);
+    try {
+      for (const args of [[], ["--force"]]) {
+        await assert.rejects(run("scripts/update-website.mjs", ...args), (e) => /Коллизия имён/.test(e.stderr));
+        assert.equal(await readFile(file, "utf8"), raw);
+        assert.equal(await readFile(path.join(root, "website/index.html"), "utf8"), html);
+      }
+    } finally { await writeFile(file, original); }
   });
   await check("удалённые ресурсы убираются только по квитанции; ручные правки защищены", async () => {
     const source = path.join(root, "design/public/retired.png");

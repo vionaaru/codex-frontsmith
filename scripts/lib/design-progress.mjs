@@ -33,7 +33,7 @@ async function state() {
 async function outputDigest() {
   const outputs = await files(businessPath("website"));
   const code = [];
-  for (const file of ["scripts/lib/brand.mjs", "scripts/lib/render-website.mjs", "scripts/lib/website-contract.mjs", "website/brand-base.css", "website/brand-theme.js", "website/chat-widget.js", "office/public/styles.css", "office/public/app.js", "office/public/index.html", "office/server.mjs"]) code.push([file, hash(await readFile(file))]);
+  for (const file of ["scripts/lib/brand.mjs", "scripts/lib/render-website.mjs", "scripts/lib/website-contract.mjs", "scripts/lib/website-paths.mjs", "website/brand-base.css", "website/brand-theme.js", "website/chat-widget.js", "office/public/styles.css", "office/public/app.js", "office/public/index.html", "office/server.mjs"]) code.push([file, hash(await readFile(file))]);
   return hash(JSON.stringify({ outputs, code }));
 }
 async function safeArtifact(relative) {

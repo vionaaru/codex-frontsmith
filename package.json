@@ -24,6 +24,7 @@
     "check": "node scripts/check.mjs",
     "design": "node scripts/design.mjs",
     "test:design": "node tests/design.mjs",
+    "test:design:formdata": "node tests/design-formdata.mjs",
     "bootstrap": "node scripts/bootstrap.mjs",
     "business:init": "node scripts/business-init.mjs",
     "frontsmith": "node scripts/frontsmith.mjs",
