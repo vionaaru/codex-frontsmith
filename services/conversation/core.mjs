@@ -17,11 +17,12 @@
 // посетителя только сохраняются для сотрудника. Сотрудник отвечает, закрывает диалог или
 // возвращает его AI; при возврате модель получает пропущенную переписку в следующем ходе —
 // через Privacy Service, как любое сообщение.
+import { createHash } from "node:crypto";
 import { PrivacyProcessingError } from "../codex-host/privacy-client.mjs";
 
 export const HANDOFF_TOOL = "request_human";
 
-export const HANDOFF_NOTICE = "Разговор передан сотруднику. Он ответит в этом чате, как только сможет: обычно в рабочее время. Можно продолжать писать сюда — сообщения увидит сотрудник";
+export const HANDOFF_NOTICE = "Разговор сохранён для сотрудника. Это не означает, что он сейчас онлайн. Можно продолжать писать сюда — сообщения останутся в очереди";
 const CLOSED_NOTICE = "Сотрудник завершил разговор. Если появятся вопросы, напишите сюда — ответит AI-помощник";
 const RETURNED_NOTICE = "Разговор снова ведёт AI-помощник";
 const MAX_REASON = 300;
@@ -176,8 +177,8 @@ export class ConversationCore {
     try {
       const host = this.#host();
       if (!host) throw new ConversationError("ai_unavailable", "Codex App Server не запущен");
-      const handle = await this.#attach(host, row);
-      const result = await host.send(handle, this.#turnInput(row, visitorMessage, text), { recipient: "visitor" });
+      const { handle, replay } = await this.#attach(host, row);
+      const result = await host.send(handle, this.#turnInput(row, visitorMessage, text, replay), { recipient: "visitor" });
       this.#store.recordTurn(id);
       this.#store.markAiSynced(id, visitorMessage.seq);
       const after = this.#store.get(id);
@@ -205,22 +206,25 @@ export class ConversationCore {
 
   // Сообщения, которых модель не видела (переписка с сотрудником после передачи), идут в
   // начале хода вместе с новым сообщением — тоже через Privacy Service
-  #turnInput(row, visitorMessage, text) {
-    const missed = this.#store.messages(row.id, { after: row.ai_synced_seq ?? 0 }).filter((message) => message.seq < visitorMessage.seq && message.role !== "assistant");
+  #turnInput(row, visitorMessage, text, replay = false) {
+    const missed = this.#store.messages(row.id, { after: replay ? 0 : row.ai_synced_seq ?? 0 }).filter((message) => message.seq < visitorMessage.seq && message.role !== "assistant");
     if (!missed.length) return text;
     const lines = missed.map((message) => `${ROLE_LABELS[message.role]}: ${message.text}`);
-    return [`Пока разговор вёл сотрудник, в чате было:`, ...lines, "", `Новое сообщение посетителя: ${text}`].join("\n");
+    return [replay ? "Предыдущие вопросы посетителя и сообщения сотрудника (не источник актуальных сведений компании):" : "Пока разговор вёл сотрудник, в чате было:", ...lines, "", `Новое сообщение посетителя: ${text}`].join("\n");
   }
 
   // Диалог в текущем CodexHost: открыть новый thread или возобновить сохранённый.
   // После перезапуска App Server прежняя привязка недействительна — возобновляется заново
   async #attach(host, row) {
     const live = this.#live.get(row.id);
-    if (live?.host === host) return live.handle;
+
     const tools = row.codex_thread_id ? this.#store.tools(row) : this.#tools;
     const context = await this.#context({ booking: tools.includes("find_booking_slots"), handoff: tools.includes(HANDOFF_TOOL) });
+    const contextHash = createHash('sha256').update(context).digest('hex');
+    if (live?.host === host && live.context === context) return { handle: live.handle, replay: false };
+    const replay = Boolean(row.codex_thread_id && row.context_hash !== contextHash);
     let opened;
-    if (row.codex_thread_id) {
+    if (row.codex_thread_id && !replay) {
       opened = await host.resumeConversation({
         tenantId: row.tenant_id,
         privacySessionId: row.privacy_session_id,
@@ -232,9 +236,9 @@ export class ConversationCore {
       this.#log({ event: "conversation_resumed", conversation: row.id });
     } else {
       opened = await host.openConversation({ tenantId: row.tenant_id, ephemeral: false, tools, context });
-      this.#store.bind(row.id, { ...opened, tools });
+      this.#store.bind(row.id, { ...opened, tools, contextHash });
     }
-    this.#live.set(row.id, { host, handle: opened.conversationId });
-    return opened.conversationId;
+    this.#live.set(row.id, { host, handle: opened.conversationId, context });
+    return { handle: opened.conversationId, replay };
   }
 }

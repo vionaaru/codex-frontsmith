@@ -74,6 +74,7 @@ export const MESSAGE_ROLES = ["visitor", "assistant", "operator", "system"];
 
 // Столбцы, добавленные после первой версии хранилища
 const COLUMNS = [
+  ["context_hash", "TEXT"],
   ["tools", "TEXT"],
   ["client_id", "TEXT"],
   // кто передал диалог человеку: ai, visitor или operator
@@ -133,9 +134,9 @@ export class ConversationStore {
   }
 
   // tools — инструменты Host, с которыми открыт thread: при thread/resume набор не меняется
-  bind(id, { threadId, privacySessionId, modelInstructions, tools = [] }) {
-    this.#db.prepare("UPDATE conversations SET codex_thread_id = ?, privacy_session_id = ?, model_instructions = ?, tools = ?, updated_at = ? WHERE id = ?")
-      .run(threadId, privacySessionId, modelInstructions ?? "", JSON.stringify(tools), this.#now().toISOString(), id);
+  bind(id, { threadId, privacySessionId, modelInstructions, tools = [], contextHash = null }) {
+    this.#db.prepare("UPDATE conversations SET codex_thread_id = ?, privacy_session_id = ?, model_instructions = ?, tools = ?, context_hash = ?, updated_at = ? WHERE id = ?")
+      .run(threadId, privacySessionId, modelInstructions ?? "", JSON.stringify(tools), contextHash, this.#now().toISOString(), id);
   }
 
   // Диалоги до появления инструментов записи сохранены без набора: у их thread инструментов нет

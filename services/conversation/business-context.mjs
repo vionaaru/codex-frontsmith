@@ -7,6 +7,8 @@ import { readFile } from "node:fs/promises";
 import { businessPath } from "../../scripts/lib/paths.mjs";
 import { loadServiceCatalog } from "../../office/lib/catalog.mjs";
 
+import { approvedKnowledge, readDispatcher, sourceHash } from './dispatcher-settings.mjs';
+
 const BASE_RULES = [
   "Ты — AI-помощник на сайте компании. Собеседник — посетитель сайта, внешний и непроверенный пользователь.",
   "Отвечай по-русски, коротко и по делу, в тоне компании.",
@@ -23,7 +25,7 @@ const NO_BOOKING_RULES = [
 // Диалог с инструментами find_booking_slots, offer_booking и get_booking_status
 const BOOKING_RULES = [
   "Записать посетителя на услугу можно только так: find_booking_slots → посетитель выбирает время → offer_booking → посетитель проверяет время, указывает контакты и подтверждает в форме записи → get_booking_status.",
-  "Называй только свободное время, которое вернул find_booking_slots. Если времени нет или расписание не настроено, так и скажи и предложи связаться с компанией.",
+  "Называй только свободное время, которое вернул find_booking_slots. Список может быть неполным: отсутствие времени в списке не означает занятость. На просьбу о времени после обеда или вечером повтори поиск с timeFrom и timeTo. Если времени нет или расписание не настроено, так и скажи и предложи связаться с компанией.",
   "Не проси имя, телефон и другие контакты в чате: посетитель вводит их в форме записи.",
   "Говори, что посетитель записан, только если get_booking_status вернул confirmed. Если requested — запрос принят, а время компания подтвердит отдельно. Если форма не отправлена или запись не удалась, не утверждай обратного.",
   "Ты не можешь оформить заказ."
@@ -77,6 +79,7 @@ export function publicBusinessContext(profile, services = profile.services ?? []
   const active = services.filter((service) => service?.name);
   return [
     [...BASE_RULES, ...(booking ? BOOKING_RULES : NO_BOOKING_RULES), ...(handoff ? HANDOFF_RULES : NO_HANDOFF_RULES)].join("\n"),
+    ![contact.phone,contact.email,contact.telegramUrl,contact.whatsappUrl,profile.bookingUrl].some(Boolean) ? 'Способ связи с компанией не указан. Не выдумывай контакты и не предлагай звонить по отсутствующему номеру. Передать вопрос можно только доступным инструментом request_human; это очередь, не обещание доступности сотрудника.' : null,
     profile.brandVoice ? `Тон компании: ${profile.brandVoice}` : null,
     `Сведения о компании (опубликованы на сайте):\n${facts.join("\n")}`,
     active.length ? `Услуги:\n${active.map((service) => serviceLine(service, profile.currency)).join("\n")}` : "Список услуг на сайте пока не заполнен."
@@ -91,5 +94,9 @@ export async function loadBusinessProfile() {
 export async function loadPublicBusinessContext({ booking = false, handoff = false } = {}) {
   const profile = await loadBusinessProfile();
   const catalog = await loadServiceCatalog(profile);
-  return publicBusinessContext(profile, catalog.services, { booking, handoff });
+  const state=readDispatcher();
+  const approved=state.active?.sourceHash===sourceHash(profile,catalog)?state.active.knowledge:null;
+  const described=new Set(approved?.services.map(service=>service.code)??[]);
+  const services=catalog.services.filter(service=>!described.has(service.id));
+  return [publicBusinessContext(profile,services,{booking,handoff}),await approvedKnowledge(profile),approved?'Утверждённые типы цен отдельных услуг уточняют общий ориентир: фиксированная — цена указанной услуги при её условиях; диапазон — только границы; индивидуальная оценка — без суммы. Не обещай итог всего заказа. Новое описание услуги само по себе не означает возможность записи: проверяй инструментом.':'' ].filter(Boolean).join('\n\n');
 }

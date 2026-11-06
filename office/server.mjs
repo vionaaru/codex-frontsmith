@@ -26,6 +26,8 @@ import { officeModules, vocabularyFor } from "../scripts/lib/blueprints.mjs";
 import { businessPath } from "../scripts/lib/paths.mjs";
 import { loadBrand, brandCss, brandAsset } from "../scripts/lib/brand.mjs";
 
+import { dispatcherStatus, changeDispatcher, dispatcherProfile } from '../services/conversation/dispatcher-settings.mjs';
+
 export const defaultOfficePort = 4180;
 const host = "127.0.0.1";
 const publicDir = fileURLToPath(new URL("./public/", import.meta.url));
@@ -235,6 +237,10 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
 
   // Действия сотрудника: ответ в диалоге, закрытие, возврат AI, решение по предварительной записи
   async function writeOperator(req, url) {
+    if (url.pathname === '/api/dispatcher' && req.method === 'POST') {
+      try { return {status:200,data:await changeDispatcher(await readJson(req, 64 * 1024),currentProfile() ?? {})}; }
+      catch(error) { if(error.status) throw new HttpError(error.status,error.message,'dispatcher_invalid');throw error; }
+    }
     const conversation = /^\/api\/conversations\/([^/]+)\/(messages|close|return-ai)$/.exec(url.pathname);
     if (conversation && req.method === "POST") {
       const id = uuid(decodeURIComponent(conversation[1]));
@@ -256,7 +262,7 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
       const profile = currentProfile();
       const ctx = createContext(writeConnection(), { actor: "оператор панели", source: "panel", now, vocabulary: vocabularyFor(profile) });
       try {
-        const row = decideAppointment(ctx, { settings: bookingSettings(profile), appointmentId: uuid(decodeURIComponent(appointment[1])), decision });
+        const row = decideAppointment(ctx, { settings: bookingSettings(await dispatcherProfile(profile)), appointmentId: uuid(decodeURIComponent(appointment[1])), decision });
         return { status: 200, data: { appointment: { id: row.id, status: row.status } } };
       } catch (error) {
         if (error instanceof BookingConflictError) throw new HttpError(409, error.message, "slot_unavailable");
@@ -272,7 +278,7 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
       if (!allowedHosts.has(String(req.headers.host ?? "").toLowerCase())) throw new HttpError(421, "Панель доступна только по адресу 127.0.0.1", "host_not_allowed");
       const url = new URL(req.url ?? "/", `http://${host}:${port}`);
       if (req.method !== "GET" && req.method !== "HEAD") {
-        const operatorPath = url.pathname.startsWith("/api/conversations/") || url.pathname.startsWith("/api/appointments/");
+        const operatorPath = url.pathname === '/api/dispatcher' || url.pathname.startsWith("/api/conversations/") || url.pathname.startsWith("/api/appointments/");
         if (!url.pathname.startsWith("/api/customers") && !operatorPath) {
           res.setHeader("allow", "GET, HEAD");
           throw new HttpError(405, "Панель только читает данные. Изменения — через Codex и npm run office", "read_only");
@@ -302,6 +308,7 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
   }
 
   async function api(url) {
+    if(url.pathname === '/api/dispatcher') return {data:await dispatcherStatus(currentProfile() ?? {}),meta:{generatedAt:now().toISOString()}};
     const route = routes.find(([pattern]) => typeof pattern === "string" ? pattern === url.pathname : pattern.test(url.pathname));
     if (!route) throw new HttpError(404, "Нет такого раздела API", "not_found");
     if (url.pathname === "/api/health") return { data: route[1](), meta: { generatedAt: now().toISOString() } };
@@ -355,12 +362,12 @@ function customerRow(summary, contact) {
   };
 }
 
-async function readJson(req) {
+async function readJson(req, limit = maxBodyBytes) {
   let size = 0;
   const chunks = [];
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > maxBodyBytes) throw new HttpError(413, "Слишком большой запрос", "payload_too_large");
+    if (size > limit) throw new HttpError(413, "Слишком большой запрос", "payload_too_large");
     chunks.push(chunk);
   }
   try {

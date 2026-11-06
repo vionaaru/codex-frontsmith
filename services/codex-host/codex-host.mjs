@@ -94,6 +94,7 @@ export class CodexHost {
       sandbox: "read-only",
       approvalPolicy: "on-request",
       ...(this.#options.model ? { model: this.#options.model } : {}),
+      baseInstructions: [...instructions, HOST_INSTRUCTIONS].filter(Boolean).join("\n\n"),
       developerInstructions: [...instructions, HOST_INSTRUCTIONS].filter(Boolean).join("\n\n"),
       dynamicTools: tools.map((name) => this.#tools.get(name)).map((tool) => ({
         type: "function",

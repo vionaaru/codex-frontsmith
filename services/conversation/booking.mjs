@@ -18,6 +18,8 @@ import { OfficeValidationError } from "../../office/lib/domain.mjs";
 import { createContext } from "../../office/lib/operations.mjs";
 import { vocabularyFor } from "../../scripts/lib/blueprints.mjs";
 
+import { dispatcherProfile } from './dispatcher-settings.mjs';
+
 export const BOOKING_TOOLS = ["find_booking_slots", "offer_booking", "get_booking_status"];
 const ACTOR = "AI-диспетчер сайта";
 
@@ -61,7 +63,7 @@ export class BookingDesk {
   }
 
   async #settings() {
-    const profile = await this.#profile();
+    const profile = await dispatcherProfile(await this.#profile());
     return { profile, settings: bookingSettings(profile) };
   }
 
@@ -84,8 +86,8 @@ export class BookingDesk {
     return [
       {
         name: "find_booking_slots",
-        description: "Свободное время для записи на услугу по расписанию компании. service — код или название услуги из каталога; date — с какой даты искать (ГГГГ-ММ-ДД), необязательно.",
-        inputSchema: { type: "object", properties: { service: { type: "string" }, date: { type: "string" } }, required: ["service"], additionalProperties: false },
+        description: "Свободное время для записи на услугу по расписанию компании. service — код или название услуги из каталога; date — с какой даты искать (ГГГГ-ММ-ДД); timeFrom/timeTo — границы начала по местному времени ЧЧ:ММ, например 14:00–19:00. Список частичный, другие часы могут быть свободны.",
+        inputSchema: { type: "object", properties: { service: { type: "string" }, date: { type: "string" }, timeFrom: { type: "string" }, timeTo: { type: "string" } }, required: ["service"], additionalProperties: false },
         handler: guard(this.find_booking_slots)
       },
       {
@@ -117,20 +119,21 @@ export class BookingDesk {
     return slots.map((slot) => `- ${slot.key} — ${slot.label}`).join("\n");
   }
 
-  async find_booking_slots({ service: query, date }, conversation) {
+  async find_booking_slots({ service: query, date, timeFrom, timeTo }, conversation) {
     const { settings } = await this.#settings();
     const unavailable = this.#unavailable(settings);
     if (unavailable) return unavailable;
     const { service, matches } = findBookableService(this.#db, query);
     if (!service) return matches.length ? `service_not_found: уточни услугу. Услуги каталога:\n${this.#serviceList(matches)}` : "no_services: в каталоге нет услуг для записи";
     const fromDate = /^\d{4}-\d{2}-\d{2}$/.test(String(date ?? "")) ? date : null;
-    const slots = availableSlots(this.#db, settings, service, { now: this.#now(), fromDate });
+    if ([timeFrom,timeTo].some(t=>t!==undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) || timeFrom && timeTo && timeFrom>timeTo) return 'invalid_time: границы начала должны быть ЧЧ:ММ, от меньшего к большему';
+    const slots = availableSlots(this.#db, settings, service, { now: this.#now(), fromDate, timeFrom, timeTo });
     this.#log({ event: "booking_slots", conversation: conversation.id, count: slots.length });
-    if (!slots.length) return `no_slots: свободного времени на «${service.name}» в ближайшие ${settings.horizonDays} дн. нет. Предложи другую дату или связаться с компанией`;
+    if (!slots.length) return `no_slots: свободного времени на «${service.name}» в выбранном диапазоне начала в ближайшие ${settings.horizonDays} дн. не найдено. Это не означает, что другие часы заняты. Предложи другую дату или связаться с компанией`;
     const duration = service.duration_minutes ? `${service.duration_minutes} мин` : `около ${settings.defaultDurationMinutes} мин (ориентир)`;
     return [
       `Услуга: ${service.code} — ${service.name}, длительность ${duration}.`,
-      `Свободное время (часовой пояс компании ${settings.timeZone}):`,
+      `Несколько свободных вариантов, НЕ полный список. Для других часов повтори поиск с timeFrom/timeTo. Часовой пояс компании ${settings.timeZone}:`,
       this.#slotLines(slots),
       "Предложи посетителю несколько вариантов. Когда он выберет, вызови offer_booking со значением start из списка. Контакты в чате не спрашивай: их посетитель укажет в форме."
     ].join("\n");
@@ -204,7 +207,7 @@ export class BookingDesk {
     };
     if (offer.status !== "offered") return view;
     const { service } = findBookableService(this.#db, offer.service_code);
-    const options = service ? availableSlots(this.#db, settings, service, { now: this.#now(), fromDate: view.start.slice(0, 10), limit: 6 }) : [];
+    const options = service ? availableSlots(this.#db, settings, service, { now: this.#now(), fromDate: view.start.slice(0, 10), timeFrom: view.start.slice(11), limit: 6 }) : [];
     return { ...view, options: options.map((slot) => ({ start: slot.key, label: slot.label })) };
   }
 

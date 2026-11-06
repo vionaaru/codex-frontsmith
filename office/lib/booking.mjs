@@ -159,7 +159,7 @@ export function slotProblem(db, settings, service, startsAt, now, { ignoreId = n
 }
 
 // Свободные интервалы услуги начиная с даты fromDate (ГГГГ-ММ-ДД, по умолчанию сегодня)
-export function availableSlots(db, settings, service, { now = new Date(), fromDate = null, limit = 8, perDay = 4 } = {}) {
+export function availableSlots(db, settings, service, { now = new Date(), fromDate = null, limit = 8, perDay = 4, timeFrom = null, timeTo = null } = {}) {
   if (!settings.configured) return [];
   const today = zonedDayRange(now, settings.timeZone).date;
   const last = addDays(today, settings.horizonDays - 1);
@@ -170,6 +170,7 @@ export function availableSlots(db, settings, service, { now = new Date(), fromDa
     const [year, month, date] = day.split("-").map(Number);
     let taken = 0;
     for (let minute = settings.hours.start; minute + duration <= settings.hours.end && slots.length < limit && taken < perDay; minute += settings.slotStepMinutes) {
+      if (timeFrom && minute < minutes(timeFrom) || timeTo && minute > minutes(timeTo)) continue;
       const startsAt = zonedTime(year, month, date, Math.floor(minute / 60), minute % 60, settings.timeZone);
       if (slotProblem(db, settings, service, startsAt, now)) continue;
       slots.push({ key: slotKey(startsAt, settings.timeZone), label: slotLabel(startsAt, settings.timeZone), startsAt: startsAt.toISOString(), endsAt: new Date(startsAt.getTime() + duration * 60_000).toISOString() });
