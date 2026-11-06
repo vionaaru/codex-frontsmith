@@ -12,6 +12,7 @@ try {
 console.log(`Обновлён сайт: ${result.business.businessName}`);
 console.log(`Сайт: ${result.websiteDir}`);
 if (result.backupPath) console.log(`Прежний index.html сохранён: ${result.backupPath}`);
+for (const file of result.assetBackups) console.log(`Прежний файл сохранён: ${file}`);
 console.log(`Прайс: ${result.catalog.note}`);
 console.log(`Материалы проверки: ${result.reviewDisplayPath}`);
 console.log(`Запись действия: ${result.activityDisplayPath}`);

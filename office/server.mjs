@@ -24,6 +24,7 @@ import { OfficeValidationError } from "./lib/domain.mjs";
 import { connectCustomers, enrichCustomerRefs } from "./customers/index.mjs";
 import { officeModules, vocabularyFor } from "../scripts/lib/blueprints.mjs";
 import { businessPath } from "../scripts/lib/paths.mjs";
+import { loadBrand, brandCss, brandAsset } from "../scripts/lib/brand.mjs";
 
 export const defaultOfficePort = 4180;
 const host = "127.0.0.1";
@@ -445,9 +446,38 @@ function publicBusiness(business) {
 }
 
 async function serveStatic(pathname, req, res) {
+    if (pathname === "/brand.css" || pathname === "/brand-base.css" || pathname === "/brand-theme.js" || pathname.startsWith("/brand-assets/")) {
+      let body;
+      let type = "text/css; charset=utf-8";
+      if (pathname === "/brand.css") { const brand = await loadBrand(); body = brand ? brandCss(brand) : ""; }
+      else if (pathname === "/brand-theme.js" || pathname === "/brand-base.css") {
+        const brand = await loadBrand();
+        body = brand ? await readFile(path.join(publicDir, "../../website", pathname.slice(1))) : "";
+        if (pathname.endsWith(".js")) type = "text/javascript; charset=utf-8";
+      } else {
+        try {
+          const file = await brandAsset(pathname.slice("/brand-assets/".length));
+          body = await readFile(file);
+          const extension = path.extname(file).slice(1).toLowerCase();
+          type = extension === "woff2" ? "font/woff2" : `image/${extension === "jpg" ? "jpeg" : extension}`;
+        }
+        catch { throw new HttpError(404, "Файл бренда не найден", "not_found"); }
+      }
+      res.writeHead(200, { ...securityHeaders, "content-type": type, "cache-control": "no-store" });
+      res.end(req.method === "HEAD" ? undefined : body);
+      return;
+    }
   const entry = staticFiles[pathname];
   if (!entry) throw new HttpError(404, "Не найдено", "not_found");
-  const body = await readFile(path.join(publicDir, entry[0]));
+    let body = await readFile(path.join(publicDir, entry[0]));
+    if (entry[0] === "index.html") {
+      const brand = await loadBrand();
+      if (brand) {
+        let html = body.toString("utf8").replace("</head>", '<link rel="stylesheet" href="/brand.css"><link rel="stylesheet" href="/brand-base.css"><script src="/brand-theme.js"></script></head>');
+        if (brand.logo) html = html.replace(/<svg class="brand-logo"[\s\S]*?<\/svg>/, `<img class="brand-logo" src="/brand-assets/${brand.logo}" alt="">`);
+        body = Buffer.from(html);
+      }
+    }
   res.writeHead(200, { ...securityHeaders, "content-type": entry[1], "cache-control": "no-cache" });
   res.end(req.method === "HEAD" ? undefined : body);
 }

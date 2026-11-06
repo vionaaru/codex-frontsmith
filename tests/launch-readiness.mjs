@@ -52,7 +52,7 @@ const requiredScripts = {
   "office:backup": "node scripts/office.mjs backup",
   "office:restore": "node scripts/office.mjs restore",
   "office:serve": "node office/server.mjs",
-  test: "npm run test:launch && npm run test:regression && npm run test:office && npm run test:install && npm run test:codex-host && npm run test:conversation",
+  test: "npm run test:launch && npm run test:regression && npm run test:office && npm run test:install && npm run test:codex-host && npm run test:conversation && npm run test:design",
   "test:launch": "node tests/launch-readiness.mjs",
   "test:regression": "node tests/regression.mjs",
   "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs && node tests/generic-profile.mjs && node tests/profile-vocabulary.mjs && node tests/website-update.mjs",

@@ -6,6 +6,7 @@ import { dataRoot } from "../../services/privacy/runtime.mjs";
 import { businessPath, businessRoot, businessWebsiteRoot, websiteSourceRoot } from "./paths.mjs";
 import { loadServiceCatalog } from "../../office/lib/catalog.mjs";
 import { websiteTemplateFile } from "./blueprints.mjs";
+import { loadBrand, brandCss, brandAsset } from "./brand.mjs";
 
 const chatcopsVendorRoot = path.join("vendor", "chatcops-widget");
 
@@ -17,6 +18,9 @@ export class WebsiteEditedError extends Error {
 }
 
 const sha256 = (text) => createHash("sha256").update(text, "utf8").digest("hex");
+// Release 26f959a had no per-file record. Recognize only the unmodified shipped widget
+// (LF or CRLF), rather than treating an arbitrary existing file as generated.
+const legacyWidgetHashes = new Set(["f584588a697f90c5e67c9d0e4020937b8430ce3e1f8466262bcb4e370a5f3587", "97e360fd0e244f6f6d61be46dcee54a790d13a4ba3ed1d02684830dd4c21ee76"]);
 
 // Отпечаток последней сгенерированной страницы — в корне рабочих данных, вне каталога сайта
 function renderRecordPath() {
@@ -51,9 +55,52 @@ export async function renderWebsite({ force = false } = {}) {
   const business = { ...profile, services: catalog.services };
   const activityDir = path.join(root, "activity");
   const launchDir = path.join(root, "launch");
-  const replacements = buildReplacements(business);
-  const template = websiteTemplateFile(profile);
-  const rendered = updateWebsiteFile(await readWebsiteFile(template), replacements);
+  const brand = await loadBrand();
+  const replacements = buildReplacements(brand?.logo ? { ...business, media: { ...business.media, logoImage: `/brand-assets/${brand.logo}` } } : business);
+  if (brand?.logo) await brandAsset(brand.logo);
+  if (brand?.fontFace) await brandAsset(brand.fontFace.file);
+  const customTemplate = businessPath("design", "site", "index.html");
+  const template = brand && existsSync(customTemplate) ? customTemplate : websiteTemplateFile(profile);
+  const source = await readWebsiteFile(template);
+  if (template === customTemplate) {
+    for (const token of ['data-frontsmith-text="businessName"', 'data-frontsmith-text="tagline"', 'data-frontsmith-html="serviceCards"', 'data-header', 'data-nav', 'data-nav-toggle', 'data-nav-close', 'data-nav-backdrop', 'data-intake-form', 'data-intake-error', 'data-intake-status', 'data-intake-submit', 'data-contact-email', 'data-contact-phone', 'script.js', 'chat-widget.js', 'chatcops.min.js']) {
+      if (!source.includes(token)) throw new Error(`Клиентский шаблон потерял обязательный контракт: ${token}`);
+    }
+    if (!/<head\b/i.test(source) || !/<\/head>/i.test(source)) throw new Error("Клиентский шаблон должен содержать head");
+  }
+  let rendered = updateWebsiteFile(source, replacements);
+  if (brand) rendered = rendered.replace(/<head\b[^>]*>/i, `$&\n<script src="./brand-theme.js"></script>`).replace(/<\/head>/i, '<link rel="stylesheet" href="./brand.css"><link rel="stylesheet" href="./brand-base.css"><link rel="stylesheet" href="./site.css"></head>');
+  const managed = new Map([["index.html", Buffer.from(rendered)]]);
+  for (const file of ["styles.css", "script.js", "chat-widget.js"]) managed.set(file, await readFile(path.join(websiteSourceRoot, file)));
+  for (const [from, to] of [["chatcops.min.js", "chatcops.min.js"], ["LICENSE", "LICENSE.txt"]]) managed.set(`vendor/chatcops/${to}`, await readFile(path.join(chatcopsVendorRoot, from)));
+  if (brand) {
+    managed.set("brand.css", Buffer.from(brandCss(brand)));
+    for (const file of ["brand-theme.js", "brand-base.css"]) managed.set(file, await readFile(path.join(websiteSourceRoot, file)));
+    const siteCss = businessPath("design", "site", "site.css");
+    managed.set("site.css", existsSync(siteCss) ? await readFile(siteCss) : Buffer.from("/* No custom site composition */\n"));
+    const publicDir = businessPath("design", "public");
+    if (existsSync(publicDir)) {
+      const { readdir } = await import("node:fs/promises");
+      for (const name of await readdir(publicDir)) managed.set(`brand-assets/${name}`, await readFile(await brandAsset(name)));
+    }
+  }
+  // Preflight every overwritten file before writing anything, including CSS and scripts.
+  const assetBackups = [];
+  let previous = {};
+  try { previous = JSON.parse(await readFile(renderRecordPath(), "utf8")); } catch { /* old installation */ }
+  for (const [name, bytes] of managed) {
+    if (name === "index.html") continue;
+    const file = path.join(websiteRoot, name);
+    if (!existsSync(file)) continue;
+    const existing = await readFile(file);
+    const expected = previous.files?.[name];
+    if (sha256(existing) === sha256(bytes) || (expected && sha256(existing) === expected) || (!expected && name === "chat-widget.js" && legacyWidgetHashes.has(sha256(existing)))) continue;
+    if (!force) throw new WebsiteEditedError(file);
+    const backup = path.join(dataRoot(), "backups", "website", `assets-before-update-${Date.now()}`, name);
+    await mkdir(path.dirname(backup), { recursive: true });
+    await writeFile(backup, existing);
+    assetBackups.push(backup);
+  }
   const indexPath = path.join(websiteRoot, "index.html");
   const backupPath = await guardEditedIndex(indexPath, rendered, { force });
 
@@ -63,18 +110,14 @@ export async function renderWebsite({ force = false } = {}) {
 
   await cp(websiteSourceRoot, websiteRoot, { recursive: true, force: false, errorOnExist: false });
   // HTML читается из шаблона профиля при каждом обновлении; рабочие значения записываются только в приватную копию.
-  // Стили, скрипт и изображения общие для всех профилей
+  // Общие скрипты остаются из поставки; фирменная композиция и токены — из design/.
   await writeWebsiteFile(indexPath, rendered);
-  await writeFile(renderRecordPath(), `${JSON.stringify({ sha256: sha256(rendered), template, renderedAt: new Date().toISOString() }, null, 2)}
-`);
-  for (const file of ["styles.css", "script.js", "chat-widget.js"]) {
-    await cp(path.join(websiteSourceRoot, file), path.join(websiteRoot, file));
+  for (const [file, bytes] of managed) {
+    await mkdir(path.dirname(path.join(websiteRoot, file)), { recursive: true });
+    await writeFile(path.join(websiteRoot, file), bytes);
   }
-  // Виджет AI-чата: собранный ChatCops из поставки без изменений, вместе с лицензией
-  await mkdir(path.join(websiteRoot, "vendor", "chatcops"), { recursive: true });
-  for (const [from, to] of [["chatcops.min.js", "chatcops.min.js"], ["LICENSE", "LICENSE.txt"]]) {
-    await cp(path.join(chatcopsVendorRoot, from), path.join(websiteRoot, "vendor", "chatcops", to));
-  }
+  // Commit the generation receipt only after every managed output was written.
+  await writeFile(renderRecordPath(), `${JSON.stringify({ sha256: sha256(rendered), files: Object.fromEntries([...managed].map(([name, bytes]) => [name, sha256(bytes)])), template, renderedAt: new Date().toISOString() }, null, 2)}\n`);
 
   const reviewPath = path.join(launchDir, "website-review.md");
   const activityPath = path.join(activityDir, "latest-website-update.md");
@@ -87,6 +130,7 @@ export async function renderWebsite({ force = false } = {}) {
     catalog,
     websiteDir: websiteRoot,
     backupPath,
+    assetBackups,
     reviewPath,
     activityPath,
     reviewDisplayPath: businessDisplayPath(root, "launch", "website-review.md"),

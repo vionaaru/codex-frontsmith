@@ -53,9 +53,22 @@
   // Повторная генерация ответа каналом не поддерживается: кнопку скрываем внутри Shadow DOM
   var host = document.getElementById("chatcops-root");
   var shadow = host && host.shadowRoot;
+  // Theme the existing instance; never destroy a live conversation to recolor it.
+  function applyBrandTheme() {
+    if (!host) return;
+    var css = getComputedStyle(document.documentElement);
+    var properties = { "--cc-accent": "accent", "--cc-accent-hover": "accent", "--cc-on-accent": "on-accent", "--cc-accent-contrast": "accent", "--cc-bg": "surface", "--cc-bg-surface": "surface-muted", "--cc-bg-input": "page", "--cc-text": "text", "--cc-text-secondary": "text-muted", "--cc-border": "border", "--cc-font": "font", "--cc-radius": "radius" };
+    Object.keys(properties).forEach(function (target) {
+      var value = css.getPropertyValue("--brand-" + properties[target]).trim();
+      if (value) host.style.setProperty(target, value);
+    });
+  }
+  applyBrandTheme();
+  document.addEventListener("frontsmith-theme", applyBrandTheme);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyBrandTheme);
   if (shadow) {
     var style = document.createElement("style");
-    style.textContent = ".cc-message-regenerate{display:none!important}";
+    style.textContent = ".cc-message-regenerate{display:none!important}.fs-handoff{background:var(--cc-bg-surface)!important;color:var(--cc-text-secondary)!important;border-color:var(--cc-border)!important;font-family:var(--cc-font)!important}.fs-handoff-button{color:var(--cc-text)!important;border-color:var(--cc-border)!important;border-radius:var(--cc-radius)!important}";
     shadow.appendChild(style);
   }
 

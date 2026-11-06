@@ -10,6 +10,7 @@ import { OPTIONS as contactOptions, POST as contactPost } from "../../api/contac
 import { unavailableWebChannel } from "../../services/conversation/web-channel.mjs";
 
 function contentType(file) {
+  file = file.toLowerCase();
   if (file.endsWith(".css")) return "text/css; charset=utf-8";
   if (file.endsWith(".html")) return "text/html; charset=utf-8";
   if (file.endsWith(".js")) return "text/javascript; charset=utf-8";
@@ -17,6 +18,7 @@ function contentType(file) {
   if (file.endsWith(".webp")) return "image/webp";
   if (file.endsWith(".png")) return "image/png";
   if (file.endsWith(".svg")) return "image/svg+xml; charset=utf-8";
+  if (file.endsWith(".woff2")) return "font/woff2";
   return "application/octet-stream";
 }
 
