@@ -3,11 +3,13 @@ import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { runInNewContext } from "node:vm";
+import { freePort } from "../services/crm/runtime.mjs";
 
 const websiteSourceRoot = "website";
 const websiteFiles = ["index.html", "styles.css", "script.js", "frontsmith-mark.svg", "favicon.svg"];
-const testPort = "4183";
-const demoPort = "4184";
+const testPort = String(await freePort());
+let demoPort = String(await freePort());
+while (demoPort === testPort) demoPort = String(await freePort());
 const testRoot = await mkdtemp(path.join(os.tmpdir(), "frontsmith-regression-"));
 const root = path.join(testRoot, "business");
 const websiteRoot = path.join(root, "website");
