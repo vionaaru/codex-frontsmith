@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, writeFile, lstat, realpath, unlink } from "node:fs/promises";
 import path from "node:path";
 import { dataRoot } from "../../services/privacy/runtime.mjs";
 import { businessPath, businessRoot, businessWebsiteRoot, websiteSourceRoot } from "./paths.mjs";
 import { loadServiceCatalog } from "../../office/lib/catalog.mjs";
 import { websiteTemplateFile } from "./blueprints.mjs";
 import { loadBrand, brandCss, brandAsset } from "./brand.mjs";
+import { assertIntakeFormContract } from "./website-contract.mjs";
 
 const chatcopsVendorRoot = path.join("vendor", "chatcops-widget");
 
@@ -69,6 +70,7 @@ export async function renderWebsite({ force = false } = {}) {
     if (!/<head\b/i.test(source) || !/<\/head>/i.test(source)) throw new Error("Клиентский шаблон должен содержать head");
   }
   let rendered = updateWebsiteFile(source, replacements);
+  if (template === customTemplate) assertIntakeFormContract(rendered);
   if (brand) rendered = rendered.replace(/<head\b[^>]*>/i, `$&\n<script src="./brand-theme.js"></script>`).replace(/<\/head>/i, '<link rel="stylesheet" href="./brand.css"><link rel="stylesheet" href="./brand-base.css"><link rel="stylesheet" href="./site.css"></head>');
   const managed = new Map([["index.html", Buffer.from(rendered)]]);
   for (const file of ["styles.css", "script.js", "chat-widget.js"]) managed.set(file, await readFile(path.join(websiteSourceRoot, file)));
@@ -88,6 +90,25 @@ export async function renderWebsite({ force = false } = {}) {
   const assetBackups = [];
   let previous = {};
   try { previous = JSON.parse(await readFile(renderRecordPath(), "utf8")); } catch { /* old installation */ }
+  const retired = [];
+  for (const [name, expected] of Object.entries(previous.files ?? {})) {
+    if (!/^brand-assets\/[a-zA-Z0-9][a-zA-Z0-9_.-]*\.(?:png|jpe?g|webp|woff2)$/i.test(name) || managed.has(name)) continue;
+    const file = path.resolve(websiteRoot, name);
+    let entry;
+    try { entry = await lstat(file); } catch (error) { if (error.code === "ENOENT") continue; throw error; }
+    const site = await realpath(websiteRoot);
+    const parent = await realpath(path.dirname(file));
+    if (parent.toLowerCase() !== path.join(site, "brand-assets").toLowerCase() || !entry.isFile() || entry.isSymbolicLink()) throw new Error(`Нельзя удалить ресурс по ссылке или вне сайта: ${name}`);
+    const existing = await readFile(file);
+    if (sha256(existing) !== expected) {
+      if (!force) throw new WebsiteEditedError(file);
+      const backup = path.join(dataRoot(), "backups", "website", `assets-before-update-${Date.now()}`, name);
+      await mkdir(path.dirname(backup), { recursive: true });
+      await writeFile(backup, existing);
+      assetBackups.push(backup);
+    }
+    retired.push({ file, digest: sha256(existing) });
+  }
   for (const [name, bytes] of managed) {
     if (name === "index.html") continue;
     const file = path.join(websiteRoot, name);
@@ -115,6 +136,13 @@ export async function renderWebsite({ force = false } = {}) {
   for (const [file, bytes] of managed) {
     await mkdir(path.dirname(path.join(websiteRoot, file)), { recursive: true });
     await writeFile(path.join(websiteRoot, file), bytes);
+  }
+  // Only receipt-owned, preflighted files are retired. Unknown files are never pruned.
+  for (const { file, digest } of retired) {
+    const entry = await lstat(file);
+    const site = await realpath(websiteRoot);
+    if (entry.isSymbolicLink() || !entry.isFile() || (await realpath(path.dirname(file))).toLowerCase() !== path.join(site, "brand-assets").toLowerCase() || sha256(await readFile(file)) !== digest) throw new WebsiteEditedError(file);
+    await unlink(file);
   }
   // Commit the generation receipt only after every managed output was written.
   await writeFile(renderRecordPath(), `${JSON.stringify({ sha256: sha256(rendered), files: Object.fromEntries([...managed].map(([name, bytes]) => [name, sha256(bytes)])), template, renderedAt: new Date().toISOString() }, null, 2)}\n`);

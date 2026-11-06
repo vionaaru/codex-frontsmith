@@ -21,9 +21,10 @@ async function files(root, prefix = "") {
 }
 async function inputs() {
   const material = await files(businessPath("design", "inputs"));
+  const publicAssets = await files(businessPath("design", "public"));
   let profile = null;
   try { profile = hash(await readFile(businessPath("business.json"))); } catch (e) { if (e.code !== "ENOENT") throw e; }
-  return { material, profile, digest: hash(JSON.stringify({ material, profile })) };
+  return { material, profile, publicAssets: hash(JSON.stringify(publicAssets)), digest: hash(JSON.stringify({ material, profile })) };
 }
 async function state() {
   try { return JSON.parse(await readFile(businessPath("design", "progress.json"), "utf8")); }
@@ -32,7 +33,7 @@ async function state() {
 async function outputDigest() {
   const outputs = await files(businessPath("website"));
   const code = [];
-  for (const file of ["scripts/lib/brand.mjs", "scripts/lib/render-website.mjs", "website/brand-base.css", "website/brand-theme.js", "website/chat-widget.js", "office/public/styles.css", "office/public/app.js", "office/public/index.html", "office/server.mjs"]) code.push([file, hash(await readFile(file))]);
+  for (const file of ["scripts/lib/brand.mjs", "scripts/lib/render-website.mjs", "scripts/lib/website-contract.mjs", "website/brand-base.css", "website/brand-theme.js", "website/chat-widget.js", "office/public/styles.css", "office/public/app.js", "office/public/index.html", "office/server.mjs"]) code.push([file, hash(await readFile(file))]);
   return hash(JSON.stringify({ outputs, code }));
 }
 async function safeArtifact(relative) {
@@ -51,6 +52,7 @@ export async function designStatus() {
   for (const stage of stages) {
     const item = saved.stages[stage];
     let valid = !stale && item?.input === previous && Object.keys(item?.artifacts ?? {}).length > 0;
+    if (valid && stage === "brand" && item.publicAssets !== current.publicAssets) valid = false;
     if (valid) for (const [file, expected] of Object.entries(item.artifacts)) {
       try { if (await safeArtifact(file) !== expected) valid = false; } catch { valid = false; }
     }
@@ -71,6 +73,7 @@ export async function checkpoint(stage, artifacts) {
   const fingerprints = {};
   for (const file of artifacts) fingerprints[file] = await safeArtifact(file);
   saved.stages[stage] = { input: index === 0 ? status.input : hash(JSON.stringify(saved.stages[stages[index - 1]])), artifacts: fingerprints, recordedAt: new Date().toISOString() };
+  if (stage === "brand") saved.stages[stage].publicAssets = (await inputs()).publicAssets;
   if (stage === "implementation" || stage === "verification") saved.stages[stage].output = await outputDigest();
   for (const following of stages.slice(index + 1)) delete saved.stages[following];
   const target = businessPath("design", "progress.json");
