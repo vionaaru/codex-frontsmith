@@ -237,8 +237,25 @@ export class BookingDesk {
     return this.#offerView(this.#recoverOffer(stored));
   }
 
-  async #offerView(offer) {
-    const {profile,settings}=offer.appointment_id?{profile:null,settings:{timeZone:'UTC'}}:await this.#settings();
+  async #offerView(offer, locked = false) {
+    if(offer.appointment_id)return this.#renderOffer(offer);
+    let context,profileError;
+    try{context=await this.#settings();}catch(error){profileError=error;}
+    const finish=()=>{
+      // A writer may have committed while the profile read was suspended. Re-read both
+      // stores after the await, under the writer lock, before declaring stale/offered.
+      let stored;
+      try{stored=this.#store.getOffer(offer.id);}catch{/* the authorized snapshot can still recover a receipt */}
+      if(stored&&stored.conversation_id!==offer.conversation_id)throw new BookingError(503,'booking_status_unknown','Связь предложения изменилась. Требуется проверка результата');
+      const current=this.#recoverOffer(stored??offer);
+      if(current.appointment_id)return this.#renderOffer(current);
+      if(!stored||profileError)throw new BookingError(503,'booking_status_unknown','Не удалось согласованно проверить результат записи. Повторите проверку; не считайте запись отсутствующей');
+      return this.#renderOffer(current,context.profile,context.settings);
+    };
+    return locked?finish():withDispatcherLock(finish);
+  }
+
+  #renderOffer(offer, profile = null, settings = {timeZone:'UTC'}) {
     const terms=this.#readTerms(offer),zone=terms?.timeZone??settings.timeZone;
     const startsAt=new Date(offer.starts_at);
     const view={id:offer.id,status:this.#status(offer),service:offer.service_name,start:slotKey(startsAt,zone),label:slotLabel(startsAt,zone),mode:terms?.autoConfirm?'auto':'request',timeZone:zone,termsVersion:terms?.version??null,reference:offer.appointment_id?shortRef(offer.appointment_id):null};
@@ -265,7 +282,7 @@ export class BookingDesk {
         let current=offer;
         try{current=this.#store.getOffer(offer.id)??offer;}catch{/* already authorized; recover from the office */}
         const recovered=this.#recoverOffer(current);
-        if(recovered.appointment_id)return this.#offerView(recovered);
+        if(recovered.appointment_id)return this.#offerView(recovered,true);
         throw error;
       });
     }finally{this.#confirming.delete(offer.id);}
@@ -291,7 +308,7 @@ export class BookingDesk {
     this.#store.setClient(conversationId,customer.customer.id);
     return withDispatcherLock(async()=>{
       const latest=this.#recoverOffer(this.#store.getOffer(offer.id)??offer);
-      if(['requested','confirmed'].includes(latest.status))return this.#offerView(latest);
+      if(['requested','confirmed'].includes(latest.status))return this.#offerView(latest,true);
       if(latest.status!=='offered')throw new BookingError(409,'offer_changed','Предложение заменено. Выберите время заново');
       const current=await this.#settings();
       const currentService=findBookableService(this.#db,offer.service_code).service;

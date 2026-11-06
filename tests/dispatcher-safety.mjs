@@ -95,5 +95,27 @@ try {
   activeDesk=brokenDesk;receiptReadsFail=true;const unknown=await post('/api/chat/booking',split,{offerId:splitOffer.id});assert.equal(unknown.status,503);assert.equal(unknown.body.error.code,'booking_status_unknown');
   receiptReadsFail=false;activeDesk=desk;const httpRecovered=await post('/api/chat/booking',split,{offerId:splitOffer.id});assert.equal(httpRecovered.status,200);assert.equal(httpRecovered.body.offer.reference,committed.id.slice(0,8));
  } finally {server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
- console.log('Dispatcher safety PASS: stale timezone/mode, exact instant, policy race across CRM await, duplicate confirm, full fallback transition, public-price refusal, first activation deactivation/restore/exact receipt A vs B/split-store recovery/uncertain reads');
+ // Deterministic read race: another connection commits and changes policy during profile await.
+ const writerDb=registerFunctions(openOfficeDb());const writerStore=new ConversationStore({file:path.join(root,'conversations.sqlite')});
+ const writerCustomers=await connectCustomers({db:writerDb});const writerDesk=new BookingDesk({db:writerDb,provider:writerCustomers.provider,store:writerStore,profile:()=>profile,now});
+ try {
+  for(const [day,mode] of [['13','normal'],['14','receipt-failure'],['15','profile-failure']]){
+   await activate(schedule);const v=visitor();await desk.offer_booking({service:'legacy',start:'2026-11-'+day+'T15:00'},v);const selected=await desk.pending(v.id);
+   let enterRead,releaseRead,failReceipt=false;
+   const enteredRead=new Promise(resolve=>enterRead=resolve),readGate=new Promise(resolve=>releaseRead=resolve);
+   const readerDb=new Proxy(db,{get(target,key){if(key==='prepare')return sql=>{if(failReceipt&&sql.includes("WHERE source='website' AND external_id=?"))throw new Error('Injected final receipt read failure');return target.prepare(sql)};const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value}});
+   const reader=new BookingDesk({db:readerDb,provider:customers.provider,store,profile:async()=>{enterRead();await readGate;if(mode==='profile-failure')throw new Error('Injected profile read failure');return profile},now});
+   const countBefore=db.prepare('SELECT count(*) AS n FROM appointments').get().n;
+   const reading=reader.pending(v.id,selected.id);await enteredRead;
+   const accepted=await writerDesk.confirm(v.id,input(selected));
+   await activate({...schedule,timeZone:'Asia/Yekaterinburg',autoConfirm:true});
+   failReceipt=mode==='receipt-failure';
+   const expected=mode==='receipt-failure'?assert.rejects(reading,{code:'booking_status_unknown'}):reading;
+   releaseRead();
+   if(mode==='receipt-failure')await expected;
+   else{const result=await expected;assert.equal(result.status,'requested');assert.equal(result.id,selected.id);assert.equal(result.reference,accepted.reference);assert.equal(result.start,selected.start);assert.equal(result.timeZone,'Europe/Moscow');assert.equal(result.mode,'request');}
+   failReceipt=false;const retried=await desk.confirm(v.id,input(selected));assert.equal(retried.reference,accepted.reference);assert.equal(db.prepare('SELECT count(*) AS n FROM appointments').get().n,countBefore+1);
+  }
+ }finally{await writerCustomers.stop();writerStore.close();writerDb.close();}
+ console.log('Dispatcher safety PASS: stale timezone/mode, exact instant, policy race across CRM await, duplicate confirm, full fallback transition, public-price refusal, first activation deactivation/restore/exact receipt A vs B/split-store recovery/uncertain reads/post-await receipt race');
 }finally{await customers.stop();await crm.close();store.close();db.close();if(path.dirname(root)!==path.resolve(os.tmpdir()))throw new Error('Unsafe cleanup');await rm(root,{recursive:true,force:true});}
