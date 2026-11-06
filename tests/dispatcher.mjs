@@ -40,8 +40,6 @@ try {
   assert.match(await desk.find_booking_slots({service:'cut',timeFrom:'15:00'}, {id:'synthetic'}),/НЕ полный список/);
   assert.match(await desk.find_booking_slots({service:'cut',timeFrom:'25:00'}, {id:'synthetic'}),/invalid_time/);
   assert.match(await desk.find_booking_slots({service:'cut',timeFrom:'19:30'}, {id:'synthetic'}),/выбранном диапазоне/);
-  const offeredDesk=new BookingDesk({db:{prepare:sql=>({all:()=>sql.includes('services')?[{code:'cut',name:'Стрижка',duration_minutes:60}]:[]})},provider:null,store:{latestOffer:()=>({id:'offer',status:'offered',service_code:'cut',service_name:'Стрижка',starts_at:'2026-11-05T12:00:00Z'})},profile:()=>profile,now:()=>now});
-  const pending=await offeredDesk.pending('synthetic');assert.equal(pending.start,'2026-11-05T15:00');assert.equal(pending.options[0].start,pending.start,'Form preserves chosen afternoon slot');
   const {openOfficeDb,migrate}=await import('../office/lib/db.mjs');
   const {syncBusinessProjection}=await import('../office/lib/import.mjs');
   const {dispatcherProfile}=await import('../services/conversation/dispatcher-settings.mjs');
@@ -49,12 +47,12 @@ try {
   const configured={...draft,schedule:{timeZone:'Europe/Moscow',days:[1,2,3,4,5,6,7],start:'10:00',end:'20:00',slotStepMinutes:30,autoConfirm:false},services:[{code:'cut',name:'Стрижка',kind:'estimate',min:null,max:null,conditions:'Оценка после консультации',durationMinutes:45}]};
   s=await dispatcherStatus(profile);s=await changeDispatcher({revision:s.revision,action:'save',draft:configured},profile);
   await assert.rejects(changeDispatcher({revision:s.revision,action:'catalog'},profile),{status:400});
-  s=await changeDispatcher({revision:s.revision,action:'catalog',reviewed:true},{...profile,services:[{id:'cut',name:'Стрижка',priceFrom:null,durationMinutes:45}]});assert.equal(s.sources.catalog,'db','File fallback must not be mistaken for an existing SQL service');assert.equal(s.catalog[0].code,'cut');
+  s=await changeDispatcher({revision:s.revision,action:'catalog',reviewed:true,publicCatalog:true},{...profile,services:[{id:'cut',name:'Стрижка',priceFrom:null,durationMinutes:45}]});assert.equal(s.sources.catalog,'db','File fallback must not be mistaken for an existing SQL service');assert.equal(s.catalog[0].code,'cut');
   s=await changeDispatcher({revision:s.revision,action:'publish',reviewed:true},profile);
   const effective=await dispatcherProfile(profile);assert.equal(effective.booking.hours.end,'20:00');assert.equal(effective.booking.autoConfirm,false);
   assert.equal((await dispatcherProfile({...profile,businessName:'Изменился'})).booking.enabled,false);
   const verifyDb=openOfficeDb();assert.equal(verifyDb.prepare('SELECT duration_minutes FROM services WHERE code=?').get('cut').duration_minutes,45);verifyDb.close();
-  s=await changeDispatcher({revision:s.revision,action:'catalog',reviewed:true},profile);assert.equal(s.catalog.length,1,'Repeated import does not duplicate services');
+  s=await changeDispatcher({revision:s.revision,action:'catalog',reviewed:true,publicCatalog:true},profile);assert.equal(s.catalog.length,1,'Repeated import does not duplicate services');
   office=createOfficeServer({port:43187});await new Promise(resolve=>office.server.listen(43187,'127.0.0.1',resolve));
   const base='http://127.0.0.1:43187';let response=await fetch(base+'/api/dispatcher');assert.equal(response.status,200);s=(await response.json()).data;
   response=await fetch(base+'/api/dispatcher',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});assert.equal(response.status,403);

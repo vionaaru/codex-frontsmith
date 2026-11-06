@@ -11,14 +11,16 @@
 // только если владелец разрешил это в профиле (booking.autoConfirm) — это проверяет
 // confirm(), а не инструкции модели. Обработчики инструментов не бросают исключений:
 // бизнес-ошибка возвращается модели кодом, чтобы ход диалога не прерывался.
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { CustomerError } from "../../office/customers/contract.mjs";
 import { BookingConflictError, availableSlots, bookSlot, bookingSettings, findBookableService, parseSlotKey, slotKey, slotLabel, slotProblem } from "../../office/lib/booking.mjs";
 import { OfficeValidationError } from "../../office/lib/domain.mjs";
 import { createContext } from "../../office/lib/operations.mjs";
 import { vocabularyFor } from "../../scripts/lib/blueprints.mjs";
 
-import { dispatcherProfile } from './dispatcher-settings.mjs';
+import { readDispatcher, dispatcherProfile } from './dispatcher-settings.mjs';
+
+import { withDispatcherLock } from './dispatcher-lock.mjs';
 
 export const BOOKING_TOOLS = ["find_booking_slots", "offer_booking", "get_booking_status"];
 const ACTOR = "AI-диспетчер сайта";
@@ -139,8 +141,25 @@ export class BookingDesk {
     ].join("\n");
   }
 
-  async offer_booking({ service: query, start }, conversation) {
-    const { settings } = await this.#settings();
+  async offer_booking(args, conversation) {
+    return withDispatcherLock(()=>this.#offerBooking(args,conversation));
+  }
+
+  #terms(profile,settings,service) {
+    const state=readDispatcher();
+    const version=state.policyRevision??state.active?.version??0;
+    const fingerprint=createHash('sha256').update(JSON.stringify({profile,settings,service,version,knowledge:state.active?.knowledge??null})).digest('hex');
+    return {fingerprint,timeZone:settings.timeZone,autoConfirm:settings.autoConfirm,version};
+  }
+
+  #readTerms(offer) { try { return JSON.parse(offer.terms_json??'null'); } catch { return null; } }
+  #readOptions(offer) { try { return JSON.parse(offer.options_json??'[]'); } catch { return []; } }
+  #assertTerms(offer,profile,settings,service) {
+    if(this.#readTerms(offer)?.fingerprint!==this.#terms(profile,settings,service).fingerprint)throw new BookingError(409,'offer_changed','Условия записи изменились. Выберите время заново и подтвердите новую форму');
+  }
+
+  async #offerBooking({ service: query, start }, conversation) {
+    const { profile, settings } = await this.#settings();
     const unavailable = this.#unavailable(settings);
     if (unavailable) return unavailable;
     const { service } = findBookableService(this.#db, query);
@@ -156,7 +175,10 @@ export class BookingDesk {
       const slots = availableSlots(this.#db, settings, service, { now: this.#now(), fromDate: slotKey(startsAt, settings.timeZone).slice(0, 10), limit: 4 });
       return `slot_unavailable: ${PROBLEMS[problem] ?? "время недоступно"}.${slots.length ? ` Свободные варианты:\n${this.#slotLines(slots)}` : " Предложи другую дату."}`;
     }
-    const offer = this.#store.offer(conversation.id, { serviceCode: service.code, serviceName: service.name, startsAt: startsAt.toISOString(), clientId: conversation.client_id ?? randomUUID() });
+    const key=slotKey(startsAt,settings.timeZone);
+    const options=availableSlots(this.#db,settings,service,{now:this.#now(),fromDate:key.slice(0,10),timeFrom:key.slice(11),limit:6});
+    const terms=this.#terms(profile,settings,service);
+    const offer = this.#store.offer(conversation.id, { serviceCode: service.code, serviceName: service.name, startsAt: startsAt.toISOString(), clientId: conversation.client_id ?? randomUUID(),terms,options });
     this.#log({ event: "booking_offered", conversation: conversation.id, offer: offer.id });
     return [
       `offer_created: посетителю показана форма записи: «${service.name}», ${slotLabel(startsAt, settings.timeZone)}.`,
@@ -181,10 +203,11 @@ export class BookingDesk {
     const { settings } = await this.#settings();
     const offer = this.#store.latestOffer(conversation.id);
     if (!offer) return "no_booking: в этом диалоге записи нет";
-    const when = slotLabel(new Date(offer.starts_at), settings.timeZone);
+    const when = slotLabel(new Date(offer.starts_at), this.#readTerms(offer)?.timeZone??settings.timeZone);
     const status = this.#status(offer);
     if (status === "declined") return `declined: компания отклонила запрос на запись «${offer.service_name}», ${when}. Запись не состоится. Предложи выбрать другое время или связаться с компанией`;
     if (status === "confirmed" && offer.status === "requested") return `confirmed: компания подтвердила запись — «${offer.service_name}», ${when}, номер ${shortRef(offer.appointment_id)}`;
+    if (offer.status === "offered" && (await this.pending(conversation.id))?.status === "stale") return "offer_changed: прежняя форма устарела после изменения условий. Найди свободное время заново через find_booking_slots и предложи новую форму; не утверждай, что запись создана";
     if (offer.status === "offered") return `waiting_for_form: посетитель ещё не отправил форму записи на «${offer.service_name}», ${when}. Запись не создана`;
     if (offer.status === "requested") return `requested: запрос на запись «${offer.service_name}», ${when} принят, номер ${shortRef(offer.appointment_id)}. Время ещё НЕ подтверждено: компания подтвердит его отдельно. Не говори, что запись подтверждена`;
     return `confirmed: запись подтверждена — «${offer.service_name}», ${when}, номер ${shortRef(offer.appointment_id)}`;
@@ -194,20 +217,25 @@ export class BookingDesk {
   async pending(conversationId) {
     const offer = this.#store.latestOffer(conversationId);
     if (!offer) return null;
-    const { settings } = await this.#settings();
+    const { profile, settings } = await this.#settings();
+    const terms=this.#readTerms(offer);
+    const zone=terms?.timeZone??settings.timeZone;
     const startsAt = new Date(offer.starts_at);
     const view = {
       id: offer.id,
       status: this.#status(offer),
       service: offer.service_name,
-      start: slotKey(startsAt, settings.timeZone),
-      label: slotLabel(startsAt, settings.timeZone),
-      mode: settings.autoConfirm ? "auto" : "request",
+      start: slotKey(startsAt, zone),
+      label: slotLabel(startsAt, zone),
+      mode: terms?.autoConfirm ? "auto" : "request",
+      timeZone: zone,
+      termsVersion: terms?.version??null,
       reference: offer.appointment_id ? shortRef(offer.appointment_id) : null
     };
     if (offer.status !== "offered") return view;
     const { service } = findBookableService(this.#db, offer.service_code);
-    const options = service ? availableSlots(this.#db, settings, service, { now: this.#now(), fromDate: view.start.slice(0, 10), timeFrom: view.start.slice(11), limit: 6 }) : [];
+    if(!service || terms?.fingerprint!==this.#terms(profile,settings,service).fingerprint)return {...view,status:'stale',options:[]};
+    const options=this.#readOptions(offer).filter(option=>!slotProblem(this.#db,settings,service,new Date(option.startsAt),this.#now()));
     return { ...view, options: options.map((slot) => ({ start: slot.key, label: slot.label })) };
   }
 
@@ -233,12 +261,10 @@ export class BookingDesk {
     if (this.#unavailable(settings)) throw new BookingError(409, "booking_disabled", "Запись через чат сейчас недоступна");
     const { service } = findBookableService(this.#db, offer.service_code);
     if (!service || service.code !== offer.service_code) throw new BookingError(409, "service_unavailable", "Услуга больше недоступна для записи");
-    let startsAt;
-    try {
-      startsAt = parseSlotKey(start ?? slotKey(new Date(offer.starts_at), settings.timeZone), settings.timeZone);
-    } catch {
-      throw new BookingError(400, "invalid_start", "Выберите время из списка");
-    }
+    this.#assertTerms(offer,profile,settings,service);
+    const selected=this.#readOptions(offer).find(option=>option.key===(start??slotKey(new Date(offer.starts_at),this.#readTerms(offer).timeZone)));
+    if(!selected)throw new BookingError(400,'invalid_start','Форма не содержит такого времени. Выберите время из списка');
+    const startsAt=new Date(selected.startsAt);
     const taken = () => new BookingError(409, "slot_unavailable", "Это время уже недоступно: выберите другое");
     // Ранняя проверка — чтобы не создавать клиента для заведомо занятого времени.
     // Окончательная — в транзакции bookSlot
@@ -253,6 +279,14 @@ export class BookingDesk {
     }
     this.#store.setClient(conversationId, customer.customer.id);
 
+    return withDispatcherLock(async()=>{
+    const latest=this.#store.getOffer(offer.id);
+    if(latest?.status==='requested'||latest?.status==='confirmed')return this.pending(conversationId);
+    if(latest?.status!=='offered')throw new BookingError(409,'offer_changed','Предложение заменено. Выберите время заново');
+    const current=await this.#settings();
+    const currentService=findBookableService(this.#db,offer.service_code).service;
+    if(!currentService)throw new BookingError(409,'offer_changed','Услуга изменилась. Выберите время заново');
+    this.#assertTerms(offer,current.profile,current.settings,currentService);
     const ctx = createContext(this.#db, { actor: ACTOR, source: "ai_dispatcher", now: this.#now, vocabulary: vocabularyFor(profile) });
     const label = slotLabel(startsAt, settings.timeZone);
     let result;
@@ -265,6 +299,7 @@ export class BookingDesk {
         externalId: `chat:${offer.id}`,
         description: `Запись через AI-чат сайта: ${service.name}, ${label}`,
         autoConfirm: settings.autoConfirm,
+        assertCurrentTerms: ()=>this.#assertTerms(offer,current.profile,current.settings,findBookableService(this.#db,offer.service_code).service),
         confirmationBasis: "Клиент выбрал время и подтвердил запись в форме на сайте; автоподтверждение разрешено владельцем (booking.autoConfirm)"
       });
     } catch (error) {
@@ -276,5 +311,6 @@ export class BookingDesk {
     this.#store.completeOffer(offer.id, { status, startsAt: startsAt.toISOString(), inquiryId: result.inquiryId, appointmentId: result.appointment.id });
     this.#log({ event: `booking_${status}`, conversation: conversationId, offer: offer.id, duplicate: result.duplicate });
     return this.pending(conversationId);
+    });
   }
 }

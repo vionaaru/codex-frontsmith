@@ -169,7 +169,7 @@ export function createWebChannel({ core, booking = null, allowedHosts, limits = 
     } catch (error) {
       if (!(error instanceof BookingError)) throw error;
       log({ event: "booking_rejected", conversation: conversation.id, code: error.code });
-      const offer = error.code === "slot_unavailable" ? await booking.pending(conversation.id) : null;
+      const offer = ["slot_unavailable", "offer_changed"].includes(error.code) ? await booking.pending(conversation.id) : null;
       throw new ChannelError(error.status, error.code, error.message, undefined, offer ? { offer } : {});
     }
   }

@@ -40,6 +40,13 @@ const harness=`
    await send('Неизвестный вопрос','Не знаю');await send('Какая цена стрижки?','индивидуальная оценка');await send('Запись после 15','Проверьте форму');
    await wait(()=>document.querySelector('.fs-booking input[name=start]:checked'));
    const offered=shadow.textContent.match(/Предлагаю время (\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2})/)[1];if(document.querySelector('.fs-booking input[name=start]:checked').value!==offered)throw new Error('Afternoon choice changed');
+   if(location.search.includes('stale')){
+    await fetch('/test/change-terms',{method:'POST'});
+    document.querySelector('.fs-booking input[name=name]').value='Synthetic stale form';document.querySelector('.fs-booking input[name=phone]').value='+79990000456';document.querySelector('.fs-booking input[name=consent]').checked=true;
+    document.querySelector('.fs-booking button[type=submit]').click();await wait(()=>document.querySelector('.fs-booking').textContent.includes('Выберите время заново'));
+    if(!document.querySelector('.fs-booking').textContent.includes('запись по ней не создана'))throw new Error('Stale form must explicitly refuse booking');
+    document.body.dataset.testResult='pass';return;
+   }
    if(location.search.includes('form')){document.body.dataset.testResult='pass';return;}
    document.querySelector('.fs-booking button[type=submit]').click();await wait(()=>document.querySelector('.fs-error').textContent.includes('Укажите имя'));
    document.querySelector('.fs-booking input[name=name]').value='Синтетический посетитель';document.querySelector('.fs-booking input[name=phone]').value='+79990000123';document.querySelector('.fs-booking input[name=consent]').checked=true;
@@ -54,6 +61,9 @@ const harness=`
 `;
 const server=createServer(async(req,res)=>{
  const pathname=new URL(req.url,'http://localhost').pathname;
+ if(pathname==='/test/change-terms'){
+  profile.timeZone='Asia/Yekaterinburg';profile.booking={autoConfirm:true};await writeFile(path.join(process.env.FRONTSMITH_BUSINESS_ROOT,'business.json'),JSON.stringify(profile));res.writeHead(200,{'content-type':'application/json'});res.end('{}');return;
+ }
  if(await chat.handle(req,res,pathname))return;
  const files={'/vendor.js':'vendor/chatcops-widget/chatcops.min.js','/widget.js':'website/chat-widget.js'};
  if(files[pathname]){res.writeHead(200,{'content-type':'text/javascript;charset=utf-8'});res.end(await readFile(files[pathname]));return}
@@ -63,14 +73,16 @@ const server=createServer(async(req,res)=>{
 await new Promise(resolve=>server.listen(43191,'127.0.0.1',resolve));
 const browser=[process.env.FRONTSMITH_TEST_BROWSER,...[process.env['ProgramFiles(x86)'],process.env.ProgramFiles,process.env.LOCALAPPDATA].filter(Boolean).flatMap(base=>[path.join(base,'Microsoft','Edge','Application','msedge.exe'),path.join(base,'Google','Chrome','Application','chrome.exe')])].find(p=>p&&existsSync(p));
 try {
- for(const label of ['desktop','mobile','offline']){
-  const args=['--headless=new','--disable-gpu','--no-first-run','--disable-background-networking','--disable-component-update','--virtual-time-budget=20000','--window-size='+(label==='mobile'?'390,844':'1440,1000'),'--user-data-dir='+path.join(temp,label),'--dump-dom','http://127.0.0.1:43191/'+(label==='offline'?'?offline=1':'')];
+ for(const label of ['desktop','mobile','stale','offline']){
+  profile.timeZone='Europe/Moscow';profile.booking={autoConfirm:false};await writeFile(path.join(process.env.FRONTSMITH_BUSINESS_ROOT,'business.json'),JSON.stringify(profile));
+  const args=['--headless=new','--disable-gpu','--no-first-run','--disable-background-networking','--disable-component-update','--virtual-time-budget=20000','--window-size='+(label==='mobile'?'390,844':'1440,1000'),'--user-data-dir='+path.join(temp,label),'--dump-dom','http://127.0.0.1:43191/'+(label==='offline'?'?offline=1':label==='stale'?'?stale=1':'')];
   const {stdout}=await promisify(execFile)(browser,args,{windowsHide:true,timeout:45000,maxBuffer:2*1024*1024});await writeFile(path.join(temp,label+'.html'),stdout);assert.match(stdout,/data-test-result="pass"/,stdout.slice(-5000));
  }
- for(const [label,size,query] of [['booking-desktop','1440,1000','form=1'],['booking-narrow','500,900','form=1'],['unavailable','1440,1000','offline=1']]){
+ for(const [label,size,query] of [['booking-desktop','1440,1000','form=1'],['booking-narrow','500,900','form=1'],['unavailable','1440,1000','offline=1'],['stale-form','500,900','stale=1']]){
+  profile.timeZone='Europe/Moscow';profile.booking={autoConfirm:false};await writeFile(path.join(process.env.FRONTSMITH_BUSINESS_ROOT,'business.json'),JSON.stringify(profile));
   await promisify(execFile)(browser,['--headless=new','--disable-gpu','--no-first-run','--disable-background-networking','--disable-component-update','--virtual-time-budget=20000','--window-size='+size,'--user-data-dir='+path.join(temp,label),'--screenshot='+path.join(temp,label+'.png'),'http://127.0.0.1:43191/?'+query],{windowsHide:true,timeout:45000,maxBuffer:1024*1024});
  }
  assert.ok(calls.includes('offer'));assert.equal(db.prepare('SELECT count(*) AS n FROM appointments').get().n,2);
  assert.ok(db.prepare('SELECT status FROM appointments').all().every(r=>r.status==='tentative'));
- console.log('Client browser PASS: unknown/individual price/afternoon preserved/form error/real booking via fake CRM/handoff/offline; SCRIPTED MODEL DOUBLE. Evidence: '+temp);
+ console.log('Client browser PASS: unknown/individual price/afternoon preserved/stale terms rejected/form error/real booking via fake CRM/handoff/offline; SCRIPTED MODEL DOUBLE. Evidence: '+temp);
 } finally {await new Promise(resolve=>server.close(resolve));await customers.stop();store.close();db.close();await crm.close?.()}

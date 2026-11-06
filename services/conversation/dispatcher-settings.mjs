@@ -7,6 +7,7 @@ import { loadServiceCatalog } from '../../office/lib/catalog.mjs';
 import { openOfficeDb, officeDbExists } from '../../office/lib/db.mjs';
 import { importCatalog } from '../../office/lib/import.mjs';
 import { bookingSettings } from '../../office/lib/booking.mjs';
+import { withDispatcherLock } from './dispatcher-lock.mjs';
 export const emptyKnowledge = () => ({ about:'', conditions:'', faq:'', source:'', schedule:null, services:[] });
 const file = () => businessPath('dispatcher','settings.json');
 export function readDispatcher() {
@@ -54,25 +55,51 @@ export async function dispatcherStatus(profile) {
   const stale=Boolean(state.active && state.active.sourceHash!==hash);
   return {...state, stale, timeZone:profile.timeZone??'', bookingLimits:bookingSettings(profile), preview:knowledgeText(state.draft,profile.currency), errors:knowledgeProblems(state.draft,profile,catalog), catalog:catalog.services.map(s=>({code:s.id,name:s.name,price:s.priceFrom})), sources:{profile:'business.json',catalog:catalog.source,availability:'Локальное расписание SQL; внешний календарь не подключён'}, readiness:{facts:Boolean(profile.businessName),booking:!(stale&&state.active?.knowledge.schedule)&&bookingSettings(state.active?.knowledge.schedule ? scheduleProfile(profile,state.active.knowledge.schedule):profile).configured,approved:Boolean(state.active)&&!stale}, sourceHash:hash};
 }
-export async function changeDispatcher({revision,action,draft,reviewed},profile) {
+export async function changeDispatcher(input,profile) {
+  return withDispatcherLock(()=>updateDispatcher(input,profile));
+}
+async function updateDispatcher({revision,action,draft,reviewed,publicCatalog},profile) {
   const state=await dispatcherStatus(profile);
   if(revision!==state.revision || revision!==readDispatcher().revision) throw Object.assign(new Error('Настройки изменились. Обновите страницу перед сохранением'),{status:409});
-  let next={revision:state.revision+1,draft:state.draft,active:state.active,previous:state.previous};
+  let next={revision:state.revision+1,draft:state.draft,active:state.active,previous:state.previous,policyRevision:action==='save'?(state.policyRevision??state.active?.version??0):state.revision+1};
   if(action==='save') next.draft=validateKnowledge(draft);
   else if(action==='catalog') {
-    if(reviewed!==true) throw Object.assign(new Error('Подтвердите проверку услуг перед добавлением в каталог'),{status:400});
+    if(reviewed!==true || publicCatalog!==true) throw Object.assign(new Error('Подтвердите проверку и немедленную публичность услуг перед добавлением в каталог'),{status:400});
     if(!officeDbExists()) throw Object.assign(new Error('Сначала подготовьте офис: npm run office:init'),{status:409});
+    if(state.errors.length)throw Object.assign(new Error(state.errors.join('; ')),{status:409});
+    if(state.draft.services.some(service=>['fixed','range'].includes(service.kind)))throw Object.assign(new Error('Публичный каталог пока поддерживает только цену «от» или индивидуальную оценку. Фиксированная цена и диапазон не добавлены: данные не изменены. Их можно сохранить как дополнительные знания, но публичный прайс нужно согласовать отдельно'),{status:409});
     const existing=new Set(state.sources.catalog==='db'?state.catalog.map(service=>service.code):[]);
     const services=state.draft.services.filter(service=>!existing.has(service.code)).map(service=>({id:service.code,name:service.name,description:service.conditions,category:'other',priceFrom:service.min,durationMinutes:service.durationMinutes}));
     const db=openOfficeDb();
-    try { importCatalog(db,{...profile,services,pricingPolicy:{ownerApprovedForLiveQuotes:true}}); } finally {db.close();}
+    try {
+      const fallback=state.sources.catalog==='file'?(profile.services??[]):[];
+      const fallbackCodes=new Set();
+      for(const service of fallback) {
+        if(fallbackCodes.has(service.id))throw Object.assign(new Error('Файловый каталог содержит повторяющиеся коды. Переход остановлен без изменений'),{status:409});
+        fallbackCodes.add(service.id);
+      }
+      // One transaction preserves the entire visible fallback before adding approved new entries.
+      db.transaction(()=>{
+        for(const service of fallback) {
+          const collision=db.prepare('SELECT * FROM services WHERE code=?').get(service.id);
+          if(collision)throw Object.assign(new Error('Переход каталога остановлен: файловая услуга '+service.id+' уже имеет SQL-запись. Согласуйте её состояние через Codex; данные не изменены'),{status:409});
+        }
+        for(const service of services.filter(service=>!fallbackCodes.has(service.id)))if(db.prepare('SELECT 1 FROM services WHERE code=?').get(service.id))throw Object.assign(new Error('Каталог изменился другой операцией. Обновите страницу и проверьте услуги; данные не изменены'),{status:409});
+        if(fallback.length)importCatalog(db,{...profile,services:fallback});
+        const codes=new Set(fallback.map(service=>service.id));
+        importCatalog(db,{...profile,services:services.filter(service=>!codes.has(service.id)),pricingPolicy:{ownerApprovedForLiveQuotes:true}});
+      }).immediate();
+    } finally {db.close();}
   } else if(action==='publish') {
     if(reviewed!==true) throw Object.assign(new Error('Подтвердите проверку публичных сведений и противоречий'),{status:400});
     if(state.errors.length) throw Object.assign(new Error(state.errors.join('; ')),{status:409});
     next.previous=state.active; next.active={knowledge:state.draft,sourceHash:state.sourceHash,version:next.revision,approvedAt:new Date().toISOString()};
   } else if(action==='rollback') {
     if(!state.previous || state.previous.sourceHash!==state.sourceHash) throw Object.assign(new Error('Нет совместимой предыдущей версии: проверьте и утвердите черновик'),{status:409});
-    next.active=state.previous;next.previous=state.active;
+    next.active={...state.previous,version:next.revision,approvedAt:new Date().toISOString()};next.previous=state.active;
+  } else if(action==='deactivate') {
+    if(!state.active)throw Object.assign(new Error('Дополнительные знания уже отключены'),{status:409});
+    next.previous=state.active;next.active=null;
   } else throw Object.assign(new Error('Неизвестное действие'),{status:400});
   // No await between revision check and replacement. Each file is complete even after a crash.
   const dir=path.dirname(file());mkdirSync(dir,{recursive:true});mkdirSync(path.join(dir,'sources'),{recursive:true});const temp=file()+'.tmp';writeFileSync(temp,JSON.stringify(next,null,2),'utf8');renameSync(temp,file());

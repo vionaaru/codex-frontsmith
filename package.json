@@ -75,7 +75,7 @@
     "test:conversation": "node tests/conversation.mjs && node tests/booking.mjs && node tests/handoff.mjs && npm run test:dispatcher",
     "demo:booking": "node scripts/demo-booking.mjs",
     "conversations:purge": "node scripts/conversations-purge.mjs",
-    "test:dispatcher": "node tests/dispatcher.mjs",
+    "test:dispatcher": "node tests/dispatcher.mjs && node tests/dispatcher-safety.mjs",
     "test:dispatcher:browser": "node tests/dispatcher-browser.mjs",
     "test:dispatcher:client-browser": "node tests/dispatcher-client-browser.mjs"
   },

@@ -897,6 +897,8 @@ fetchJson("/api/meta").then((meta) => { state.meta = meta.data; }).catch(() => {
 // Draft editor is a form: polling never replaces unsaved text.
 function renderDispatcher(data) {
   let revision=data.revision;
+  let dirty=false,busy=false;
+  const buttons=[];
   const box=el('div',{class:'dispatcher-editor'});
   const message=el('p',{role:'status','aria-live':'polite'});
   const input=(label,value,area=false)=>{
@@ -917,9 +919,9 @@ function renderDispatcher(data) {
   const conditions=input('Условия обслуживания — ограничения, подготовка, порядок согласования',data.draft.conditions,true);
   const faq=input('Вопросы и ответы — каждый вопрос вместе с проверенным ответом',data.draft.faq,true);
   const source=input('Источник и дата проверки — для внедренца, клиенту не передаётся',data.draft.source,true);
-  box.append(el('h2',{},'3. Услуги и объяснение цены'),el('p',{},'Публичное описание и каталог записи — отдельные шаги. Коды, названия и начальная цена существующих услуг должны совпадать с каталогом. Новые услуги можно добавить в каталог отдельной кнопкой после сохранения черновика; существующие записи не перезаписываются'));
+  box.append(el('h2',{},'3. Услуги и объяснение цены'),el('p',{},'Добавление в каталог немедленно делает описание и цену доступными диспетчеру и следующей сборке сайта. Откат знаний услуги не удаляет. Каталог пока поддерживает только цену «от» и индивидуальную оценку; фиксированная цена и диапазон для этого действия будут отклонены. Публичное описание и каталог записи — отдельные шаги. Коды, названия и начальная цена существующих услуг должны совпадать с каталогом. Новые услуги можно добавить в каталог отдельной кнопкой после сохранения черновика; существующие записи не перезаписываются'));
   const list=el('div',{}),rows=[];
-  function addService(service={code:'service-'+crypto.randomUUID().slice(0,8),name:'',kind:'estimate',min:'',max:'',conditions:''}) {
+  function addService(service={code:'service-'+crypto.randomUUID().slice(0,8),name:'',kind:'estimate',min:'',max:'',conditions:''},changed=true) {
     const row=el('fieldset',{class:'panel dispatcher-service'});
     row.append(el('legend',{},'Услуга'));
     const field=(label,key,type='text')=>{const node=el('input',{type,maxlength:100});node.value=service[key]??'';row.append(el('label',{},label,node));return node};
@@ -931,9 +933,9 @@ function renderDispatcher(data) {
     const conditions=el('textarea',{rows:3,maxlength:600});conditions.value=service.conditions;row.append(el('label',{},'Что влияет на стоимость',conditions));
     const update=()=>{min.disabled=kind.value==='estimate';max.disabled=kind.value!=='range'};kind.addEventListener('change',update);update();
     const entry={row,read:()=>({code:code.value,name:name.value,kind:kind.value,min:min.value,max:max.value,conditions:conditions.value,durationMinutes:duration.value?Number(duration.value):null})};rows.push(entry);
-    row.append(el('button',{type:'button',onclick:()=>{rows.splice(rows.indexOf(entry),1);row.remove()}},'Удалить из черновика'));list.append(row);
+    row.append(el('button',{type:'button',onclick:()=>{rows.splice(rows.indexOf(entry),1);row.remove();markDirty()}},'Удалить из черновика'));list.append(row);if(changed)markDirty();
   }
-  data.draft.services.forEach(addService);box.append(list,el('button',{type:'button',onclick:()=>addService()},'Добавить описание услуги'));
+  data.draft.services.forEach(service=>addService(service,false));box.append(list,el('button',{type:'button',onclick:()=>addService()},'Добавить описание услуги'));
   if(data.catalog.length)box.append(el('details',{},el('summary',{},'Посмотреть действующий каталог'),...data.catalog.map(s=>el('p',{},s.code+' · '+s.name+' · '+(s.price??'оценка') ))));
   const reviewed=el('input',{type:'checkbox'});
   const scheduleBox=el('fieldset',{class:'panel dispatcher-service'});
@@ -947,18 +949,28 @@ function renderDispatcher(data) {
   const auto=el('input',{type:'checkbox'});auto.checked=schedule.autoConfirm;scheduleBox.append(el('label',{},auto,' Разрешить автоподтверждение свободной записи после формы клиента'),el('p',{},'Без автоподтверждения создаётся запрос на согласование. Длительность берётся из каталога, при отсутствии — 60 минут. Одновременно обслуживается одна запись; внешние календари не подключены. Минимум до начала: '+data.bookingLimits.minNoticeMinutes+' мин; горизонт записи: '+data.bookingLimits.horizonDays+' дн'));
   box.append(scheduleBox);
   box.append(el('h2',{},'5. Проверка и начало работы'),el('label',{},reviewed,' Я проверил публичность сведений, цены и противоречия с профилем, каталогом и исходными документами'));
-  const buttons=[];
-  box.addEventListener('input',event=>{if(event.target!==reviewed){for(const b of buttons.slice(1))b.disabled=true;message.textContent='Есть несохранённые изменения. Сначала сохраните черновик'}});
+  const catalogReviewed=el('input',{type:'checkbox'});
+  box.append(el('label',{},catalogReviewed,' Разрешаю немедленно сделать описания и цены новых услуг публичными через каталог. Это действие не отменяется откатом знаний'));
+  function refreshButtons() {
+    for(const button of buttons){const action=button.dataset.action;button.disabled=busy||(action!=='save'&&dirty)||(action==='rollback'&&(!data.previous||data.previous.sourceHash!==data.sourceHash))||(action==='deactivate'&&!data.active);}
+  }
+  function markDirty(){dirty=true;reviewed.checked=false;catalogReviewed.checked=false;refreshButtons();message.textContent='Есть несохранённые изменения. Сначала сохраните черновик'}
+  function edited(event){if(event.target!==reviewed&&event.target!==catalogReviewed)markDirty()}
+  box.addEventListener('input',edited);box.addEventListener('change',edited);
   async function act(action) {
-    buttons.forEach(b=>b.disabled=true);message.textContent='Сохранение…';
+    if(busy)return;
+    if(dirty&&action!=='save'){message.textContent='Сначала сохраните видимые изменения';return;}
+    busy=true;const disabled=new Map(Array.from(box.querySelectorAll('input,textarea,select,button')).map(control=>[control,control.disabled]));
+    disabled.forEach((value,control)=>control.disabled=true);refreshButtons();message.textContent='Сохранение…';
     try {
-      const response=await fetch('/api/dispatcher',{method:'POST',headers:{'Content-Type':'application/json','x-frontsmith-office':'1'},body:JSON.stringify({revision,action,reviewed:reviewed.checked,draft:{about:about.value,conditions:conditions.value,faq:faq.value,source:source.value,schedule:custom.checked?{timeZone:timeZone.value,start:start.value,end:end.value,slotStepMinutes:Number(step.value),days:days.filter(d=>d.checked).map(d=>Number(d.value)),autoConfirm:auto.checked}:null,services:rows.map(r=>r.read())}})});
+      const response=await fetch('/api/dispatcher',{method:'POST',headers:{'Content-Type':'application/json','x-frontsmith-office':'1'},body:JSON.stringify({revision,action,reviewed:reviewed.checked,publicCatalog:catalogReviewed.checked,draft:{about:about.value,conditions:conditions.value,faq:faq.value,source:source.value,schedule:custom.checked?{timeZone:timeZone.value,start:start.value,end:end.value,slotStepMinutes:Number(step.value),days:days.filter(d=>d.checked).map(d=>Number(d.value)),autoConfirm:auto.checked}:null,services:rows.map(r=>r.read())}})});
       const payload=await response.json();if(!response.ok)throw new Error(payload.error?.message??'Не удалось сохранить');
       state.results.replaceChildren(renderDispatcher(payload.data));
-      state.results.querySelector('[role=status]').textContent=action==='save'?'Черновик сохранён. Проверьте его перед утверждением':action==='publish'?'Сохранённая версия утверждена для ответов':action==='catalog'?'Новые услуги добавлены в каталог. Проверьте и утвердите знания':'Предыдущая версия восстановлена';
-    }catch(error){message.textContent=error.message;buttons.forEach(b=>b.disabled=false)}
+      state.results.querySelector('[role=status]').textContent=action==='save'?'Черновик сохранён. Проверьте его перед утверждением':action==='publish'?'Сохранённая версия утверждена для ответов':action==='catalog'?'Новые услуги добавлены в каталог и доступны публично. Проверьте и утвердите дополнительные знания':action==='deactivate'?'Дополнительные знания и отдельные часы отключены; действует профиль компании. Каталог сохранён':'Предыдущая версия восстановлена';
+    }catch(error){busy=false;disabled.forEach((value,control)=>control.disabled=value);refreshButtons();message.textContent=error.message+(dirty?' Видимые правки сохранены в форме; сначала исправьте ошибку и сохраните черновик':'')}
   }
-  for(const [action,label] of [['save','Сохранить черновик'],['catalog','Добавить новые услуги в каталог записи'],['publish','Утвердить сохранённый черновик'],['rollback','Вернуть предыдущую версию']]){const button=el('button',{type:'button',onclick:()=>act(action)},label);buttons.push(button);box.append(button)}
-  box.append(el('details',{},el('summary',{},'Проверить текст сохранённого черновика'),el('pre',{class:'dispatcher-preview'},data.preview)),message,...data.errors.map(error=>el('p',{role:'alert'},error)),el('p',{},'После утверждения проверьте виджет: неизвестный вопрос, цену без точной оценки, передачу человеку и время после обеда. AI-ответы требуют запуска полного офиса и входа ChatGPT. Утверждение не публикует сайт и не подключает сервисы'));
+  for(const [action,label] of [['save','Сохранить черновик'],['catalog','Сделать новые услуги публичными и добавить в запись'],['publish','Утвердить сохранённый черновик'],['rollback','Вернуть предыдущую версию'],['deactivate','Вернуться к профилю без дополнительных знаний']]){const button=el('button',{type:'button','data-action':action,onclick:()=>act(action)},label);buttons.push(button);box.append(button)}
+  refreshButtons();
+  box.append(el('p',{},'Возврат к профилю отключает дополнительные знания и отдельное расписание, но не сам AI и не услуги каталога'),el('details',{},el('summary',{},'Проверить текст сохранённого черновика'),el('pre',{class:'dispatcher-preview'},data.preview)),message,...data.errors.map(error=>el('p',{role:'alert'},error)),el('p',{},'После утверждения проверьте виджет: неизвестный вопрос, цену без точной оценки, передачу человеку и время после обеда. AI-ответы требуют запуска полного офиса и входа ChatGPT. Утверждение не публикует сайт и не подключает сервисы'));
   return box;
 }

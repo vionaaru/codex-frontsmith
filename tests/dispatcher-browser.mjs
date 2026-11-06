@@ -20,8 +20,22 @@ const harness=`
  const check=(condition,message)=>{if(!condition)throw new Error(message)};
  try {
   await wait(()=>document.querySelector('.dispatcher-editor'));
+  const originalFetch=window.fetch.bind(window);
+  const savedBefore=(await (await originalFetch('/api/dispatcher')).json()).data.active?.version??null;
+  const editor=()=>document.querySelector('.dispatcher-editor');
   const about=document.querySelector('.dispatcher-field textarea');about.value='Синтетическая парикмахерская: работаем по записи';about.dispatchEvent(new Event('input',{bubbles:true}));
   check(button('Утвердить сохранённый черновик').disabled,'Unsaved draft must not activate');
+  button('Добавить описание услуги').click();
+  check(button('Утвердить сохранённый черновик').disabled,'Adding a row must mark dirty');
+  let failSave=true;window.fetch=(url,options)=>{if(failSave&&url==='/api/dispatcher'&&options?.method==='POST'){failSave=false;return Promise.reject(new Error('Synthetic network failure'))}return originalFetch(url,options)};
+  button('Сохранить черновик').click();await wait(()=>editor().querySelector('[role=status]').textContent.includes('Synthetic network failure'));
+  check(button('Утвердить сохранённый черновик').disabled,'Network failure must not unlock activation');check(about.value.includes('Синтетическая парикмахерская'),'Visible edit lost after network error');
+  button('Сохранить черновик').click();await wait(()=>editor().querySelector('[role=status]').textContent.includes('Проверьте код'));
+  check(button('Утвердить сохранённый черновик').disabled,'Validation failure must not unlock activation');
+  button('Утвердить сохранённый черновик').click();check(((await (await originalFetch('/api/dispatcher')).json()).data.active?.version??null)===savedBefore,'Old draft activated after failed save');
+  const invalid=Array.from(document.querySelectorAll('fieldset')).filter(e=>e.querySelector('legend').textContent==='Услуга').at(-1);Array.from(invalid.querySelectorAll('button')).find(b=>b.textContent==='Удалить из черновика').click();
+  check(button('Утвердить сохранённый черновик').disabled,'Removing row must remain dirty');
+  window.fetch=originalFetch;
   if(!Array.from(document.querySelectorAll('legend')).some(e=>e.textContent==='Услуга')){
     button('Добавить описание услуги').click();
     const row=Array.from(document.querySelectorAll('fieldset')).find(e=>e.querySelector('legend').textContent==='Услуга');
@@ -33,9 +47,13 @@ const harness=`
   button('Сохранить черновик').click();await wait(()=>document.querySelector('[role=status]').textContent.includes('Черновик сохранён'));
   button('Утвердить сохранённый черновик').click();await wait(()=>document.querySelector('[role=status]').textContent.includes('Подтвердите'));
   Array.from(document.querySelectorAll('label')).find(l=>l.textContent.includes('Я проверил')).querySelector('input').click();
-  button('Добавить новые услуги в каталог записи').click();await wait(()=>document.body.innerText.includes('Новые услуги добавлены в каталог'));
+  Array.from(document.querySelectorAll('label')).find(l=>l.textContent.includes('Разрешаю немедленно')).querySelector('input').click();
+  button('Сделать новые услуги публичными и добавить в запись').click();await wait(()=>document.body.innerText.includes('Новые услуги добавлены в каталог'));
   Array.from(document.querySelectorAll('label')).find(l=>l.textContent.includes('Я проверил')).querySelector('input').click();
   button('Утвердить сохранённый черновик').click();await wait(()=>document.body.innerText.includes('Сохранённая версия утверждена'));
+  button('Вернуться к профилю без дополнительных знаний').click();await wait(()=>document.body.innerText.includes('Дополнительные знания и отдельные часы отключены'));
+  check(!button('Вернуть предыдущую версию').disabled,'First activation can be deactivated and restored');
+  button('Вернуть предыдущую версию').click();await wait(()=>document.body.innerText.includes('Предыдущая версия восстановлена'));
   check((location.search.includes('mobile')?document.body.scrollWidth<=390:document.documentElement.scrollWidth<=window.innerWidth),'Horizontal overflow '+JSON.stringify({width:innerWidth,scroll:document.documentElement.scrollWidth,items:Array.from(document.querySelectorAll('body *')).filter(e=>e.getBoundingClientRect().right>391).slice(0,15).map(e=>[e.tagName,e.className,e.getBoundingClientRect().right])}));
   document.body.dataset.testResult='pass';
   if(location.search.includes('bottom'))window.scrollTo(0,document.body.scrollHeight);

@@ -166,7 +166,7 @@
     var confirmed = offer.status === "confirmed";
     overlay.appendChild(el("div", { class: "fs-booking-card" }, [
       el("h2", { id: "fs-booking-title", text: confirmed ? "Вы записаны" : "Запрос на запись отправлен" }),
-      el("p", { text: offer.service + ", " + offer.label + (offer.reference ? ". Номер " + offer.reference : "") }),
+      el("p", { text: offer.service + ", " + offer.label + " (" + offer.timeZone + ")" + (offer.reference ? ". Номер " + offer.reference : "") }),
       el("p", { text: confirmed ? "Время подтверждено. Если планы изменятся, свяжитесь с нами по контактам на сайте" : "Время ещё не подтверждено: запрос ожидает решения компании" }),
       el("div", { class: "fs-actions" }, [buttonClose("Готово")])
     ]));
@@ -177,6 +177,17 @@
     var button = el("button", { type: "button", class: "fs-secondary", text: text });
     button.addEventListener("click", close);
     return button;
+  }
+
+  function showStale(offer) {
+    overlay.textContent='';
+    var retry=buttonClose('Выбрать время заново');
+    retry.addEventListener('click',function(){tellAssistant('Условия предыдущей формы записи изменились. Подберите свободное время заново и покажите новую форму');});
+    overlay.appendChild(el('div',{class:'fs-booking-card'},[
+      el('h2',{id:'fs-booking-title',text:'Выберите время заново'}),
+      el('p',{text:'Условия записи изменились. Прежняя форма больше не действует; запись по ней не создана'}),retry
+    ]));
+    overlay.hidden=false;
   }
 
   function showForm(offer, message) {
@@ -231,6 +242,7 @@
           return;
         }
         var data = (result && result.data) || {};
+        if (data.error && data.error.code === "offer_changed") return showStale(data.offer);
         if (data.offer && data.offer.status === "offered") return showForm(data.offer, (data.error && data.error.message) || "Это время недоступно");
         submit.disabled = false;
         fail((data.error && data.error.message) || "Не удалось отправить форму. Попробуйте ещё раз");
@@ -249,6 +261,7 @@
   function checkBooking() {
     api("/api/chat/booking", {}).then(function (result) {
       var offer = result && result.ok && result.data.offer;
+      if (offer && offer.status === "stale" && offer.id !== shownOffer) { shownOffer=offer.id;showStale(offer);return; }
       if (!offer || offer.status !== "offered" || offer.id === shownOffer) return;
       shownOffer = offer.id;
       showForm(offer);
