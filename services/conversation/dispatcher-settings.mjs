@@ -62,7 +62,7 @@ export async function changeDispatcher({revision,action,draft,reviewed},profile)
   else if(action==='catalog') {
     if(reviewed!==true) throw Object.assign(new Error('Подтвердите проверку услуг перед добавлением в каталог'),{status:400});
     if(!officeDbExists()) throw Object.assign(new Error('Сначала подготовьте офис: npm run office:init'),{status:409});
-    const existing=new Set(state.catalog.map(service=>service.code));
+    const existing=new Set(state.sources.catalog==='db'?state.catalog.map(service=>service.code):[]);
     const services=state.draft.services.filter(service=>!existing.has(service.code)).map(service=>({id:service.code,name:service.name,description:service.conditions,category:'other',priceFrom:service.min,durationMinutes:service.durationMinutes}));
     const db=openOfficeDb();
     try { importCatalog(db,{...profile,services,pricingPolicy:{ownerApprovedForLiveQuotes:true}}); } finally {db.close();}

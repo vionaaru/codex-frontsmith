@@ -72,9 +72,12 @@
     "test:crm": "node tests/crm-live.mjs",
     "test:first-run": "node tests/first-run.mjs",
     "smoke:crm-codex": "node services/codex-host/smoke-customer.mjs",
-    "test:conversation": "node tests/conversation.mjs && node tests/booking.mjs && node tests/handoff.mjs",
+    "test:conversation": "node tests/conversation.mjs && node tests/booking.mjs && node tests/handoff.mjs && npm run test:dispatcher",
     "demo:booking": "node scripts/demo-booking.mjs",
-    "conversations:purge": "node scripts/conversations-purge.mjs"
+    "conversations:purge": "node scripts/conversations-purge.mjs",
+    "test:dispatcher": "node tests/dispatcher.mjs",
+    "test:dispatcher:browser": "node tests/dispatcher-browser.mjs",
+    "test:dispatcher:client-browser": "node tests/dispatcher-client-browser.mjs"
   },
   "engines": {
     "node": ">=20"

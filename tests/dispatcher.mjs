@@ -49,7 +49,7 @@ try {
   const configured={...draft,schedule:{timeZone:'Europe/Moscow',days:[1,2,3,4,5,6,7],start:'10:00',end:'20:00',slotStepMinutes:30,autoConfirm:false},services:[{code:'cut',name:'Стрижка',kind:'estimate',min:null,max:null,conditions:'Оценка после консультации',durationMinutes:45}]};
   s=await dispatcherStatus(profile);s=await changeDispatcher({revision:s.revision,action:'save',draft:configured},profile);
   await assert.rejects(changeDispatcher({revision:s.revision,action:'catalog'},profile),{status:400});
-  s=await changeDispatcher({revision:s.revision,action:'catalog',reviewed:true},profile);assert.equal(s.catalog[0].code,'cut');
+  s=await changeDispatcher({revision:s.revision,action:'catalog',reviewed:true},{...profile,services:[{id:'cut',name:'Стрижка',priceFrom:null,durationMinutes:45}]});assert.equal(s.sources.catalog,'db','File fallback must not be mistaken for an existing SQL service');assert.equal(s.catalog[0].code,'cut');
   s=await changeDispatcher({revision:s.revision,action:'publish',reviewed:true},profile);
   const effective=await dispatcherProfile(profile);assert.equal(effective.booking.hours.end,'20:00');assert.equal(effective.booking.autoConfirm,false);
   assert.equal((await dispatcherProfile({...profile,businessName:'Изменился'})).booking.enabled,false);

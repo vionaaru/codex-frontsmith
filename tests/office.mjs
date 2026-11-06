@@ -290,7 +290,7 @@ try {
     assert.ok(!/<form|method=["']post/i.test(html), "в разметке панели нет форм записи");
     const app = await readFile("office/public/app.js", "utf8");
     const writes = [...app.matchAll(/fetch\(([^,]+),/g)].map((match) => match[1].trim());
-    assert.ok(writes.every((target) => target === "url" || /api\/customers/.test(target)), "интерфейс меняет только карточки клиентов");
+    assert.ok(writes.every((target) => target === "url" || target === "'/api/dispatcher'" || /api\/customers/.test(target)), "интерфейс меняет только карточки клиентов и настройки диспетчера");
   });
 
   await check("панель: отчёты без позиций, календарные дни, поиск и стоимость", async () => {

@@ -27,7 +27,7 @@
     persistHistory: true,
     theme: { accent: "#ffad45", textColor: "#111820", bgColor: "#fffdf8", fontFamily: "Arial, sans-serif", borderRadius: 4, position: "bottom-right" },
     branding: { name: name, subtitle: "AI-помощник" },
-    welcomeMessage: "Здравствуйте! Я AI-помощник. Отвечаю по сведениям с сайта компании и помогаю записаться на услугу. Если ответа нет, так и скажу",
+    welcomeMessage: "Здравствуйте! Я AI-помощник. Отвечаю по утверждённым сведениям компании и помогаю записаться на услугу. Если ответа нет, так и скажу",
     strings: {
       inputPlaceholder: "Напишите вопрос…",
       sendButton: "Отправить",
@@ -40,8 +40,8 @@
       errorRateLimit: "Слишком много сообщений. Подождите немного",
       errorRateLimitWait: "Слишком много сообщений. Повторите через {seconds} с",
       errorBudget: "Лимит этого разговора исчерпан",
-      errorBudgetDaily: "AI-помощник исчерпал лимит на сегодня. Свяжитесь с нами по контактам на сайте",
-      errorUnavailable: "AI-помощник сейчас недоступен, сообщение не обработано. Свяжитесь с нами по контактам на сайте",
+      errorBudgetDaily: "AI-помощник исчерпал лимит на сегодня. Можно передать вопрос кнопкой «Позвать сотрудника»",
+      errorUnavailable: "AI-помощник сейчас недоступен, ответ не получен. Попробуйте позже или нажмите «Позвать сотрудника»",
       errorCutOff: "Ответ оборвался. Попробуйте ещё раз",
       typingIndicator: "Готовлю ответ…",
       newConversation: "Новый разговор",
@@ -167,7 +167,7 @@
     overlay.appendChild(el("div", { class: "fs-booking-card" }, [
       el("h2", { id: "fs-booking-title", text: confirmed ? "Вы записаны" : "Запрос на запись отправлен" }),
       el("p", { text: offer.service + ", " + offer.label + (offer.reference ? ". Номер " + offer.reference : "") }),
-      el("p", { text: confirmed ? "Время подтверждено. Если планы изменятся, свяжитесь с нами по контактам на сайте" : "Время ещё не подтверждено: компания свяжется с вами, чтобы подтвердить запись" }),
+      el("p", { text: confirmed ? "Время подтверждено. Если планы изменятся, свяжитесь с нами по контактам на сайте" : "Время ещё не подтверждено: запрос ожидает решения компании" }),
       el("div", { class: "fs-actions" }, [buttonClose("Готово")])
     ]));
     overlay.hidden = false;
@@ -273,7 +273,7 @@
 
   var SEQ_PREFIX = "frontsmith-chat-seq:";
   var STATUS_TEXT = {
-    needs_human: "Разговор ведёт сотрудник. Ответ придёт в этот чат",
+    needs_human: "Разговор сохранён для сотрудника. Это не означает, что он сейчас онлайн",
     closed: "Сотрудник завершил разговор. Можно продолжить с AI-помощником"
   };
 
@@ -344,7 +344,7 @@
         pollFeed();
       })
       .catch(function () {
-        barText.textContent = "Не удалось позвать сотрудника. Позвоните нам по контактам на сайте";
+        barText.textContent = "Не удалось передать разговор сотруднику. Другой способ связи можно уточнить на сайте";
       })
       .then(function () { callButton.disabled = false; });
   });

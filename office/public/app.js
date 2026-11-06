@@ -106,6 +106,7 @@ function setParam(key, value) {
 }
 
 const views = {
+  dispatcher: { nav:'dispatcher',form:true,title:'AI-диспетчер',intro:'Подготовьте публичные сведения, сохраните черновик, проверьте и утвердите. Пустые разделы допустимы',endpoint:()=>'/api/dispatcher',render:renderDispatcher },
   overview: { nav: "overview", title: "Обзор офиса", intro: () => has("work-orders") ? "Выполненные работы за месяц, активные заказы и ближайшие действия" : "Активные обращения, задачи и ближайшие записи", endpoint: (p) => `/api/overview?${pick(p, ["month"])}`, render: renderOverview },
   customers: { nav: "customers", title: "Клиенты", intro: () => `Поиск по имени, телефону, email${has("vehicles") ? " или автомобилю" : ""}. Контакты хранятся в CRM Frontsmith`, controls: customerControls, endpoint: (p) => `/api/customers?${pick(p, ["q"])}`, render: renderCustomers },
   customer: { nav: "customers", endpoint: (p, id) => `/api/customers/${id}`, render: renderCustomer },
@@ -146,7 +147,7 @@ function setupRoute() {
   state.hasData = false;
   const view = resolveView(state.route);
   for (const link of document.querySelectorAll("[data-nav]")) {
-    if (view && link.dataset.nav === view.nav) link.setAttribute("aria-current", "page"); else link.removeAttribute("aria-current");
+    if (view && link.dataset.nav === view.nav) { link.setAttribute("aria-current", "page"); link.scrollIntoView({ block: "nearest", inline: "nearest" }); } else link.removeAttribute("aria-current");
   }
   main.replaceChildren();
   if (!view) {
@@ -892,3 +893,72 @@ setInterval(() => { if (!document.hidden) pollDialogs(); }, 10000);
 
 // Словарь статусов нужен фильтрам до первой отрисовки; без него раздел всё равно покажет честную ошибку
 fetchJson("/api/meta").then((meta) => { state.meta = meta.data; }).catch(() => {}).finally(setupRoute);
+
+// Draft editor is a form: polling never replaces unsaved text.
+function renderDispatcher(data) {
+  let revision=data.revision;
+  const box=el('div',{class:'dispatcher-editor'});
+  const message=el('p',{role:'status','aria-live':'polite'});
+  const input=(label,value,area=false)=>{
+    const field=el(area?'textarea':'input',area?{rows:4,maxlength:2500}:{type:'text'});
+    field.value=value??'';
+    box.append(el('label',{class:'dispatcher-field'},el('strong',{},label),field));return field;
+  };
+  box.append(el('section',{class:'panel'},el('h2',{},'1. Источники и готовность'),
+    el('p',{},'Профиль: '+data.sources.profile+' · каталог услуг: '+data.sources.catalog),
+    el('p',{},data.sources.availability),
+    el('p',{},data.readiness.booking?'Расписание настроено. Свободное время проверяется инструментом перед записью':'Для записи не хватает рабочих дней, часов или часового пояса в профиле. До настройки можно отвечать на известные вопросы'),
+    el('p',{},data.active?'Утверждена версия '+data.active.version+(data.stale?' — источники изменились, дополнительные знания приостановлены':' — дополнительные знания доступны'):'Дополнительные знания ещё не утверждены. Черновик не используется в ответах'),
+    data.stale&&data.active?.knowledge.schedule?el('p',{role:'alert'},'Запись через диспетчера приостановлена до повторной проверки и утверждения'):null,
+    el('p',{},'Сотрудник не считается доступным онлайн. Передача создаёт очередь только при запуске полного офиса; мгновенный ответ не обещается'),
+    el('p',{},'Неизвестные сведения оставляйте пустыми. Контакты клиентов сюда не вносите. Исходные документы храните отдельно; переносите сюда только разрешённые публичные выдержки')));
+  box.append(el('h2',{},'2. Публичные знания'));
+  const about=input('О компании — что известно достоверно',data.draft.about,true);
+  const conditions=input('Условия обслуживания — ограничения, подготовка, порядок согласования',data.draft.conditions,true);
+  const faq=input('Вопросы и ответы — каждый вопрос вместе с проверенным ответом',data.draft.faq,true);
+  const source=input('Источник и дата проверки — для внедренца, клиенту не передаётся',data.draft.source,true);
+  box.append(el('h2',{},'3. Услуги и объяснение цены'),el('p',{},'Публичное описание и каталог записи — отдельные шаги. Коды, названия и начальная цена существующих услуг должны совпадать с каталогом. Новые услуги можно добавить в каталог отдельной кнопкой после сохранения черновика; существующие записи не перезаписываются'));
+  const list=el('div',{}),rows=[];
+  function addService(service={code:'service-'+crypto.randomUUID().slice(0,8),name:'',kind:'estimate',min:'',max:'',conditions:''}) {
+    const row=el('fieldset',{class:'panel dispatcher-service'});
+    row.append(el('legend',{},'Услуга'));
+    const field=(label,key,type='text')=>{const node=el('input',{type,maxlength:100});node.value=service[key]??'';row.append(el('label',{},label,node));return node};
+    const code=field('Код — латиница и дефис','code'),name=field('Название','name');
+    const kind=el('select',{});for(const [value,label] of [['estimate','Индивидуальная оценка'],['fixed','Фиксированная'],['from','От'],['range','Диапазон']])kind.append(el('option',{value},label));kind.value=service.kind;
+    row.append(el('label',{},'Тип цены',kind));
+    const min=field('Цена / нижняя граница','min','number'),max=field('Верхняя граница','max','number');min.step=max.step='0.01';min.min=max.min='0';
+    const duration=field('Длительность для записи, минут (пусто — 60)','durationMinutes','number');duration.min='5';duration.max='1440';
+    const conditions=el('textarea',{rows:3,maxlength:600});conditions.value=service.conditions;row.append(el('label',{},'Что влияет на стоимость',conditions));
+    const update=()=>{min.disabled=kind.value==='estimate';max.disabled=kind.value!=='range'};kind.addEventListener('change',update);update();
+    const entry={row,read:()=>({code:code.value,name:name.value,kind:kind.value,min:min.value,max:max.value,conditions:conditions.value,durationMinutes:duration.value?Number(duration.value):null})};rows.push(entry);
+    row.append(el('button',{type:'button',onclick:()=>{rows.splice(rows.indexOf(entry),1);row.remove()}},'Удалить из черновика'));list.append(row);
+  }
+  data.draft.services.forEach(addService);box.append(list,el('button',{type:'button',onclick:()=>addService()},'Добавить описание услуги'));
+  if(data.catalog.length)box.append(el('details',{},el('summary',{},'Посмотреть действующий каталог'),...data.catalog.map(s=>el('p',{},s.code+' · '+s.name+' · '+(s.price??'оценка') ))));
+  const reviewed=el('input',{type:'checkbox'});
+  const scheduleBox=el('fieldset',{class:'panel dispatcher-service'});
+  scheduleBox.append(el('legend',{},'4. Локальное расписание'));
+  const custom=el('input',{type:'checkbox'});custom.checked=Boolean(data.draft.schedule);
+  scheduleBox.append(el('label',{},custom,' Задать отдельные часы записи диспетчера (иначе используется профиль компании)'));
+  const schedule=data.draft.schedule??{timeZone:data.timeZone,days:[],start:'',end:'',slotStepMinutes:30,autoConfirm:false};
+  const sf=(label,key,type='text')=>{const node=el('input',{type});node.value=schedule[key];scheduleBox.append(el('label',{},label,node));return node};
+  const timeZone=sf('Часовой пояс (например Europe/Moscow)','timeZone'),start=sf('Начало работы','start','time'),end=sf('Конец работы','end','time'),step=sf('Шаг начала записи в минутах','slotStepMinutes','number');step.min='5';step.max='240';
+  const days=[];for(const [index,name] of ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].entries()){const day=el('input',{type:'checkbox',value:index+1});day.checked=schedule.days.includes(index+1);days.push(day);scheduleBox.append(el('label',{},day,name))}
+  const auto=el('input',{type:'checkbox'});auto.checked=schedule.autoConfirm;scheduleBox.append(el('label',{},auto,' Разрешить автоподтверждение свободной записи после формы клиента'),el('p',{},'Без автоподтверждения создаётся запрос на согласование. Длительность берётся из каталога, при отсутствии — 60 минут. Одновременно обслуживается одна запись; внешние календари не подключены. Минимум до начала: '+data.bookingLimits.minNoticeMinutes+' мин; горизонт записи: '+data.bookingLimits.horizonDays+' дн'));
+  box.append(scheduleBox);
+  box.append(el('h2',{},'5. Проверка и начало работы'),el('label',{},reviewed,' Я проверил публичность сведений, цены и противоречия с профилем, каталогом и исходными документами'));
+  const buttons=[];
+  box.addEventListener('input',event=>{if(event.target!==reviewed){for(const b of buttons.slice(1))b.disabled=true;message.textContent='Есть несохранённые изменения. Сначала сохраните черновик'}});
+  async function act(action) {
+    buttons.forEach(b=>b.disabled=true);message.textContent='Сохранение…';
+    try {
+      const response=await fetch('/api/dispatcher',{method:'POST',headers:{'Content-Type':'application/json','x-frontsmith-office':'1'},body:JSON.stringify({revision,action,reviewed:reviewed.checked,draft:{about:about.value,conditions:conditions.value,faq:faq.value,source:source.value,schedule:custom.checked?{timeZone:timeZone.value,start:start.value,end:end.value,slotStepMinutes:Number(step.value),days:days.filter(d=>d.checked).map(d=>Number(d.value)),autoConfirm:auto.checked}:null,services:rows.map(r=>r.read())}})});
+      const payload=await response.json();if(!response.ok)throw new Error(payload.error?.message??'Не удалось сохранить');
+      state.results.replaceChildren(renderDispatcher(payload.data));
+      state.results.querySelector('[role=status]').textContent=action==='save'?'Черновик сохранён. Проверьте его перед утверждением':action==='publish'?'Сохранённая версия утверждена для ответов':action==='catalog'?'Новые услуги добавлены в каталог. Проверьте и утвердите знания':'Предыдущая версия восстановлена';
+    }catch(error){message.textContent=error.message;buttons.forEach(b=>b.disabled=false)}
+  }
+  for(const [action,label] of [['save','Сохранить черновик'],['catalog','Добавить новые услуги в каталог записи'],['publish','Утвердить сохранённый черновик'],['rollback','Вернуть предыдущую версию']]){const button=el('button',{type:'button',onclick:()=>act(action)},label);buttons.push(button);box.append(button)}
+  box.append(el('details',{},el('summary',{},'Проверить текст сохранённого черновика'),el('pre',{class:'dispatcher-preview'},data.preview)),message,...data.errors.map(error=>el('p',{role:'alert'},error)),el('p',{},'После утверждения проверьте виджет: неизвестный вопрос, цену без точной оценки, передачу человеку и время после обеда. AI-ответы требуют запуска полного офиса и входа ChatGPT. Утверждение не публикует сайт и не подключает сервисы'));
+  return box;
+}

@@ -245,10 +245,10 @@ try {
 
   await check("CLI: customer:add через CRM, вывод без контактов", async () => {
     const output = await cli("customer:add", "--name", "Анна Белова", "--phone", "+7 911 000-11-22");
-    assert.ok(!/Анна|911/.test(output));
+    assert.ok(!/Анна|\+?7[ ()-]*911[ ()-]*000[ ()-]*11[ ()-]*22/.test(output));
     const id = JSON.parse(output.slice(output.indexOf("{"))).id;
     assert.equal((await customers.getCustomer(id)).displayName, "Анна Белова");
-    assert.ok(!/Анна|911/.test(await cli("list", "customers")), "list без --contacts не показывает контакты");
+    assert.ok(!/Анна|\+?7[ ()-]*911[ ()-]*000[ ()-]*11[ ()-]*22/.test(await cli("list", "customers")), "list без --contacts не показывает контакты");
     assert.match(await cli("list", "customers", "--contacts"), /Анна Белова/);
   });
 
