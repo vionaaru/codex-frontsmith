@@ -56,5 +56,44 @@ try {
  const secondDesk=new BookingDesk({db,provider:customers.provider,store,profile:()=>profile,now});
  const outcomes=await Promise.allSettled([desk.confirm(concurrent.id,input(concurrentOffer)),secondDesk.confirm(concurrent.id,input(concurrentOffer))]);assert.ok(outcomes.some(result=>result.status==='fulfilled'));await secondDesk.confirm(concurrent.id,input(concurrentOffer));
  assert.equal(db.prepare('SELECT count(*) AS n FROM appointments').get().n,2,'Two desk instances create one booking for the same offer');
- console.log('Dispatcher safety PASS: stale timezone/mode, exact instant, policy race across CRM await, duplicate confirm, full fallback transition, public-price refusal, first activation deactivation/restore');
+ // A completed receipt must never be replaced by a newer offer B.
+ await activate(schedule);
+ const repeat=visitor();await desk.offer_booking({service:'legacy',start:'2026-11-10T10:00'},repeat);const a=await desk.pending(repeat.id);const acceptedA=await desk.confirm(repeat.id,input(a));
+ await desk.offer_booking({service:'legacy',start:'2026-11-10T11:00'},repeat);const b=await desk.pending(repeat.id);assert.notEqual(a.id,b.id);
+ await activate({...schedule,timeZone:'Asia/Yekaterinburg',autoConfirm:true});
+ const repeated=await desk.confirm(repeat.id,input(a));assert.equal(repeated.id,a.id);assert.equal(repeated.reference,acceptedA.reference);assert.equal(repeated.status,'requested');assert.equal(repeated.timeZone,'Europe/Moscow');
+ assert.equal((await desk.pending(repeat.id,b.id)).status,'stale');assert.equal(await desk.pending(visitor().id,a.id),null);
+ assert.match(await desk.get_booking_status({offerId:a.id},repeat),/requested:/);
+ // Fail after office COMMIT, before linking the receipt in the conversation DB.
+ await activate(schedule);const split=visitor();await desk.offer_booking({service:'legacy',start:'2026-11-10T12:00'},split);const splitOffer=await desk.pending(split.id);
+ let receiptReadsFail=false;
+ const brokenStore=new Proxy(store,{get(target,key){if(key==='completeOffer')return ()=>{receiptReadsFail=true;throw new Error('Injected failure after office commit')};const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value}});
+ const brokenDb=new Proxy(db,{get(target,key){if(key==='prepare')return sql=>{if(receiptReadsFail&&sql.includes("WHERE source='website' AND external_id=?"))throw new Error('Injected receipt read failure');return target.prepare(sql)};const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value}});
+ const brokenDesk=new BookingDesk({db:brokenDb,provider:customers.provider,store:brokenStore,profile:()=>profile,now});
+ await assert.rejects(brokenDesk.confirm(split.id,input(splitOffer)),{code:'booking_status_unknown'});
+ const committed=db.prepare("SELECT * FROM appointments WHERE external_id=?").get('chat:'+splitOffer.id);assert.ok(committed);assert.equal(store.getOffer(splitOffer.id).status,'offered');const countBeforeRecovery=db.prepare('SELECT count(*) AS n FROM appointments').get().n;
+ await activate({...schedule,timeZone:'Asia/Yekaterinburg',autoConfirm:true});receiptReadsFail=false;
+ const recovered=await desk.confirm(split.id,input(splitOffer));assert.equal(recovered.id,splitOffer.id);assert.equal(recovered.reference,committed.id.slice(0,8));assert.equal(recovered.start,'2026-11-10T12:00');assert.equal(recovered.timeZone,'Europe/Moscow');assert.equal(recovered.status,'requested');
+ assert.equal(store.getOffer(splitOffer.id).appointment_id,committed.id);assert.equal(db.prepare('SELECT count(*) AS n FROM appointments').get().n,countBeforeRecovery);
+ // A persistent metadata-write failure can still return a verified office receipt.
+ await activate(schedule);const persistent=visitor();await desk.offer_booking({service:'legacy',start:'2026-11-10T14:00'},persistent);const persistentOffer=await desk.pending(persistent.id);
+ const metadataOnly=new Proxy(store,{get(target,key){if(key==='completeOffer')return ()=>{throw new Error('Injected persistent metadata failure')};const value=Reflect.get(target,key);return typeof value==='function'?value.bind(target):value}});
+ const metadataDesk=new BookingDesk({db,provider:customers.provider,store:metadataOnly,profile:()=>profile,now});
+ const known=await metadataDesk.confirm(persistent.id,input(persistentOffer));assert.equal(known.id,persistentOffer.id);assert.equal(known.status,'requested');assert.ok(known.reference);
+ assert.equal(store.getOffer(persistentOffer.id).status,'offered');assert.equal((await desk.pending(persistent.id,persistentOffer.id)).status,'requested');
+ const superseded=visitor();await desk.offer_booking({service:'legacy',start:'2026-11-11T10:00'},superseded);const replaced=await desk.pending(superseded.id);await desk.offer_booking({service:'legacy',start:'2026-11-11T11:00'},superseded);
+ assert.match(await desk.get_booking_status({offerId:replaced.id},superseded),/^offer_closed:/);assert.equal((await desk.pending(superseded.id,replaced.id)).status,'withdrawn');
+ const {createServer}=await import('node:http');const {createWebChannel}=await import('../services/conversation/web-channel.mjs');
+ const allowedHosts=new Set();let activeDesk=desk;
+ const channel=createWebChannel({core:{authorize:(...args)=>store.authorize(...args)},booking:{confirm:(...args)=>activeDesk.confirm(...args),pending:(...args)=>activeDesk.pending(...args)},allowedHosts});
+ const server=createServer((req,res)=>channel.handle(req,res,new URL(req.url,'http://localhost').pathname));await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const port=server.address().port;allowedHosts.add('127.0.0.1:'+port);
+ const post=async(endpoint,person,body)=>{const response=await fetch('http://127.0.0.1:'+port+endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+person.token},body:JSON.stringify({conversationId:person.id,...body})});return {status:response.status,body:await response.json()}};
+ try {
+  const httpA=await post('/api/chat/booking/confirm',repeat,input(a));assert.equal(httpA.status,200);assert.equal(httpA.body.offer.id,a.id);assert.equal(httpA.body.offer.status,'requested');
+  const httpB=await post('/api/chat/booking',repeat,{offerId:b.id});assert.equal(httpB.body.offer.id,b.id);assert.notEqual(httpB.body.offer.id,a.id);
+  const foreign=await post('/api/chat/booking',persistent,{offerId:a.id});assert.equal(foreign.body.offer,null);
+  activeDesk=brokenDesk;receiptReadsFail=true;const unknown=await post('/api/chat/booking',split,{offerId:splitOffer.id});assert.equal(unknown.status,503);assert.equal(unknown.body.error.code,'booking_status_unknown');
+  receiptReadsFail=false;activeDesk=desk;const httpRecovered=await post('/api/chat/booking',split,{offerId:splitOffer.id});assert.equal(httpRecovered.status,200);assert.equal(httpRecovered.body.offer.reference,committed.id.slice(0,8));
+ } finally {server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+ console.log('Dispatcher safety PASS: stale timezone/mode, exact instant, policy race across CRM await, duplicate confirm, full fallback transition, public-price refusal, first activation deactivation/restore/exact receipt A vs B/split-store recovery/uncertain reads');
 }finally{await customers.stop();await crm.close();store.close();db.close();if(path.dirname(root)!==path.resolve(os.tmpdir()))throw new Error('Unsafe cleanup');await rm(root,{recursive:true,force:true});}

@@ -161,7 +161,30 @@
     send.click();
   }
 
+  function acceptedReceipt(offer, expectedId) {
+    return Boolean(offer && offer.id===expectedId && ['requested','confirmed'].indexOf(offer.status)!==-1 && offer.reference);
+  }
+
+  function showUncertain(offerId, message) {
+    overlay.textContent='';
+    var text=el('p',{text:(message?message+' ':'')+'Результат оформления пока не подтверждён. Не создавайте новую запись до проверки: предыдущий запрос мог сохраниться'});
+    var check=el('button',{type:'button',class:'fs-primary',text:'Проверить результат'});
+    var card=el('div',{class:'fs-booking-card'},[el('h2',{id:'fs-booking-title',text:'Проверьте результат записи'}),text,check,buttonClose('Закрыть')]);
+    check.addEventListener('click',function(){
+      check.disabled=true;
+      api('/api/chat/booking',{offerId:offerId}).then(function(result){
+        if(overlay.hidden||!overlay.contains(card))return;
+        var found=result&&result.ok&&result.data.offer;
+        if(acceptedReceipt(found,offerId)){shownOffer=found.id;showResult(found);return;}
+        text.textContent=found&&found.id===offerId&&found.status==='declined'?'Компания отклонила эту запись':'Подтверждённого результата пока нет. Повторите проверку или передайте вопрос сотруднику; не считайте запись отменённой или отсутствующей';
+        check.disabled=false;
+      },function(){if(overlay.contains(card)){text.textContent='Не удалось проверить результат. Запись могла сохраниться; повторите проверку позже';check.disabled=false;}});
+    });
+    overlay.appendChild(card);overlay.hidden=false;
+  }
+
   function showResult(offer) {
+    if(!acceptedReceipt(offer,offer&&offer.id))return showUncertain(offer&&offer.id);
     overlay.textContent = "";
     var confirmed = offer.status === "confirmed";
     overlay.appendChild(el("div", { class: "fs-booking-card" }, [
@@ -185,7 +208,7 @@
     retry.addEventListener('click',function(){tellAssistant('Условия предыдущей формы записи изменились. Подберите свободное время заново и покажите новую форму');});
     overlay.appendChild(el('div',{class:'fs-booking-card'},[
       el('h2',{id:'fs-booking-title',text:'Выберите время заново'}),
-      el('p',{text:'Условия записи изменились. Прежняя форма больше не действует; запись по ней не создана'}),retry
+      el('p',{text:'Условия записи изменились. Прежняя форма больше не действует; для продолжения выберите время заново'}),retry
     ]));
     overlay.hidden=false;
   }
@@ -235,20 +258,25 @@
       if (!consent.checked) return fail("Нужно согласие на обработку контактов");
       submit.disabled = true;
       api("/api/chat/booking/confirm", { offerId: offer.id, start: chosen.value, name: nameInput.value, phone: phoneInput.value, consent: true }).then(function (result) {
-        if (result && result.ok && result.data.offer) {
+        if(overlay.hidden||!overlay.contains(form))return;
+        if (result && result.ok && acceptedReceipt(result.data.offer,offer.id)) {
           shownOffer = result.data.offer.id;
           showResult(result.data.offer);
-          tellAssistant("Форма записи отправлена");
+          tellAssistant("Форма записи на «"+offer.service+"», "+offer.label+", отправлена");
           return;
         }
         var data = (result && result.data) || {};
+        if(result&&result.ok)return showUncertain(offer.id);
+        if(data.offer&&data.offer.id!==offer.id)return showUncertain(offer.id);
+        if(data.error&&data.error.code==='booking_status_unknown')return showUncertain(offer.id,data.error.message);
         if (data.error && data.error.code === "offer_changed") return showStale(data.offer);
         if (data.offer && data.offer.status === "offered") return showForm(data.offer, (data.error && data.error.message) || "Это время недоступно");
         submit.disabled = false;
-        fail((data.error && data.error.message) || "Не удалось отправить форму. Попробуйте ещё раз");
+        if(!result||result.status>=500)return showUncertain(offer.id,(data.error&&data.error.message)||undefined);
+        fail((data.error && data.error.message) || "Результат не подтверждён. Проверьте его перед повторной записью");
       }, function () {
-        submit.disabled = false;
-        fail("Нет связи с сайтом. Попробуйте ещё раз");
+        if(overlay.hidden||!overlay.contains(form))return;
+        showUncertain(offer.id, "Нет связи с сайтом. Запрос мог сохраниться; проверьте результат перед новой записью");
       });
     });
 

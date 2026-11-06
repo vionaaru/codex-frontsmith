@@ -900,6 +900,8 @@ function renderDispatcher(data) {
   let dirty=false,busy=false;
   const buttons=[];
   const box=el('div',{class:'dispatcher-editor'});
+  const ownerResults=state.results;
+  const isCurrent=()=>box.isConnected&&state.results===ownerResults&&ownerResults.contains(box)&&state.route?.name==='dispatcher';
   const message=el('p',{role:'status','aria-live':'polite'});
   const input=(label,value,area=false)=>{
     const field=el(area?'textarea':'input',area?{rows:4,maxlength:2500}:{type:'text'});
@@ -965,9 +967,10 @@ function renderDispatcher(data) {
     try {
       const response=await fetch('/api/dispatcher',{method:'POST',headers:{'Content-Type':'application/json','x-frontsmith-office':'1'},body:JSON.stringify({revision,action,reviewed:reviewed.checked,publicCatalog:catalogReviewed.checked,draft:{about:about.value,conditions:conditions.value,faq:faq.value,source:source.value,schedule:custom.checked?{timeZone:timeZone.value,start:start.value,end:end.value,slotStepMinutes:Number(step.value),days:days.filter(d=>d.checked).map(d=>Number(d.value)),autoConfirm:auto.checked}:null,services:rows.map(r=>r.read())}})});
       const payload=await response.json();if(!response.ok)throw new Error(payload.error?.message??'Не удалось сохранить');
-      state.results.replaceChildren(renderDispatcher(payload.data));
-      state.results.querySelector('[role=status]').textContent=action==='save'?'Черновик сохранён. Проверьте его перед утверждением':action==='publish'?'Сохранённая версия утверждена для ответов':action==='catalog'?'Новые услуги добавлены в каталог и доступны публично. Проверьте и утвердите дополнительные знания':action==='deactivate'?'Дополнительные знания и отдельные часы отключены; действует профиль компании. Каталог сохранён':'Предыдущая версия восстановлена';
-    }catch(error){busy=false;disabled.forEach((value,control)=>control.disabled=value);refreshButtons();message.textContent=error.message+(dirty?' Видимые правки сохранены в форме; сначала исправьте ошибку и сохраните черновик':'')}
+      if(!isCurrent())return;
+      ownerResults.replaceChildren(renderDispatcher(payload.data));
+      ownerResults.querySelector('[role=status]').textContent=action==='save'?'Черновик сохранён. Проверьте его перед утверждением':action==='publish'?'Сохранённая версия утверждена для ответов':action==='catalog'?'Новые услуги добавлены в каталог и доступны публично. Проверьте и утвердите дополнительные знания':action==='deactivate'?'Дополнительные знания и отдельные часы отключены; действует профиль компании. Каталог сохранён':'Предыдущая версия восстановлена';
+    }catch(error){if(!isCurrent())return;busy=false;disabled.forEach((value,control)=>control.disabled=value);refreshButtons();message.textContent=error.message+(dirty?' Видимые правки сохранены в форме; сначала исправьте ошибку и сохраните черновик':'')}
   }
   for(const [action,label] of [['save','Сохранить черновик'],['catalog','Сделать новые услуги публичными и добавить в запись'],['publish','Утвердить сохранённый черновик'],['rollback','Вернуть предыдущую версию'],['deactivate','Вернуться к профилю без дополнительных знаний']]){const button=el('button',{type:'button','data-action':action,onclick:()=>act(action)},label);buttons.push(button);box.append(button)}
   refreshButtons();

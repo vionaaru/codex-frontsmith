@@ -148,8 +148,11 @@ export function createWebChannel({ core, booking = null, allowedHosts, limits = 
 
   // Состояние формы записи: только услуга, время и варианты, без контактов
   async function bookingState(req, res) {
-    const conversation = authorized(req, await readJson(req));
-    json(res, 200, { offer: booking ? await booking.pending(conversation.id) : null });
+    const body=await readJson(req);
+    const conversation = authorized(req, body);
+    if(body.offerId!==undefined&&(typeof body.offerId!=='string'||body.offerId.length>100))throw new ChannelError(400,'invalid_request','Некорректный идентификатор формы');
+    try { json(res,200,{offer:booking?await booking.pending(conversation.id,body.offerId??null):null}); }
+    catch(error){if(error instanceof BookingError)throw new ChannelError(error.status,error.code,error.message);throw error;}
   }
 
   // Подтверждение записи посетителем. Контакты не попадают в журнал и в ответ
@@ -169,7 +172,7 @@ export function createWebChannel({ core, booking = null, allowedHosts, limits = 
     } catch (error) {
       if (!(error instanceof BookingError)) throw error;
       log({ event: "booking_rejected", conversation: conversation.id, code: error.code });
-      const offer = ["slot_unavailable", "offer_changed"].includes(error.code) ? await booking.pending(conversation.id) : null;
+      const offer = ["slot_unavailable", "offer_changed"].includes(error.code) ? await booking.pending(conversation.id,body.offerId) : null;
       throw new ChannelError(error.status, error.code, error.message, undefined, offer ? { offer } : {});
     }
   }

@@ -40,11 +40,33 @@ const harness=`
    await send('Неизвестный вопрос','Не знаю');await send('Какая цена стрижки?','индивидуальная оценка');await send('Запись после 15','Проверьте форму');
    await wait(()=>document.querySelector('.fs-booking input[name=start]:checked'));
    const offered=shadow.textContent.match(/Предлагаю время (\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2})/)[1];if(document.querySelector('.fs-booking input[name=start]:checked').value!==offered)throw new Error('Afternoon choice changed');
+   if(location.search.includes('bad-')||location.search.includes('lost-response')){
+    const realFetch=window.fetch.bind(window);let expectedId;
+    window.fetch=async(url,options)=>{
+     if(url==='/api/chat/booking/confirm'){
+      const sent=JSON.parse(options.body);expectedId=sent.offerId;
+      if(location.search.includes('lost-response')){await realFetch(url,options);throw new Error('Injected lost response after commit');}
+      const status=location.search.includes('bad-stale')?'stale':location.search.includes('bad-other')||location.search.includes('bad-empty-ref')?'confirmed':'offered';
+      const result={offer:{id:location.search.includes('bad-other')?'different-offer':sent.offerId,status,reference:location.search.includes('bad-other')?'foreign-receipt':null}};
+      return new Response(JSON.stringify(result),{status:200,headers:{'content-type':'application/json'}});
+     }
+     if(url==='/api/chat/booking'&&JSON.parse(options.body).offerId)document.body.dataset.checkedOffer=JSON.parse(options.body).offerId;
+     return realFetch(url,options);
+    };
+    document.querySelector('.fs-booking input[name=name]').value='Synthetic receipt check';document.querySelector('.fs-booking input[name=phone]').value='+79990000789';document.querySelector('.fs-booking input[name=consent]').checked=true;
+    document.querySelector('.fs-booking button[type=submit]').click();await wait(()=>document.querySelector('.fs-booking').textContent.includes('Проверьте результат записи'));
+    if(document.querySelector('.fs-booking').textContent.includes('Запрос на запись отправлен')||document.querySelector('.fs-booking').textContent.includes('Вы записаны'))throw new Error('Invalid response displayed success');
+    Array.from(document.querySelectorAll('.fs-booking button')).find(b=>b.textContent==='Проверить результат').click();
+    if(location.search.includes('lost-response'))await wait(()=>document.querySelector('.fs-booking').textContent.includes('Запрос на запись отправлен'));
+    else await wait(()=>document.querySelector('.fs-booking').textContent.includes('Подтверждённого результата пока нет'));
+    if(document.body.dataset.checkedOffer!==expectedId)throw new Error('Receipt check queried the wrong offer');
+    window.fetch=realFetch;document.body.dataset.testResult='pass';return;
+   }
    if(location.search.includes('stale')){
     await fetch('/test/change-terms',{method:'POST'});
     document.querySelector('.fs-booking input[name=name]').value='Synthetic stale form';document.querySelector('.fs-booking input[name=phone]').value='+79990000456';document.querySelector('.fs-booking input[name=consent]').checked=true;
     document.querySelector('.fs-booking button[type=submit]').click();await wait(()=>document.querySelector('.fs-booking').textContent.includes('Выберите время заново'));
-    if(!document.querySelector('.fs-booking').textContent.includes('запись по ней не создана'))throw new Error('Stale form must explicitly refuse booking');
+    if(!document.querySelector('.fs-booking').textContent.includes('Прежняя форма больше не действует'))throw new Error('Stale form must explicitly refuse booking');
     document.body.dataset.testResult='pass';return;
    }
    if(location.search.includes('form')){document.body.dataset.testResult='pass';return;}
@@ -73,16 +95,16 @@ const server=createServer(async(req,res)=>{
 await new Promise(resolve=>server.listen(43191,'127.0.0.1',resolve));
 const browser=[process.env.FRONTSMITH_TEST_BROWSER,...[process.env['ProgramFiles(x86)'],process.env.ProgramFiles,process.env.LOCALAPPDATA].filter(Boolean).flatMap(base=>[path.join(base,'Microsoft','Edge','Application','msedge.exe'),path.join(base,'Google','Chrome','Application','chrome.exe')])].find(p=>p&&existsSync(p));
 try {
- for(const label of ['desktop','mobile','stale','offline']){
+ for(const label of ['desktop','mobile','stale','bad-offered','bad-stale','bad-other','bad-empty-ref','lost-response','offline']){
   profile.timeZone='Europe/Moscow';profile.booking={autoConfirm:false};await writeFile(path.join(process.env.FRONTSMITH_BUSINESS_ROOT,'business.json'),JSON.stringify(profile));
-  const args=['--headless=new','--disable-gpu','--no-first-run','--disable-background-networking','--disable-component-update','--virtual-time-budget=20000','--window-size='+(label==='mobile'?'390,844':'1440,1000'),'--user-data-dir='+path.join(temp,label),'--dump-dom','http://127.0.0.1:43191/'+(label==='offline'?'?offline=1':label==='stale'?'?stale=1':'')];
+  const args=['--headless=new','--disable-gpu','--no-first-run','--disable-background-networking','--disable-component-update','--virtual-time-budget=20000','--window-size='+(label==='mobile'?'390,844':'1440,1000'),'--user-data-dir='+path.join(temp,label),'--dump-dom','http://127.0.0.1:43191/'+(label==='offline'?'?offline=1':label==='stale'?'?stale=1':label.startsWith('bad-')||label==='lost-response'?'?'+label+'=1':'')];
   const {stdout}=await promisify(execFile)(browser,args,{windowsHide:true,timeout:45000,maxBuffer:2*1024*1024});await writeFile(path.join(temp,label+'.html'),stdout);assert.match(stdout,/data-test-result="pass"/,stdout.slice(-5000));
  }
  for(const [label,size,query] of [['booking-desktop','1440,1000','form=1'],['booking-narrow','500,900','form=1'],['unavailable','1440,1000','offline=1'],['stale-form','500,900','stale=1']]){
   profile.timeZone='Europe/Moscow';profile.booking={autoConfirm:false};await writeFile(path.join(process.env.FRONTSMITH_BUSINESS_ROOT,'business.json'),JSON.stringify(profile));
   await promisify(execFile)(browser,['--headless=new','--disable-gpu','--no-first-run','--disable-background-networking','--disable-component-update','--virtual-time-budget=20000','--window-size='+size,'--user-data-dir='+path.join(temp,label),'--screenshot='+path.join(temp,label+'.png'),'http://127.0.0.1:43191/?'+query],{windowsHide:true,timeout:45000,maxBuffer:1024*1024});
  }
- assert.ok(calls.includes('offer'));assert.equal(db.prepare('SELECT count(*) AS n FROM appointments').get().n,2);
+ assert.ok(calls.includes('offer'));assert.equal(db.prepare('SELECT count(*) AS n FROM appointments').get().n,3);
  assert.ok(db.prepare('SELECT status FROM appointments').all().every(r=>r.status==='tentative'));
- console.log('Client browser PASS: unknown/individual price/afternoon preserved/stale terms rejected/form error/real booking via fake CRM/handoff/offline; SCRIPTED MODEL DOUBLE. Evidence: '+temp);
+ console.log('Client browser PASS: unknown/individual price/afternoon preserved/stale terms rejected/invalid HTTP 200 guarded/lost response recovered/form error/real booking via fake CRM/handoff/offline; SCRIPTED MODEL DOUBLE. Evidence: '+temp);
 } finally {await new Promise(resolve=>server.close(resolve));await customers.stop();store.close();db.close();await crm.close?.()}

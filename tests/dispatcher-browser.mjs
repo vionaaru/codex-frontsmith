@@ -54,6 +54,16 @@ const harness=`
   button('Вернуться к профилю без дополнительных знаний').click();await wait(()=>document.body.innerText.includes('Дополнительные знания и отдельные часы отключены'));
   check(!button('Вернуть предыдущую версию').disabled,'First activation can be deactivated and restored');
   button('Вернуть предыдущую версию').click();await wait(()=>document.body.innerText.includes('Предыдущая версия восстановлена'));
+  const oldBox=editor();const oldAbout=oldBox.querySelector('.dispatcher-field textarea');oldAbout.value='Сохранённый текст до перехода';oldAbout.dispatchEvent(new Event('input',{bubbles:true}));
+  let releaseResponse,receivedResponse;const responseGate=new Promise(resolve=>releaseResponse=resolve),responseReady=new Promise(resolve=>receivedResponse=resolve);let hold=true;
+  window.fetch=async(url,options)=>{const response=await originalFetch(url,options);if(hold&&url==='/api/dispatcher'&&options?.method==='POST'){hold=false;receivedResponse();await responseGate;}return response;};
+  button('Сохранить черновик').click();await responseReady;
+  location.hash='#/overview';await wait(()=>document.querySelector('h1')?.textContent==='Обзор офиса');
+  location.hash='#/dispatcher';await wait(()=>editor()&&editor()!==oldBox);
+  const newBox=editor(),newAbout=newBox.querySelector('.dispatcher-field textarea');newAbout.value='Новый текст после возвращения';newAbout.dispatchEvent(new Event('input',{bubbles:true}));
+  releaseResponse();await new Promise(resolve=>setTimeout(resolve,100));
+  check(editor()===newBox,'Delayed save replaced a newer form instance');check(newAbout.value==='Новый текст после возвращения','Delayed response lost new visible input');check(button('Утвердить сохранённый черновик').disabled,'New unsaved form must remain protected');
+  window.fetch=originalFetch;button('Сохранить черновик').click();await wait(()=>editor().querySelector('[role=status]').textContent.includes('Черновик сохранён'));check(editor().querySelector('.dispatcher-field textarea').value==='Новый текст после возвращения','New form could not save its own revision');
   check((location.search.includes('mobile')?document.body.scrollWidth<=390:document.documentElement.scrollWidth<=window.innerWidth),'Horizontal overflow '+JSON.stringify({width:innerWidth,scroll:document.documentElement.scrollWidth,items:Array.from(document.querySelectorAll('body *')).filter(e=>e.getBoundingClientRect().right>391).slice(0,15).map(e=>[e.tagName,e.className,e.getBoundingClientRect().right])}));
   document.body.dataset.testResult='pass';
   if(location.search.includes('bottom'))window.scrollTo(0,document.body.scrollHeight);
