@@ -17,6 +17,10 @@
 
   var siteName = document.querySelector('meta[property="og:site_name"]');
   var name = (siteName && siteName.content) || "Компания";
+  var configNode = document.getElementById("frontsmith-widget-config");
+  var presentation = null;
+  try { presentation = configNode ? JSON.parse(configNode.textContent) : null; } catch (_) { /* old website keeps its normal widget */ }
+  var objectImage = presentation && /^\/brand-assets\/[a-zA-Z0-9_.-]+\.(png|jpe?g|webp)$/i.test(presentation.object) ? presentation.object : undefined;
 
   var widget = ChatCops.init({
     apiUrl: "/api/chat",
@@ -26,8 +30,8 @@
     pageContext: false,
     persistHistory: true,
     theme: { accent: "#ffad45", textColor: "#111820", bgColor: "#fffdf8", fontFamily: "Arial, sans-serif", borderRadius: 4, position: "bottom-right" },
-    branding: { name: name, subtitle: "AI-помощник" },
-    welcomeMessage: "Здравствуйте! Я AI-помощник. Отвечаю по утверждённым сведениям компании и помогаю записаться на услугу. Если ответа нет, так и скажу",
+    branding: { name: name, subtitle: "AI-помощник", avatar: objectImage },
+    welcomeMessage: presentation ? "Здравствуйте! Я AI-помощник. Выберите подходящий вариант или напишите своими словами" : "Здравствуйте! Я AI-помощник. Отвечаю по утверждённым сведениям компании и помогаю записаться на услугу. Если ответа нет, так и скажу",
     strings: {
       inputPlaceholder: "Напишите вопрос…",
       sendButton: "Отправить",
@@ -53,6 +57,12 @@
   // Повторная генерация ответа каналом не поддерживается: кнопку скрываем внутри Shadow DOM
   var host = document.getElementById("chatcops-root");
   var shadow = host && host.shadowRoot;
+  var shellController = null;
+  var desiredShell = "question";
+  function setShell(next) {
+    desiredShell = next;
+    if (shellController && bookingPanel.classList.contains("cc-visible")) shellController.enter(next);
+  }
   // Theme the existing instance; never destroy a live conversation to recolor it.
   function applyBrandTheme() {
     if (!host) return;
@@ -62,6 +72,7 @@
       var value = css.getPropertyValue("--brand-" + properties[target]).trim();
       if (value) host.style.setProperty(target, value);
     });
+    if (shellController) shellController.refresh();
   }
   applyBrandTheme();
   document.addEventListener("frontsmith-theme", applyBrandTheme);
@@ -144,11 +155,134 @@
 
   var overlay = el("div", { class: "fs-booking", role: "dialog", "aria-modal": "true", "aria-labelledby": "fs-booking-title" });
   overlay.hidden = true;
-  document.body.appendChild(overlay);
+  var bookingPanel = shadow && shadow.querySelector(".cc-panel");
+  // Branded assistant keeps booking beside the conversation, in the same widget.
+  // Unbranded legacy websites retain the page dialog until their next adaptation.
+  if (presentation && bookingPanel) {
+    overlay.classList.add("fs-booking-inline");
+    overlay.removeAttribute("aria-modal");
+    bookingPanel.appendChild(overlay);
+    var uiStyle = document.createElement("link");
+    uiStyle.rel = "stylesheet";
+    uiStyle.href = "/widget-ui.css";
+    shadow.appendChild(uiStyle);
+    overlay.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") { event.stopPropagation(); close(); }
+    });
+  } else document.body.appendChild(overlay);
+
+  var choiceRegion = null;
+  var uiRequest = 0;
+  var uiDismissed = null;
+  var shellNav = null;
+  function updateShellNav() {
+    if (!shellNav) return;
+    shellNav.querySelector("[data-fs-choice]").hidden = !choiceRegion.childElementCount;
+  }
+  function renderComponent(component) {
+    if (!choiceRegion) return;
+    choiceRegion.replaceChildren();
+    if (!component || component.id === uiDismissed || !Array.isArray(component.options)) { updateShellNav(); return; }
+    var heading = el("p", { class: "fs-ui-title", text: component.title });
+    var options = el("div", { class: "fs-ui-options" });
+    component.options.slice(0, 6).forEach(function (option) {
+      if (typeof option.label !== "string" || typeof option.message !== "string") return;
+      var button = el("button", { type: "button", text: option.label.slice(0, 70) });
+      button.addEventListener("click", function () {
+        var send = shadow.querySelector(".cc-send-btn");
+        var input = shadow.querySelector("textarea");
+        // Do not replace an unsent draft or race a reply that is still streaming.
+        if (!input || input.disabled || input.value.trim() || !send || widget.isStreaming) {
+          heading.textContent = "Сначала отправьте или очистите свой текст, затем выберите вариант";
+          return;
+        }
+        uiDismissed = component.id;
+        uiRequest++;
+        choiceRegion.replaceChildren();
+        updateShellNav();
+        setShell("conversation");
+        tellAssistant(option.message.slice(0, 300));
+      });
+      options.appendChild(button);
+    });
+    var dismiss = el("button", { type: "button", class: "fs-ui-dismiss", text: "Написать своими словами" });
+    dismiss.addEventListener("click", function () { uiDismissed = component.id; setShell("conversation"); shadow.querySelector("textarea").focus(); });
+    choiceRegion.append(heading, options, dismiss);
+    updateShellNav();
+    // A reply cannot steal a populated form or an unsent draft.
+    if (overlay.hidden && !shadow.querySelector("textarea").value.trim()) setShell(component.shell === "conversation" ? "conversation" : "question");
+  }
+  function checkComponent() {
+    if (!presentation || !session() || !choiceRegion) return;
+    var request = ++uiRequest;
+    api("/api/chat/ui", {}).then(function (result) {
+      if (request !== uiRequest || !result || !result.ok) return;
+      renderComponent(result.data.component);
+    }, function () {});
+  }
+  if (presentation && bookingPanel) {
+    if (objectImage) {
+      host.classList.add("fs-has-object");
+      host.style.setProperty("--fs-object-image", 'url("' + objectImage + '")');
+      if (/^#[0-9a-f]{6}$/i.test(presentation.objectBackground)) host.style.setProperty("--fs-object-bg", presentation.objectBackground);
+    }
+    bookingPanel.classList.add("fs-generative", "fs-surface-" + (["plain", "woven", "layered"].indexOf(presentation.surface) !== -1 ? presentation.surface : "plain"));
+    bookingPanel.classList.add("fs-geometry-" + (["soft", "folded", "layered"].indexOf(presentation.geometry) !== -1 ? presentation.geometry : "soft"));
+    if (window.FrontsmithWidgetShell) {
+      shellController = window.FrontsmithWidgetShell(presentation, function (state, tone, index) {
+        bookingPanel.dataset.fsShell = state;
+        host.dataset.fsShell = state;
+        host.dataset.fsTone = tone ? tone.id : "brand";
+        if (tone) {
+          var mode = getComputedStyle(document.documentElement).colorScheme === "dark" ? "dark" : "light";
+          var colors = tone[mode];
+          host.style.setProperty("--fs-tone", tone.color);
+          if (colors) {
+            host.style.setProperty("--cc-accent", colors.accent);
+            host.style.setProperty("--cc-accent-hover", colors.accent);
+            host.style.setProperty("--cc-on-accent", colors.onAccent);
+            host.style.setProperty("--cc-accent-contrast", colors.accent);
+          }
+        }
+      });
+      shellController.enter("object");
+      var lastFormFocus = null;
+      overlay.addEventListener("focusin", function (event) { lastFormFocus = event.target; });
+      ChatCops.on("open", function () {
+        shellController.enter(desiredShell);
+        if (!overlay.hidden) (lastFormFocus && overlay.contains(lastFormFocus) ? lastFormFocus : overlay.querySelector("input,button"))?.focus();
+        else if (desiredShell === "question") choiceRegion.querySelector("button")?.focus();
+      });
+      ChatCops.on("close", function () { shellController.enter("object"); });
+    }
+    if (presentation.surfaceImage && /^\/brand-assets\/[a-zA-Z0-9_.-]+\.(png|jpe?g|webp)$/i.test(presentation.surfaceImage)) bookingPanel.style.setProperty("--fs-surface-image", 'url("' + presentation.surfaceImage + '")');
+    choiceRegion = el("section", { class: "fs-generative-ui", "aria-label": "Подсказки по задаче", "aria-live": "polite" });
+    bookingPanel.insertBefore(choiceRegion, bookingPanel.querySelector(".cc-input-area"));
+    shellNav = el("nav", { class: "fs-shell-nav", "aria-label": "Вид помощника" });
+    var conversationButton = el("button", { type: "button", text: "Переписка" });
+    var choiceButton = el("button", { type: "button", "data-fs-choice": "", text: "К выбору" });
+    conversationButton.addEventListener("click", function () { setShell("conversation"); shadow.querySelector("textarea").focus(); });
+    choiceButton.addEventListener("click", function () { setShell("question"); choiceRegion.querySelector("button")?.focus(); });
+    shellNav.append(conversationButton, choiceButton);
+    bookingPanel.insertBefore(shellNav, choiceRegion);
+
+    if (!session()) {
+      var startComponent = presentation.components.find(function (component) { return component.id === presentation.start; });
+      if (startComponent) renderComponent(Object.assign({}, startComponent, { title: presentation.question }));
+    }
+    else { desiredShell = "conversation"; checkComponent(); }
+    ChatCops.on("message", function (message) {
+      if (!message) return;
+      if (message.role === "user") { uiRequest++; uiDismissed = null; choiceRegion.replaceChildren(); updateShellNav(); if (overlay.hidden) setShell("conversation"); }
+      if (message.role === "assistant") checkComponent();
+    });
+  }
 
   function close() {
     overlay.hidden = true;
     overlay.textContent = "";
+    setShell("conversation");
+    if (presentation && shadow) shadow.querySelector("textarea").focus();
   }
 
   // Сообщение в чат после отправки формы: AI-помощник проверит итог записи и ответит
@@ -181,6 +315,7 @@
       },function(){if(overlay.contains(card)){text.textContent='Не удалось проверить результат. Запись могла сохраниться; повторите проверку позже';check.disabled=false;}});
     });
     overlay.appendChild(card);overlay.hidden=false;
+    setShell("result");
   }
 
   function showResult(offer) {
@@ -194,6 +329,7 @@
       el("div", { class: "fs-actions" }, [buttonClose("Готово")])
     ]));
     overlay.hidden = false;
+    setShell("result");
   }
 
   function buttonClose(text) {
@@ -211,6 +347,7 @@
       el('p',{text:'Условия записи изменились. Прежняя форма больше не действует; для продолжения выберите время заново'}),retry
     ]));
     overlay.hidden=false;
+    setShell("result");
   }
 
   function showForm(offer, message) {
@@ -282,6 +419,7 @@
 
     overlay.appendChild(el("div", { class: "fs-booking-card" }, [form]));
     overlay.hidden = false;
+    setShell("form");
     nameInput.focus();
   }
 
@@ -371,6 +509,7 @@
   function setStatus(status) {
     barText.textContent = STATUS_TEXT[status] || "";
     callButton.hidden = status === "needs_human";
+    if (status === "needs_human" && choiceRegion) { uiRequest++; choiceRegion.replaceChildren(); updateShellNav(); close(); }
   }
 
   callButton.addEventListener("click", function () {

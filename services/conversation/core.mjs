@@ -19,6 +19,7 @@
 // через Privacy Service, как любое сообщение.
 import { createHash } from "node:crypto";
 import { PrivacyProcessingError } from "../codex-host/privacy-client.mjs";
+import { WIDGET_UI_TOOL } from "./widget-ui.mjs";
 
 export const HANDOFF_TOOL = "request_human";
 
@@ -45,17 +46,48 @@ export class ConversationCore {
   #log;
   #live = new Map();
   #busy = new Set();
+  #widget;
+  #ui = new Map();
+  #pendingUi = new Map();
 
   // host() — текущий CodexHost или null, если AI runtime не запущен;
   // context({ booking, handoff }) — публичные сведения о компании и правила для developerInstructions;
   // tools — инструменты Host для новых диалогов (BOOKING_TOOLS, HANDOFF_TOOL)
-  constructor({ store, host, context, tenantId = "public-web", tools = [], log = () => {} }) {
+  constructor({ store, host, context, widget = async () => null, tenantId = "public-web", tools = [], log = () => {} }) {
     this.#store = store;
     this.#host = host;
     this.#context = context;
     this.#tenantId = tenantId;
     this.#tools = tools;
     this.#log = log;
+    this.#widget = widget;
+  }
+
+  // Only a prepared public component ID can cross this tool boundary. No model HTML,
+  // arbitrary labels, contact fields, navigation or business mutations.
+  widgetTool() {
+    return {
+      name: WIDGET_UI_TOOL,
+      description: "Показать подходящий компонент интерфейса из каталога компании. componentId — id из доступных компонентов в инструкциях. Не вызывай после каждого ответа: используй, когда выбор поможет уточнить задачу. Это не запись и не подтверждение действия.",
+      inputSchema: { type: "object", properties: { componentId: { type: "string" } }, required: ["componentId"], additionalProperties: false },
+      handler: async ({ componentId } = {}, { threadId }) => {
+        const row = this.#store.byThread(threadId);
+        if (!row || row.status !== "active" || !this.#busy.has(row.id) || !this.#store.tools(row).includes(WIDGET_UI_TOOL)) return "widget_unavailable";
+        const config = await this.#widget();
+        if (!config?.components.some(component => component.id === componentId)) return "widget_unknown_component";
+        if (this.#store.get(row.id)?.status !== "active") return "widget_unavailable";
+        this.#pendingUi.set(row.id, componentId);
+        return "widget_selected: компонент будет показан после успешного ответа. Не утверждай, что действие уже выполнено";
+      }
+    };
+  }
+
+  async visitorUi(id) {
+    if (this.#store.get(id)?.status !== "active") return { component: null };
+    const selected = this.#ui.get(id);
+    const config = await this.#widget();
+    if (this.#store.get(id)?.status !== "active" || this.#busy.has(id) || selected !== this.#ui.get(id)) return { component: null };
+    return { component: config?.components.find(component => component.id === selected) ?? null };
   }
 
   // Набор для новых диалогов: становится известен после запуска AI runtime. Уже открытые
@@ -81,6 +113,8 @@ export class ConversationCore {
     if (!row) throw new ConversationError("conversation_not_found");
     if (row.status === "needs_human") return { status: row.status, changed: false };
     this.#store.setStatus(id, "needs_human", String(reason ?? "").trim().slice(0, MAX_REASON) || "Посетитель попросил сотрудника", { by });
+    this.#ui.delete(id);
+    this.#pendingUi.delete(id);
     this.#store.addMessage(id, "system", HANDOFF_NOTICE);
     this.#log({ event: "conversation_handoff", conversation: id, by });
     return { status: "needs_human", changed: true };
@@ -173,6 +207,8 @@ export class ConversationCore {
       return { text: "", handoff: true };
     }
     this.#busy.add(id);
+    this.#ui.delete(id);
+    this.#pendingUi.delete(id);
     const startedAt = Date.now();
     try {
       const host = this.#host();
@@ -188,6 +224,7 @@ export class ConversationCore {
         return { text: "", handoff: true };
       }
       if (result.text) this.#store.addMessage(id, "assistant", result.text);
+      if (after.status === "active" && this.#pendingUi.has(id)) this.#ui.set(id, this.#pendingUi.get(id));
       this.#log({ event: "turn_completed", conversation: id, ms: Date.now() - startedAt, tool_calls: result.toolCalls.length });
       return { text: result.text, handoff: after.status === "needs_human" };
     } catch (error) {
@@ -200,6 +237,7 @@ export class ConversationCore {
       this.#log({ event: "turn_failed", conversation: id, code: failure.code, ms: Date.now() - startedAt });
       throw failure;
     } finally {
+      this.#pendingUi.delete(id);
       this.#busy.delete(id);
     }
   }
@@ -219,7 +257,12 @@ export class ConversationCore {
     const live = this.#live.get(row.id);
 
     const tools = row.codex_thread_id ? this.#store.tools(row) : this.#tools;
-    const context = await this.#context({ booking: tools.includes("find_booking_slots"), handoff: tools.includes(HANDOFF_TOOL) });
+    const config = tools.includes(WIDGET_UI_TOOL) ? await this.#widget() : null;
+    const uiContext = config ? [
+      "Интерфейс посетителя: можно показать подготовленный компонент инструментом show_widget_component. Выбирай подходящий по разговору; сохраняй возможность ответить своими словами. Не выдумывай компоненты и не считай выбор оформленной записью.",
+      ...config.components.map(component => `${component.id}: ${component.title}; варианты: ${component.options.map(option => option.label).join(", ")}`)
+    ].join("\n") : "";
+    const context = [await this.#context({ booking: tools.includes("find_booking_slots"), handoff: tools.includes(HANDOFF_TOOL) }), uiContext].filter(Boolean).join("\n\n");
     const contextHash = createHash('sha256').update(context).digest('hex');
     if (live?.host === host && live.context === context) return { handle: live.handle, replay: false };
     const replay = Boolean(row.codex_thread_id && row.context_hash !== contextHash);

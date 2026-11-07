@@ -2,6 +2,7 @@
 import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { businessPath } from "./paths.mjs";
+import { validateWidget } from "./widget.mjs";
 
 export const colorRoles = ["page", "surface", "surfaceMuted", "text", "textMuted", "border", "accent", "onAccent", "accentSoft", "focus", "success", "warning", "error"];
 export const defaultBrand = {
@@ -15,6 +16,7 @@ export function validateBrand(input) {
   if (typeof input.font !== "string" || !/^[\p{L}\p{N} ,'-]{1,160}$/u.test(input.font)) throw new Error("brand.json: недопустимый font");
   if (!Number.isFinite(input.radius) || input.radius < 0 || input.radius > 32) throw new Error("brand.json: radius должен быть от 0 до 32");
   const result = { version: 1, font: input.font, radius: input.radius };
+  if (input.widget !== undefined) result.widget = validateWidget(input.widget);
   if (input.logo !== undefined) {
     if (typeof input.logo !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*\.(?:png|jpe?g|webp)$/i.test(input.logo)) throw new Error("brand.json: logo — имя картинки из design/public/");
     result.logo = input.logo;

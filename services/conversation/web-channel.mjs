@@ -18,7 +18,7 @@ import { randomUUID } from "node:crypto";
 import { BookingError } from "./booking.mjs";
 import { ConversationError } from "./core.mjs";
 
-const ROUTES = new Set(["/api/chat", "/api/chat/session", "/api/chat/booking", "/api/chat/booking/confirm", "/api/chat/handoff", "/api/chat/messages"]);
+const ROUTES = new Set(["/api/chat", "/api/chat/session", "/api/chat/booking", "/api/chat/booking/confirm", "/api/chat/handoff", "/api/chat/messages", "/api/chat/ui"]);
 
 export const LIMITS = {
   bodyBytes: 16 * 1024,
@@ -242,6 +242,11 @@ export function createWebChannel({ core, booking = null, allowedHosts, limits = 
       else if (pathname === "/api/chat/booking/confirm") await bookingConfirm(req, res);
       else if (pathname === "/api/chat/handoff") await handoff(req, res);
       else if (pathname === "/api/chat/messages") await feed(req, res);
+      else if (pathname === "/api/chat/ui") {
+        const conversation = authorized(req, await readJson(req));
+        limit(`feed:${conversation.id}`, limits.feedPerConversation);
+        json(res, 200, await core.visitorUi(conversation.id));
+      }
       else await chat(req, res, ip);
     } catch (error) {
       if (res.headersSent) {

@@ -9,6 +9,7 @@ import { websiteTemplateFile } from "./blueprints.mjs";
 import { loadBrand, brandCss, brandAsset } from "./brand.mjs";
 import { assertIntakeFormContract } from "./website-contract.mjs";
 import { indexWebsitePaths, existingPathAlias } from "./website-paths.mjs";
+import { publicWidgetConfig } from "./widget.mjs";
 
 const chatcopsVendorRoot = path.join("vendor", "chatcops-widget");
 
@@ -61,6 +62,7 @@ export async function renderWebsite({ force = false } = {}) {
   const replacements = buildReplacements(brand?.logo ? { ...business, media: { ...business.media, logoImage: `/brand-assets/${brand.logo}` } } : business);
   if (brand?.logo) await brandAsset(brand.logo);
   if (brand?.fontFace) await brandAsset(brand.fontFace.file);
+  for (const name of [brand?.widget?.object, brand?.widget?.surfaceImage].filter(Boolean)) await brandAsset(name);
   const customTemplate = businessPath("design", "site", "index.html");
   const template = brand && existsSync(customTemplate) ? customTemplate : websiteTemplateFile(profile);
   const source = await readWebsiteFile(template);
@@ -71,10 +73,12 @@ export async function renderWebsite({ force = false } = {}) {
     if (!/<head\b/i.test(source) || !/<\/head>/i.test(source)) throw new Error("Клиентский шаблон должен содержать head");
   }
   let rendered = updateWebsiteFile(source, replacements);
+  const widgetConfig = publicWidgetConfig(brand, business);
+  if (widgetConfig) rendered = rendered.replace(/<\/head>/i, `<script type="application/json" id="frontsmith-widget-config">${JSON.stringify(widgetConfig).replaceAll("<", "\\u003c")}</script><script src="/widget-shell.js" defer></script></head>`);
   if (template === customTemplate) assertIntakeFormContract(rendered);
   if (brand) rendered = rendered.replace(/<head\b[^>]*>/i, `$&\n<script src="./brand-theme.js"></script>`).replace(/<\/head>/i, '<link rel="stylesheet" href="./brand.css"><link rel="stylesheet" href="./brand-base.css"><link rel="stylesheet" href="./site.css"></head>');
   const managed = new Map([["index.html", Buffer.from(rendered)]]);
-  for (const file of ["styles.css", "script.js", "chat-widget.js"]) managed.set(file, await readFile(path.join(websiteSourceRoot, file)));
+  for (const file of ["styles.css", "script.js", "chat-widget.js", "widget-ui.css", "widget-shell.js"]) managed.set(file, await readFile(path.join(websiteSourceRoot, file)));
   for (const [from, to] of [["chatcops.min.js", "chatcops.min.js"], ["LICENSE", "LICENSE.txt"]]) managed.set(`vendor/chatcops/${to}`, await readFile(path.join(chatcopsVendorRoot, from)));
   if (brand) {
     managed.set("brand.css", Buffer.from(brandCss(brand)));
