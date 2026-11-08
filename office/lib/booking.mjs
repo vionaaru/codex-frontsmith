@@ -159,7 +159,7 @@ export function slotProblem(db, settings, service, startsAt, now, { ignoreId = n
 }
 
 // Свободные интервалы услуги начиная с даты fromDate (ГГГГ-ММ-ДД, по умолчанию сегодня)
-export function availableSlots(db, settings, service, { now = new Date(), fromDate = null, limit = 8, perDay = 4 } = {}) {
+export function availableSlots(db, settings, service, { now = new Date(), fromDate = null, limit = 8, perDay = 4, timeFrom = null, timeTo = null } = {}) {
   if (!settings.configured) return [];
   const today = zonedDayRange(now, settings.timeZone).date;
   const last = addDays(today, settings.horizonDays - 1);
@@ -170,6 +170,7 @@ export function availableSlots(db, settings, service, { now = new Date(), fromDa
     const [year, month, date] = day.split("-").map(Number);
     let taken = 0;
     for (let minute = settings.hours.start; minute + duration <= settings.hours.end && slots.length < limit && taken < perDay; minute += settings.slotStepMinutes) {
+      if (timeFrom && minute < minutes(timeFrom) || timeTo && minute > minutes(timeTo)) continue;
       const startsAt = zonedTime(year, month, date, Math.floor(minute / 60), minute % 60, settings.timeZone);
       if (slotProblem(db, settings, service, startsAt, now)) continue;
       slots.push({ key: slotKey(startsAt, settings.timeZone), label: slotLabel(startsAt, settings.timeZone), startsAt: startsAt.toISOString(), endsAt: new Date(startsAt.getTime() + duration * 60_000).toISOString() });
@@ -183,11 +184,13 @@ export function availableSlots(db, settings, service, { now = new Date(), fromDa
 // проверка интервала и вставка не разделяются другим писателем. externalId — ключ
 // идемпотентности: повтор той же операции возвращает уже созданную запись.
 // autoConfirm — только по разрешению владельца; иначе запись предварительная (tentative)
-export function bookSlot(ctx, { settings, service, startsAt, customerId, externalId, description, autoConfirm, confirmationBasis }) {
+export function bookSlot(ctx, { settings, service, startsAt, customerId, externalId, description, autoConfirm, confirmationBasis, assertCurrentTerms }) {
   const db = ctx.db;
   return db.transaction(() => {
     const existing = db.prepare("SELECT * FROM appointments WHERE source = 'website' AND external_id = ?").get(externalId);
     if (existing) return { appointment: existing, inquiryId: existing.inquiry_id, duplicate: true };
+    // Recheck the service/consent snapshot under the same SQLite writer lock.
+    assertCurrentTerms?.();
     const problem = slotProblem(db, settings, service, startsAt, ctx.now());
     if (problem) throw new BookingConflictError(problem === "slot_taken" ? "Это время уже занято" : "Это время недоступно для записи");
     const endsAt = new Date(startsAt.getTime() + durationMinutes(service, settings) * 60_000);

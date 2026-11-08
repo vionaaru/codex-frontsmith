@@ -74,6 +74,7 @@ export const MESSAGE_ROLES = ["visitor", "assistant", "operator", "system"];
 
 // Столбцы, добавленные после первой версии хранилища
 const COLUMNS = [
+  ["context_hash", "TEXT"],
   ["tools", "TEXT"],
   ["client_id", "TEXT"],
   // кто передал диалог человеку: ai, visitor или operator
@@ -104,6 +105,8 @@ export class ConversationStore {
     this.#db.exec(SCHEMA);
     const existing = new Set(this.#db.prepare("PRAGMA table_info(conversations)").all().map((column) => column.name));
     for (const [name, type] of COLUMNS) if (!existing.has(name)) this.#db.exec(`ALTER TABLE conversations ADD COLUMN ${name} ${type}`);
+    const offerColumns=new Set(this.#db.prepare('PRAGMA table_info(booking_offers)').all().map(column=>column.name));
+    for(const name of ['terms_json','options_json'])if(!offerColumns.has(name))this.#db.exec('ALTER TABLE booking_offers ADD COLUMN '+name+' TEXT');
   }
 
   // Новый диалог и его токен. Токен возвращается один раз; в базе — только SHA-256
@@ -133,9 +136,9 @@ export class ConversationStore {
   }
 
   // tools — инструменты Host, с которыми открыт thread: при thread/resume набор не меняется
-  bind(id, { threadId, privacySessionId, modelInstructions, tools = [] }) {
-    this.#db.prepare("UPDATE conversations SET codex_thread_id = ?, privacy_session_id = ?, model_instructions = ?, tools = ?, updated_at = ? WHERE id = ?")
-      .run(threadId, privacySessionId, modelInstructions ?? "", JSON.stringify(tools), this.#now().toISOString(), id);
+  bind(id, { threadId, privacySessionId, modelInstructions, tools = [], contextHash = null }) {
+    this.#db.prepare("UPDATE conversations SET codex_thread_id = ?, privacy_session_id = ?, model_instructions = ?, tools = ?, context_hash = ?, updated_at = ? WHERE id = ?")
+      .run(threadId, privacySessionId, modelInstructions ?? "", JSON.stringify(tools), contextHash, this.#now().toISOString(), id);
   }
 
   // Диалоги до появления инструментов записи сохранены без набора: у их thread инструментов нет
@@ -153,13 +156,13 @@ export class ConversationStore {
   }
 
   // Новое предложение записи заменяет прежнее неподтверждённое предложение того же диалога
-  offer(conversationId, { serviceCode, serviceName, startsAt, clientId }) {
+  offer(conversationId, { serviceCode, serviceName, startsAt, clientId, terms = null, options = [] }) {
     const at = this.#now().toISOString();
     const id = randomUUID();
     this.#db.transaction(() => {
       this.#db.prepare("UPDATE booking_offers SET status = 'withdrawn', updated_at = ? WHERE conversation_id = ? AND status = 'offered'").run(at, conversationId);
-      this.#db.prepare(`INSERT INTO booking_offers (id, conversation_id, service_code, service_name, starts_at, status, client_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, 'offered', ?, ?, ?)`).run(id, conversationId, serviceCode, serviceName, startsAt, clientId, at, at);
+      this.#db.prepare(`INSERT INTO booking_offers (id, conversation_id, service_code, service_name, starts_at, status, client_id, terms_json, options_json, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'offered', ?, ?, ?, ?, ?)`).run(id, conversationId, serviceCode, serviceName, startsAt, clientId, JSON.stringify(terms), JSON.stringify(options), at, at);
     })();
     return this.getOffer(id);
   }

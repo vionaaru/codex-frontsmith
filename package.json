@@ -22,6 +22,9 @@
   ],
   "scripts": {
     "check": "node scripts/check.mjs",
+    "design": "node scripts/design.mjs",
+    "test:design": "node tests/design.mjs && node tests/widget-ui.mjs",
+    "test:design:formdata": "node tests/design-formdata.mjs",
     "bootstrap": "node scripts/bootstrap.mjs",
     "business:init": "node scripts/business-init.mjs",
     "frontsmith": "node scripts/frontsmith.mjs",
@@ -46,7 +49,7 @@
     "office:restore": "node scripts/office.mjs restore",
     "backups:relocate": "node scripts/backups-relocate.mjs",
     "office:serve": "node office/server.mjs",
-    "test": "npm run test:launch && npm run test:regression && npm run test:office && npm run test:install && npm run test:codex-host && npm run test:conversation",
+    "test": "npm run test:launch && npm run test:regression && npm run test:office && npm run test:install && npm run test:codex-host && npm run test:conversation && npm run test:design",
     "test:launch": "node tests/launch-readiness.mjs",
     "test:regression": "node tests/regression.mjs",
     "test:office": "node tests/office.mjs && node tests/work-reports.mjs && node tests/customers.mjs && node tests/generic-profile.mjs && node tests/profile-vocabulary.mjs && node tests/website-update.mjs",
@@ -69,9 +72,12 @@
     "test:crm": "node tests/crm-live.mjs",
     "test:first-run": "node tests/first-run.mjs",
     "smoke:crm-codex": "node services/codex-host/smoke-customer.mjs",
-    "test:conversation": "node tests/conversation.mjs && node tests/booking.mjs && node tests/handoff.mjs",
+    "test:conversation": "node tests/conversation.mjs && node tests/booking.mjs && node tests/handoff.mjs && npm run test:dispatcher",
     "demo:booking": "node scripts/demo-booking.mjs",
-    "conversations:purge": "node scripts/conversations-purge.mjs"
+    "conversations:purge": "node scripts/conversations-purge.mjs",
+    "test:dispatcher": "node tests/dispatcher.mjs && node tests/dispatcher-safety.mjs",
+    "test:dispatcher:browser": "node tests/dispatcher-browser.mjs",
+    "test:dispatcher:client-browser": "node tests/dispatcher-client-browser.mjs"
   },
   "engines": {
     "node": ">=20"

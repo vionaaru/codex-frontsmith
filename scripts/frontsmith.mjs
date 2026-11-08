@@ -35,6 +35,7 @@ import { ConversationCore, HANDOFF_TOOL } from "../services/conversation/core.mj
 import { ConversationStore } from "../services/conversation/store.mjs";
 import { loadBusinessProfile, loadPublicBusinessContext } from "../services/conversation/business-context.mjs";
 import { BOOKING_TOOLS, BookingDesk } from "../services/conversation/booking.mjs";
+import { WIDGET_UI_TOOL, loadWidgetConfig } from "../services/conversation/widget-ui.mjs";
 import { createWebChannel } from "../services/conversation/web-channel.mjs";
 import { foreignCrmLinks, inspectInstallation } from "./lib/installation.mjs";
 import { previewWebsiteRoot } from "./lib/paths.mjs";
@@ -126,6 +127,7 @@ async function start() {
     store: components.conversations,
     host: () => (status.codex === "ready" ? components.ai.host : null),
     context: loadPublicBusinessContext,
+    widget: loadWidgetConfig,
     log: chatLog
   });
   if (auth.state === "ready") {
@@ -135,8 +137,8 @@ async function start() {
       components.aiDb = registerFunctions(openOfficeDb());
       const provider = assertCustomerProvider(new CrmkitProvider({ db: components.aiDb, client: crm.client, workspaceId: crm.workspaceId }));
       const booking = new BookingDesk({ db: components.aiDb, provider, store: components.conversations, profile: loadBusinessProfile, log: chatLog });
-      components.ai = await startAiRuntime({ crm, privacyService: privacy, tools: [getCustomerContextTool(provider), ...booking.tools(), core.handoffTool()] });
-      core.setTools([...BOOKING_TOOLS, HANDOFF_TOOL]);
+      components.ai = await startAiRuntime({ crm, privacyService: privacy, tools: [getCustomerContextTool(provider), ...booking.tools(), core.handoffTool(), core.widgetTool()] });
+      core.setTools([...BOOKING_TOOLS, HANDOFF_TOOL, WIDGET_UI_TOOL]);
       components.booking = booking;
       status.codex = "ready";
       console.log(`✓ Codex: ${components.ai.codexVersion}, App Server на stdio, вход ChatGPT`);

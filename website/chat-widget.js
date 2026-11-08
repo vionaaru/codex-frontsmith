@@ -17,6 +17,10 @@
 
   var siteName = document.querySelector('meta[property="og:site_name"]');
   var name = (siteName && siteName.content) || "Компания";
+  var configNode = document.getElementById("frontsmith-widget-config");
+  var presentation = null;
+  try { presentation = configNode ? JSON.parse(configNode.textContent) : null; } catch (_) { /* old website keeps its normal widget */ }
+  var objectImage = presentation && /^\/brand-assets\/[a-zA-Z0-9_.-]+\.(png|jpe?g|webp)$/i.test(presentation.object) ? presentation.object : undefined;
 
   var widget = ChatCops.init({
     apiUrl: "/api/chat",
@@ -26,8 +30,8 @@
     pageContext: false,
     persistHistory: true,
     theme: { accent: "#ffad45", textColor: "#111820", bgColor: "#fffdf8", fontFamily: "Arial, sans-serif", borderRadius: 4, position: "bottom-right" },
-    branding: { name: name, subtitle: "AI-помощник" },
-    welcomeMessage: "Здравствуйте! Я AI-помощник. Отвечаю по сведениям с сайта компании и помогаю записаться на услугу. Если ответа нет, так и скажу",
+    branding: { name: name, subtitle: "AI-помощник", avatar: objectImage },
+    welcomeMessage: presentation ? "Здравствуйте! Я AI-помощник. Выберите подходящий вариант или напишите своими словами" : "Здравствуйте! Я AI-помощник. Отвечаю по утверждённым сведениям компании и помогаю записаться на услугу. Если ответа нет, так и скажу",
     strings: {
       inputPlaceholder: "Напишите вопрос…",
       sendButton: "Отправить",
@@ -40,8 +44,8 @@
       errorRateLimit: "Слишком много сообщений. Подождите немного",
       errorRateLimitWait: "Слишком много сообщений. Повторите через {seconds} с",
       errorBudget: "Лимит этого разговора исчерпан",
-      errorBudgetDaily: "AI-помощник исчерпал лимит на сегодня. Свяжитесь с нами по контактам на сайте",
-      errorUnavailable: "AI-помощник сейчас недоступен, сообщение не обработано. Свяжитесь с нами по контактам на сайте",
+      errorBudgetDaily: "AI-помощник исчерпал лимит на сегодня. Можно передать вопрос кнопкой «Позвать сотрудника»",
+      errorUnavailable: "AI-помощник сейчас недоступен, ответ не получен. Попробуйте позже или нажмите «Позвать сотрудника»",
       errorCutOff: "Ответ оборвался. Попробуйте ещё раз",
       typingIndicator: "Готовлю ответ…",
       newConversation: "Новый разговор",
@@ -53,9 +57,29 @@
   // Повторная генерация ответа каналом не поддерживается: кнопку скрываем внутри Shadow DOM
   var host = document.getElementById("chatcops-root");
   var shadow = host && host.shadowRoot;
+  var shellController = null;
+  var desiredShell = "question";
+  function setShell(next) {
+    desiredShell = next;
+    if (shellController && bookingPanel.classList.contains("cc-visible")) shellController.enter(next);
+  }
+  // Theme the existing instance; never destroy a live conversation to recolor it.
+  function applyBrandTheme() {
+    if (!host) return;
+    var css = getComputedStyle(document.documentElement);
+    var properties = { "--cc-accent": "accent", "--cc-accent-hover": "accent", "--cc-on-accent": "on-accent", "--cc-accent-contrast": "accent", "--cc-bg": "surface", "--cc-bg-surface": "surface-muted", "--cc-bg-input": "page", "--cc-text": "text", "--cc-text-secondary": "text-muted", "--cc-border": "border", "--cc-font": "font", "--cc-radius": "radius" };
+    Object.keys(properties).forEach(function (target) {
+      var value = css.getPropertyValue("--brand-" + properties[target]).trim();
+      if (value) host.style.setProperty(target, value);
+    });
+    if (shellController) shellController.refresh();
+  }
+  applyBrandTheme();
+  document.addEventListener("frontsmith-theme", applyBrandTheme);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyBrandTheme);
   if (shadow) {
     var style = document.createElement("style");
-    style.textContent = ".cc-message-regenerate{display:none!important}";
+    style.textContent = ".cc-message-regenerate{display:none!important}.fs-handoff{background:var(--cc-bg-surface)!important;color:var(--cc-text-secondary)!important;border-color:var(--cc-border)!important;font-family:var(--cc-font)!important}.fs-handoff-button{color:var(--cc-text)!important;border-color:var(--cc-border)!important;border-radius:var(--cc-radius)!important}";
     shadow.appendChild(style);
   }
 
@@ -131,11 +155,134 @@
 
   var overlay = el("div", { class: "fs-booking", role: "dialog", "aria-modal": "true", "aria-labelledby": "fs-booking-title" });
   overlay.hidden = true;
-  document.body.appendChild(overlay);
+  var bookingPanel = shadow && shadow.querySelector(".cc-panel");
+  // Branded assistant keeps booking beside the conversation, in the same widget.
+  // Unbranded legacy websites retain the page dialog until their next adaptation.
+  if (presentation && bookingPanel) {
+    overlay.classList.add("fs-booking-inline");
+    overlay.removeAttribute("aria-modal");
+    bookingPanel.appendChild(overlay);
+    var uiStyle = document.createElement("link");
+    uiStyle.rel = "stylesheet";
+    uiStyle.href = "/widget-ui.css";
+    shadow.appendChild(uiStyle);
+    overlay.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") { event.stopPropagation(); close(); }
+    });
+  } else document.body.appendChild(overlay);
+
+  var choiceRegion = null;
+  var uiRequest = 0;
+  var uiDismissed = null;
+  var shellNav = null;
+  function updateShellNav() {
+    if (!shellNav) return;
+    shellNav.querySelector("[data-fs-choice]").hidden = !choiceRegion.childElementCount;
+  }
+  function renderComponent(component) {
+    if (!choiceRegion) return;
+    choiceRegion.replaceChildren();
+    if (!component || component.id === uiDismissed || !Array.isArray(component.options)) { updateShellNav(); return; }
+    var heading = el("p", { class: "fs-ui-title", text: component.title });
+    var options = el("div", { class: "fs-ui-options" });
+    component.options.slice(0, 6).forEach(function (option) {
+      if (typeof option.label !== "string" || typeof option.message !== "string") return;
+      var button = el("button", { type: "button", text: option.label.slice(0, 70) });
+      button.addEventListener("click", function () {
+        var send = shadow.querySelector(".cc-send-btn");
+        var input = shadow.querySelector("textarea");
+        // Do not replace an unsent draft or race a reply that is still streaming.
+        if (!input || input.disabled || input.value.trim() || !send || widget.isStreaming) {
+          heading.textContent = "Сначала отправьте или очистите свой текст, затем выберите вариант";
+          return;
+        }
+        uiDismissed = component.id;
+        uiRequest++;
+        choiceRegion.replaceChildren();
+        updateShellNav();
+        setShell("conversation");
+        tellAssistant(option.message.slice(0, 300));
+      });
+      options.appendChild(button);
+    });
+    var dismiss = el("button", { type: "button", class: "fs-ui-dismiss", text: "Написать своими словами" });
+    dismiss.addEventListener("click", function () { uiDismissed = component.id; setShell("conversation"); shadow.querySelector("textarea").focus(); });
+    choiceRegion.append(heading, options, dismiss);
+    updateShellNav();
+    // A reply cannot steal a populated form or an unsent draft.
+    if (overlay.hidden && !shadow.querySelector("textarea").value.trim()) setShell(component.shell === "conversation" ? "conversation" : "question");
+  }
+  function checkComponent() {
+    if (!presentation || !session() || !choiceRegion) return;
+    var request = ++uiRequest;
+    api("/api/chat/ui", {}).then(function (result) {
+      if (request !== uiRequest || !result || !result.ok) return;
+      renderComponent(result.data.component);
+    }, function () {});
+  }
+  if (presentation && bookingPanel) {
+    if (objectImage) {
+      host.classList.add("fs-has-object");
+      host.style.setProperty("--fs-object-image", 'url("' + objectImage + '")');
+      if (/^#[0-9a-f]{6}$/i.test(presentation.objectBackground)) host.style.setProperty("--fs-object-bg", presentation.objectBackground);
+    }
+    bookingPanel.classList.add("fs-generative", "fs-surface-" + (["plain", "woven", "layered"].indexOf(presentation.surface) !== -1 ? presentation.surface : "plain"));
+    bookingPanel.classList.add("fs-geometry-" + (["soft", "folded", "layered"].indexOf(presentation.geometry) !== -1 ? presentation.geometry : "soft"));
+    if (window.FrontsmithWidgetShell) {
+      shellController = window.FrontsmithWidgetShell(presentation, function (state, tone, index) {
+        bookingPanel.dataset.fsShell = state;
+        host.dataset.fsShell = state;
+        host.dataset.fsTone = tone ? tone.id : "brand";
+        if (tone) {
+          var mode = getComputedStyle(document.documentElement).colorScheme === "dark" ? "dark" : "light";
+          var colors = tone[mode];
+          host.style.setProperty("--fs-tone", tone.color);
+          if (colors) {
+            host.style.setProperty("--cc-accent", colors.accent);
+            host.style.setProperty("--cc-accent-hover", colors.accent);
+            host.style.setProperty("--cc-on-accent", colors.onAccent);
+            host.style.setProperty("--cc-accent-contrast", colors.accent);
+          }
+        }
+      });
+      shellController.enter("object");
+      var lastFormFocus = null;
+      overlay.addEventListener("focusin", function (event) { lastFormFocus = event.target; });
+      ChatCops.on("open", function () {
+        shellController.enter(desiredShell);
+        if (!overlay.hidden) (lastFormFocus && overlay.contains(lastFormFocus) ? lastFormFocus : overlay.querySelector("input,button"))?.focus();
+        else if (desiredShell === "question") choiceRegion.querySelector("button")?.focus();
+      });
+      ChatCops.on("close", function () { shellController.enter("object"); });
+    }
+    if (presentation.surfaceImage && /^\/brand-assets\/[a-zA-Z0-9_.-]+\.(png|jpe?g|webp)$/i.test(presentation.surfaceImage)) bookingPanel.style.setProperty("--fs-surface-image", 'url("' + presentation.surfaceImage + '")');
+    choiceRegion = el("section", { class: "fs-generative-ui", "aria-label": "Подсказки по задаче", "aria-live": "polite" });
+    bookingPanel.insertBefore(choiceRegion, bookingPanel.querySelector(".cc-input-area"));
+    shellNav = el("nav", { class: "fs-shell-nav", "aria-label": "Вид помощника" });
+    var conversationButton = el("button", { type: "button", text: "Переписка" });
+    var choiceButton = el("button", { type: "button", "data-fs-choice": "", text: "К выбору" });
+    conversationButton.addEventListener("click", function () { setShell("conversation"); shadow.querySelector("textarea").focus(); });
+    choiceButton.addEventListener("click", function () { setShell("question"); choiceRegion.querySelector("button")?.focus(); });
+    shellNav.append(conversationButton, choiceButton);
+    bookingPanel.insertBefore(shellNav, choiceRegion);
+
+    if (!session()) {
+      var startComponent = presentation.components.find(function (component) { return component.id === presentation.start; });
+      if (startComponent) renderComponent(Object.assign({}, startComponent, { title: presentation.question }));
+    }
+    else { desiredShell = "conversation"; checkComponent(); }
+    ChatCops.on("message", function (message) {
+      if (!message) return;
+      if (message.role === "user") { uiRequest++; uiDismissed = null; choiceRegion.replaceChildren(); updateShellNav(); if (overlay.hidden) setShell("conversation"); }
+      if (message.role === "assistant") checkComponent();
+    });
+  }
 
   function close() {
     overlay.hidden = true;
     overlay.textContent = "";
+    setShell("conversation");
+    if (presentation && shadow) shadow.querySelector("textarea").focus();
   }
 
   // Сообщение в чат после отправки формы: AI-помощник проверит итог записи и ответит
@@ -148,22 +295,59 @@
     send.click();
   }
 
+  function acceptedReceipt(offer, expectedId) {
+    return Boolean(offer && offer.id===expectedId && ['requested','confirmed'].indexOf(offer.status)!==-1 && offer.reference);
+  }
+
+  function showUncertain(offerId, message) {
+    overlay.textContent='';
+    var text=el('p',{text:(message?message+' ':'')+'Результат оформления пока не подтверждён. Не создавайте новую запись до проверки: предыдущий запрос мог сохраниться'});
+    var check=el('button',{type:'button',class:'fs-primary',text:'Проверить результат'});
+    var card=el('div',{class:'fs-booking-card'},[el('h2',{id:'fs-booking-title',text:'Проверьте результат записи'}),text,check,buttonClose('Закрыть')]);
+    check.addEventListener('click',function(){
+      check.disabled=true;
+      api('/api/chat/booking',{offerId:offerId}).then(function(result){
+        if(overlay.hidden||!overlay.contains(card))return;
+        var found=result&&result.ok&&result.data.offer;
+        if(acceptedReceipt(found,offerId)){shownOffer=found.id;showResult(found);return;}
+        text.textContent=found&&found.id===offerId&&found.status==='declined'?'Компания отклонила эту запись':'Подтверждённого результата пока нет. Повторите проверку или передайте вопрос сотруднику; не считайте запись отменённой или отсутствующей';
+        check.disabled=false;
+      },function(){if(overlay.contains(card)){text.textContent='Не удалось проверить результат. Запись могла сохраниться; повторите проверку позже';check.disabled=false;}});
+    });
+    overlay.appendChild(card);overlay.hidden=false;
+    setShell("result");
+  }
+
   function showResult(offer) {
+    if(!acceptedReceipt(offer,offer&&offer.id))return showUncertain(offer&&offer.id);
     overlay.textContent = "";
     var confirmed = offer.status === "confirmed";
     overlay.appendChild(el("div", { class: "fs-booking-card" }, [
       el("h2", { id: "fs-booking-title", text: confirmed ? "Вы записаны" : "Запрос на запись отправлен" }),
-      el("p", { text: offer.service + ", " + offer.label + (offer.reference ? ". Номер " + offer.reference : "") }),
-      el("p", { text: confirmed ? "Время подтверждено. Если планы изменятся, свяжитесь с нами по контактам на сайте" : "Время ещё не подтверждено: компания свяжется с вами, чтобы подтвердить запись" }),
+      el("p", { text: offer.service + ", " + offer.label + " (" + offer.timeZone + ")" + (offer.reference ? ". Номер " + offer.reference : "") }),
+      el("p", { text: confirmed ? "Время подтверждено. Если планы изменятся, свяжитесь с нами по контактам на сайте" : "Время ещё не подтверждено: запрос ожидает решения компании" }),
       el("div", { class: "fs-actions" }, [buttonClose("Готово")])
     ]));
     overlay.hidden = false;
+    setShell("result");
   }
 
   function buttonClose(text) {
     var button = el("button", { type: "button", class: "fs-secondary", text: text });
     button.addEventListener("click", close);
     return button;
+  }
+
+  function showStale(offer) {
+    overlay.textContent='';
+    var retry=buttonClose('Выбрать время заново');
+    retry.addEventListener('click',function(){tellAssistant('Условия предыдущей формы записи изменились. Подберите свободное время заново и покажите новую форму');});
+    overlay.appendChild(el('div',{class:'fs-booking-card'},[
+      el('h2',{id:'fs-booking-title',text:'Выберите время заново'}),
+      el('p',{text:'Условия записи изменились. Прежняя форма больше не действует; для продолжения выберите время заново'}),retry
+    ]));
+    overlay.hidden=false;
+    setShell("result");
   }
 
   function showForm(offer, message) {
@@ -211,24 +395,31 @@
       if (!consent.checked) return fail("Нужно согласие на обработку контактов");
       submit.disabled = true;
       api("/api/chat/booking/confirm", { offerId: offer.id, start: chosen.value, name: nameInput.value, phone: phoneInput.value, consent: true }).then(function (result) {
-        if (result && result.ok && result.data.offer) {
+        if(overlay.hidden||!overlay.contains(form))return;
+        if (result && result.ok && acceptedReceipt(result.data.offer,offer.id)) {
           shownOffer = result.data.offer.id;
           showResult(result.data.offer);
-          tellAssistant("Форма записи отправлена");
+          tellAssistant("Форма записи на «"+offer.service+"», "+offer.label+", отправлена");
           return;
         }
         var data = (result && result.data) || {};
+        if(result&&result.ok)return showUncertain(offer.id);
+        if(data.offer&&data.offer.id!==offer.id)return showUncertain(offer.id);
+        if(data.error&&data.error.code==='booking_status_unknown')return showUncertain(offer.id,data.error.message);
+        if (data.error && data.error.code === "offer_changed") return showStale(data.offer);
         if (data.offer && data.offer.status === "offered") return showForm(data.offer, (data.error && data.error.message) || "Это время недоступно");
         submit.disabled = false;
-        fail((data.error && data.error.message) || "Не удалось отправить форму. Попробуйте ещё раз");
+        if(!result||result.status>=500)return showUncertain(offer.id,(data.error&&data.error.message)||undefined);
+        fail((data.error && data.error.message) || "Результат не подтверждён. Проверьте его перед повторной записью");
       }, function () {
-        submit.disabled = false;
-        fail("Нет связи с сайтом. Попробуйте ещё раз");
+        if(overlay.hidden||!overlay.contains(form))return;
+        showUncertain(offer.id, "Нет связи с сайтом. Запрос мог сохраниться; проверьте результат перед новой записью");
       });
     });
 
     overlay.appendChild(el("div", { class: "fs-booking-card" }, [form]));
     overlay.hidden = false;
+    setShell("form");
     nameInput.focus();
   }
 
@@ -236,6 +427,7 @@
   function checkBooking() {
     api("/api/chat/booking", {}).then(function (result) {
       var offer = result && result.ok && result.data.offer;
+      if (offer && offer.status === "stale" && offer.id !== shownOffer) { shownOffer=offer.id;showStale(offer);return; }
       if (!offer || offer.status !== "offered" || offer.id === shownOffer) return;
       shownOffer = offer.id;
       showForm(offer);
@@ -260,7 +452,7 @@
 
   var SEQ_PREFIX = "frontsmith-chat-seq:";
   var STATUS_TEXT = {
-    needs_human: "Разговор ведёт сотрудник. Ответ придёт в этот чат",
+    needs_human: "Разговор сохранён для сотрудника. Это не означает, что он сейчас онлайн",
     closed: "Сотрудник завершил разговор. Можно продолжить с AI-помощником"
   };
 
@@ -317,6 +509,7 @@
   function setStatus(status) {
     barText.textContent = STATUS_TEXT[status] || "";
     callButton.hidden = status === "needs_human";
+    if (status === "needs_human" && choiceRegion) { uiRequest++; choiceRegion.replaceChildren(); updateShellNav(); close(); }
   }
 
   callButton.addEventListener("click", function () {
@@ -331,7 +524,7 @@
         pollFeed();
       })
       .catch(function () {
-        barText.textContent = "Не удалось позвать сотрудника. Позвоните нам по контактам на сайте";
+        barText.textContent = "Не удалось передать разговор сотруднику. Другой способ связи можно уточнить на сайте";
       })
       .then(function () { callButton.disabled = false; });
   });

@@ -26,3 +26,5 @@ services/codex-host/runtime/
 services/privacy/data/
 __pycache__/
 .pytest_cache/
+# Временные материалы владельца для доработок
+for feat/

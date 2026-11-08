@@ -1,0 +1,142 @@
+/* Prepared Generative UI inside the existing ChatCops shadow root. */
+.fs-generative { overflow: hidden; }
+.fs-generative.cc-panel {
+  box-sizing: border-box;
+  width: min(420px, calc(100vw - 32px));
+  height: min(640px, calc(100dvh - 116px));
+  max-height: calc(100dvh - 116px);
+  border: 1px solid var(--cc-border);
+  border-top: 5px solid var(--fs-tone, var(--cc-accent));
+  border-radius: 28px;
+  transition: width 220ms ease, height 220ms ease, border-radius 220ms ease, opacity 180ms ease, transform 180ms ease;
+}
+.fs-generative[data-fs-shell=question] { width: min(360px, calc(100vw - 32px)); height: auto; border-radius: 36px 16px 36px 16px; }
+.fs-generative[data-fs-shell=form] { width: min(480px, calc(100vw - 32px)); height: min(720px, calc(100dvh - 116px)); border-radius: 18px; }
+.fs-generative[data-fs-shell=result] { width: min(380px, calc(100vw - 32px)); height: min(390px, calc(100dvh - 116px)); border-radius: 36px 36px 16px 36px; }
+.fs-geometry-soft[data-fs-shell=question] { border-radius: 36px; }
+.fs-geometry-soft[data-fs-shell=result] { border-radius: 40px; }
+.fs-geometry-layered[data-fs-shell=conversation] { border-radius: 36px 12px 36px 12px; }
+.fs-geometry-folded[data-fs-shell=question] { border-radius: 40px 10px 40px 10px; }
+.fs-geometry-folded[data-fs-shell=conversation] { border-radius: 14px 32px 14px 32px; }
+.fs-generative[data-fs-shell=question] .cc-messages-wrapper,
+.fs-generative[data-fs-shell=question] .cc-messages,
+.fs-generative[data-fs-shell=question] .cc-input-area,
+.fs-generative[data-fs-shell=question] .cc-footer,
+.fs-generative[data-fs-shell=question] .fs-shell-nav,
+.fs-generative[data-fs-shell=form] > :not(.cc-header):not(.fs-booking-inline),
+.fs-generative[data-fs-shell=result] > :not(.cc-header):not(.fs-booking-inline) { display: none; }
+.fs-shell-nav { display: flex; gap: 8px; padding: 8px 14px; background: var(--cc-bg); }
+.fs-shell-nav button { font: 600 12px/1.4 var(--cc-font); min-height: 44px; border: 1px solid var(--cc-border); background: var(--cc-bg-surface); color: var(--cc-text); border-radius: 20px; padding: 6px 12px; cursor: pointer; }
+.fs-shell-nav button[hidden],
+[data-fs-shell=question] .fs-shell-nav [data-fs-choice],
+[data-fs-shell=conversation] .fs-shell-nav button:not([data-fs-choice]) { display: none; }
+.fs-shell-nav:has(button[data-fs-choice][hidden]) { display: none; }
+.fs-generative[data-fs-shell=question] .fs-generative-ui { max-height: min(390px, calc(100dvh - 300px)); padding: 20px; }
+.fs-generative[data-fs-shell=question] .fs-ui-title { font-size: 21px; line-height: 1.25; letter-spacing: -.02em; }
+.fs-generative[data-fs-shell=question] .fs-ui-options { flex-direction: column; }
+.fs-generative[data-fs-shell=question] .fs-ui-options button { text-align: left; border-radius: 18px 8px 18px 8px; }
+.fs-generative .cc-header { min-height: 68px; flex-shrink: 0; }
+.fs-generative .cc-input { font-size: 16px; }
+.fs-generative .cc-input:focus { border-color: var(--brand-focus, var(--cc-accent)); }
+.fs-generative .cc-header {
+  background-image: linear-gradient(color-mix(in srgb, var(--cc-bg-surface) 88%, transparent), color-mix(in srgb, var(--cc-bg-surface) 88%, transparent)), var(--fs-surface-image, none);
+  background-size: cover;
+}
+.fs-generative .cc-header-avatar {
+  background: var(--fs-object-bg, #f4f0e8);
+  border-radius: 12px;
+  width: 68px;
+  height: 44px;
+  object-fit: contain;
+  padding: 6px;
+}
+:host(.fs-has-object) .cc-fab {
+  background: var(--fs-object-bg, #f4f0e8);
+  border: 1px solid var(--cc-border);
+  border-bottom: 4px solid var(--fs-tone, var(--cc-accent));
+  width: 86px;
+  height: 64px;
+  border-radius: 24px 12px 24px 12px;
+  padding: 10px;
+  animation: fs-breathe 5s ease-in-out infinite;
+}
+:host(.fs-has-object) .cc-fab::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--fs-object-image) center / contain no-repeat;
+}
+:host(.fs-has-object) .cc-fab:not(.cc-open) > svg,
+:host(.fs-has-object) .cc-fab.cc-open::before { display: none; }
+:host(.fs-has-object) .cc-fab.cc-open { animation: none; background: var(--cc-accent); }
+.fs-generative-ui:empty { display: none; }
+.fs-generative-ui {
+  padding: 14px;
+  border-top: 1px solid var(--cc-border);
+  max-height: 42%;
+  overflow: auto;
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  flex-shrink: 0;
+}
+.fs-ui-title { font: 600 14px/1.45 var(--cc-font); margin: 0 0 10px; overflow-wrap: anywhere; }
+.fs-ui-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.fs-generative-ui button {
+  font: 13px/1.4 var(--cc-font);
+  padding: 10px 12px;
+  min-height: 44px;
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius);
+  background: var(--cc-bg-surface);
+  color: var(--cc-text);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.fs-generative-ui button:hover { border-color: var(--cc-accent); }
+.fs-generative-ui .fs-ui-dismiss { border: 0; background: none; text-decoration: underline; text-underline-offset: 3px; padding-left: 0; }
+.fs-generative-ui button:focus-visible,
+.fs-booking-inline :focus-visible { outline: 3px solid var(--brand-focus, var(--cc-accent)); outline-offset: 2px; }
+.fs-surface-woven .fs-generative-ui {
+  background-image: repeating-linear-gradient(0deg, transparent 0 5px, color-mix(in srgb, var(--cc-border) 8%, transparent) 5px 6px), repeating-linear-gradient(90deg, transparent 0 5px, color-mix(in srgb, var(--cc-border) 8%, transparent) 5px 6px);
+}
+.fs-surface-layered { border-radius: 28px 12px 28px 12px; }
+.fs-generative .cc-messages { min-height: 80px; }
+.fs-booking-inline {
+  position: relative;
+  inset: auto;
+  flex: 1;
+  min-height: 0;
+  z-index: 5;
+  overflow: auto;
+  padding: 16px;
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  font-family: var(--cc-font);
+}
+.fs-booking-inline[hidden] { display: none; }
+.fs-booking-inline .fs-booking-card { box-sizing: border-box; max-width: none; width: 100%; background: var(--cc-bg); color: var(--cc-text); border-radius: var(--cc-radius); }
+.fs-booking-inline h2 { font-size: 20px; margin: 0 0 12px; }
+.fs-booking-inline p, .fs-booking-inline label { font-size: 14px; line-height: 1.5; }
+.fs-booking-inline fieldset { border: 0; padding: 0; margin: 16px 0; }
+.fs-booking-inline .fs-slot { display: flex; gap: 8px; align-items: center; padding: 12px; border: 1px solid var(--cc-border); margin-block: 8px; border-radius: 8px; }
+.fs-booking-inline .fs-field { display: grid; gap: 6px; margin-block: 12px; }
+.fs-booking-inline input[type=text], .fs-booking-inline input[type=tel] { font: inherit; padding: 12px; min-width: 0; border: 1px solid var(--cc-border); border-radius: 8px; background: var(--cc-bg-input); color: var(--cc-text); }
+.fs-booking-inline .fs-consent { display: flex; gap: 8px; }
+.fs-booking-inline .fs-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-block: 16px; }
+.fs-booking-inline button { font: inherit; min-height: 44px; padding: 10px 14px; border: 1px solid var(--cc-border); border-radius: var(--cc-radius); background: var(--cc-bg-surface); color: var(--cc-text); cursor: pointer; }
+.fs-booking-inline .fs-primary { background: var(--cc-accent); color: var(--cc-on-accent); border-color: var(--cc-accent); }
+.fs-booking-inline .fs-error { color: var(--brand-error, #b3261e); }
+.fs-booking-inline button:disabled { opacity: .6; cursor: wait; }
+.fs-shell-nav :focus-visible { outline: 3px solid var(--brand-focus, var(--cc-accent)); outline-offset: 2px; }
+@keyframes fs-breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@media (max-width: 480px) {
+  .fs-generative.cc-panel { right: 12px; left: auto; bottom: 92px; width: calc(100vw - 24px); max-height: calc(100dvh - 112px); }
+  .fs-generative[data-fs-shell=conversation], .fs-generative[data-fs-shell=form] { height: min(680px, calc(100dvh - 112px)); }
+  .fs-booking-inline input[type=text], .fs-booking-inline input[type=tel] { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :host(.fs-has-object) .cc-fab { animation: none; }
+  .fs-generative.cc-panel { transition: none; }
+}

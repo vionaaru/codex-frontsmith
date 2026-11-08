@@ -24,6 +24,9 @@ import { OfficeValidationError } from "./lib/domain.mjs";
 import { connectCustomers, enrichCustomerRefs } from "./customers/index.mjs";
 import { officeModules, vocabularyFor } from "../scripts/lib/blueprints.mjs";
 import { businessPath } from "../scripts/lib/paths.mjs";
+import { loadBrand, brandCss, brandAsset } from "../scripts/lib/brand.mjs";
+
+import { dispatcherStatus, changeDispatcher, dispatcherProfile } from '../services/conversation/dispatcher-settings.mjs';
 
 export const defaultOfficePort = 4180;
 const host = "127.0.0.1";
@@ -234,6 +237,10 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
 
   // Действия сотрудника: ответ в диалоге, закрытие, возврат AI, решение по предварительной записи
   async function writeOperator(req, url) {
+    if (url.pathname === '/api/dispatcher' && req.method === 'POST') {
+      try { return {status:200,data:await changeDispatcher(await readJson(req, 64 * 1024),currentProfile() ?? {})}; }
+      catch(error) { if(error.status) throw new HttpError(error.status,error.message,'dispatcher_invalid');throw error; }
+    }
     const conversation = /^\/api\/conversations\/([^/]+)\/(messages|close|return-ai)$/.exec(url.pathname);
     if (conversation && req.method === "POST") {
       const id = uuid(decodeURIComponent(conversation[1]));
@@ -255,7 +262,7 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
       const profile = currentProfile();
       const ctx = createContext(writeConnection(), { actor: "оператор панели", source: "panel", now, vocabulary: vocabularyFor(profile) });
       try {
-        const row = decideAppointment(ctx, { settings: bookingSettings(profile), appointmentId: uuid(decodeURIComponent(appointment[1])), decision });
+        const row = decideAppointment(ctx, { settings: bookingSettings(await dispatcherProfile(profile)), appointmentId: uuid(decodeURIComponent(appointment[1])), decision });
         return { status: 200, data: { appointment: { id: row.id, status: row.status } } };
       } catch (error) {
         if (error instanceof BookingConflictError) throw new HttpError(409, error.message, "slot_unavailable");
@@ -271,7 +278,7 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
       if (!allowedHosts.has(String(req.headers.host ?? "").toLowerCase())) throw new HttpError(421, "Панель доступна только по адресу 127.0.0.1", "host_not_allowed");
       const url = new URL(req.url ?? "/", `http://${host}:${port}`);
       if (req.method !== "GET" && req.method !== "HEAD") {
-        const operatorPath = url.pathname.startsWith("/api/conversations/") || url.pathname.startsWith("/api/appointments/");
+        const operatorPath = url.pathname === '/api/dispatcher' || url.pathname.startsWith("/api/conversations/") || url.pathname.startsWith("/api/appointments/");
         if (!url.pathname.startsWith("/api/customers") && !operatorPath) {
           res.setHeader("allow", "GET, HEAD");
           throw new HttpError(405, "Панель только читает данные. Изменения — через Codex и npm run office", "read_only");
@@ -301,6 +308,7 @@ export function createOfficeServer({ port = defaultOfficePort, dbFile = officeDb
   }
 
   async function api(url) {
+    if(url.pathname === '/api/dispatcher') return {data:await dispatcherStatus(currentProfile() ?? {}),meta:{generatedAt:now().toISOString()}};
     const route = routes.find(([pattern]) => typeof pattern === "string" ? pattern === url.pathname : pattern.test(url.pathname));
     if (!route) throw new HttpError(404, "Нет такого раздела API", "not_found");
     if (url.pathname === "/api/health") return { data: route[1](), meta: { generatedAt: now().toISOString() } };
@@ -354,12 +362,12 @@ function customerRow(summary, contact) {
   };
 }
 
-async function readJson(req) {
+async function readJson(req, limit = maxBodyBytes) {
   let size = 0;
   const chunks = [];
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > maxBodyBytes) throw new HttpError(413, "Слишком большой запрос", "payload_too_large");
+    if (size > limit) throw new HttpError(413, "Слишком большой запрос", "payload_too_large");
     chunks.push(chunk);
   }
   try {
@@ -445,9 +453,38 @@ function publicBusiness(business) {
 }
 
 async function serveStatic(pathname, req, res) {
+    if (pathname === "/brand.css" || pathname === "/brand-base.css" || pathname === "/brand-theme.js" || pathname.startsWith("/brand-assets/")) {
+      let body;
+      let type = "text/css; charset=utf-8";
+      if (pathname === "/brand.css") { const brand = await loadBrand(); body = brand ? brandCss(brand) : ""; }
+      else if (pathname === "/brand-theme.js" || pathname === "/brand-base.css") {
+        const brand = await loadBrand();
+        body = brand ? await readFile(path.join(publicDir, "../../website", pathname.slice(1))) : "";
+        if (pathname.endsWith(".js")) type = "text/javascript; charset=utf-8";
+      } else {
+        try {
+          const file = await brandAsset(pathname.slice("/brand-assets/".length));
+          body = await readFile(file);
+          const extension = path.extname(file).slice(1).toLowerCase();
+          type = extension === "woff2" ? "font/woff2" : `image/${extension === "jpg" ? "jpeg" : extension}`;
+        }
+        catch { throw new HttpError(404, "Файл бренда не найден", "not_found"); }
+      }
+      res.writeHead(200, { ...securityHeaders, "content-type": type, "cache-control": "no-store" });
+      res.end(req.method === "HEAD" ? undefined : body);
+      return;
+    }
   const entry = staticFiles[pathname];
   if (!entry) throw new HttpError(404, "Не найдено", "not_found");
-  const body = await readFile(path.join(publicDir, entry[0]));
+    let body = await readFile(path.join(publicDir, entry[0]));
+    if (entry[0] === "index.html") {
+      const brand = await loadBrand();
+      if (brand) {
+        let html = body.toString("utf8").replace("</head>", '<link rel="stylesheet" href="/brand.css"><link rel="stylesheet" href="/brand-base.css"><script src="/brand-theme.js"></script></head>');
+        if (brand.logo) html = html.replace(/<svg class="brand-logo"[\s\S]*?<\/svg>/, `<img class="brand-logo" src="/brand-assets/${brand.logo}" alt="">`);
+        body = Buffer.from(html);
+      }
+    }
   res.writeHead(200, { ...securityHeaders, "content-type": entry[1], "cache-control": "no-cache" });
   res.end(req.method === "HEAD" ? undefined : body);
 }

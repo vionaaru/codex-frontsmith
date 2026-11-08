@@ -215,3 +215,9 @@ tfoot td { font-weight: 700; }
 .chat-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .chat-reply textarea { width: 100%; font: inherit; padding: 10px; border: 1px solid var(--line); resize: vertical; }
 .inline-actions { padding: 0 16px 12px; margin: 0; }
+
+.dispatcher-editor {max-width:900px; display:grid;gap:16px}.dispatcher-field,.dispatcher-service label {display:grid;gap:6px}.dispatcher-editor textarea,.dispatcher-editor input:not([type=checkbox]),.dispatcher-editor select {width:100%;max-width:100%;box-sizing:border-box;padding:10px;font:inherit}.dispatcher-editor textarea {resize:vertical}.dispatcher-service {min-width:0;display:grid;gap:12px}.dispatcher-editor button {min-height:44px;white-space:normal}
+
+.dispatcher-preview {white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}
+
+.dispatcher-editor {width:100%;min-width:0;grid-template-columns:minmax(0,1fr);overflow-wrap:anywhere}.dispatcher-editor .panel {padding:16px}.dispatcher-editor .panel > h2 {padding:0 0 12px}.dispatcher-editor label:has(input[type=checkbox]) {display:flex;align-items:start;gap:10px}.dispatcher-editor input[type=checkbox] {flex:none;margin-top:4px}

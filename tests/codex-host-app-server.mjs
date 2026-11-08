@@ -136,6 +136,13 @@ try {
     }
     console.log(`  инструменты модели: ${names.join(", ")}`);
   });
+  const persistent = await host.openConversation({ tenantId: 'dispatcher-test', ephemeral: false, tools: [], context: 'Исходные сведения компании' });
+  await host.send(persistent.conversationId, 'Проверочный вопрос');
+  const updated = await host.openConversation({ tenantId: 'dispatcher-test', ephemeral: false, tools: [], context: 'Актуальные утверждённые сведения: ответы только по новой версии' });
+  await host.send(updated.conversationId, 'Повторный проверочный вопрос');
+  check('живой App Server получает новые утверждённые знания в baseInstructions нового thread', () => {
+    assert.ok(JSON.stringify(bodies.at(-1).request).includes('Актуальные утверждённые сведения'),'В модель не дошла новая версия знаний');
+  });
 } finally {
   host.close();
   await privacy.close();

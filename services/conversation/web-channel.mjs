@@ -18,7 +18,7 @@ import { randomUUID } from "node:crypto";
 import { BookingError } from "./booking.mjs";
 import { ConversationError } from "./core.mjs";
 
-const ROUTES = new Set(["/api/chat", "/api/chat/session", "/api/chat/booking", "/api/chat/booking/confirm", "/api/chat/handoff", "/api/chat/messages"]);
+const ROUTES = new Set(["/api/chat", "/api/chat/session", "/api/chat/booking", "/api/chat/booking/confirm", "/api/chat/handoff", "/api/chat/messages", "/api/chat/ui"]);
 
 export const LIMITS = {
   bodyBytes: 16 * 1024,
@@ -148,8 +148,11 @@ export function createWebChannel({ core, booking = null, allowedHosts, limits = 
 
   // Состояние формы записи: только услуга, время и варианты, без контактов
   async function bookingState(req, res) {
-    const conversation = authorized(req, await readJson(req));
-    json(res, 200, { offer: booking ? await booking.pending(conversation.id) : null });
+    const body=await readJson(req);
+    const conversation = authorized(req, body);
+    if(body.offerId!==undefined&&(typeof body.offerId!=='string'||body.offerId.length>100))throw new ChannelError(400,'invalid_request','Некорректный идентификатор формы');
+    try { json(res,200,{offer:booking?await booking.pending(conversation.id,body.offerId??null):null}); }
+    catch(error){if(error instanceof BookingError)throw new ChannelError(error.status,error.code,error.message);throw error;}
   }
 
   // Подтверждение записи посетителем. Контакты не попадают в журнал и в ответ
@@ -169,7 +172,7 @@ export function createWebChannel({ core, booking = null, allowedHosts, limits = 
     } catch (error) {
       if (!(error instanceof BookingError)) throw error;
       log({ event: "booking_rejected", conversation: conversation.id, code: error.code });
-      const offer = error.code === "slot_unavailable" ? await booking.pending(conversation.id) : null;
+      const offer = ["slot_unavailable", "offer_changed"].includes(error.code) ? await booking.pending(conversation.id,body.offerId) : null;
       throw new ChannelError(error.status, error.code, error.message, undefined, offer ? { offer } : {});
     }
   }
@@ -239,6 +242,11 @@ export function createWebChannel({ core, booking = null, allowedHosts, limits = 
       else if (pathname === "/api/chat/booking/confirm") await bookingConfirm(req, res);
       else if (pathname === "/api/chat/handoff") await handoff(req, res);
       else if (pathname === "/api/chat/messages") await feed(req, res);
+      else if (pathname === "/api/chat/ui") {
+        const conversation = authorized(req, await readJson(req));
+        limit(`feed:${conversation.id}`, limits.feedPerConversation);
+        json(res, 200, await core.visitorUi(conversation.id));
+      }
       else await chat(req, res, ip);
     } catch (error) {
       if (res.headersSent) {

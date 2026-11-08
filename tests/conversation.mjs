@@ -36,7 +36,7 @@ async function check(name, fn) {
   console.log(`✓ ${name}`);
 }
 
-const context = publicBusinessContext({
+let context = publicBusinessContext({
   businessName: "Тестовая компания",
   businessType: "Сервисная компания",
   contact: { phone: BUSINESS_PHONE, city: "Москва" },
@@ -291,6 +291,15 @@ try {
     const turn = received.find((entry) => entry.kind === "turn_start");
     assert.match(turn.text, /<PII type="PERSON" id="1" \/>/, "та же privacy-session: тот же псевдоним");
     assert.ok(logs.some((entry) => entry.event === "conversation_resumed"));
+  });
+
+  await check('обновление знаний применяется в уже открытом диалоге без перезапуска', async()=>{
+    context += '\nНовая проверенная информация: доступна консультация по подготовке';
+    const changed=await chat(await startSite({core}),visitor,'Что изменилось?');
+    assert.equal(changed.error,undefined);assert.equal(changed.status,200);
+    const received=await current.received();
+    const fresh=received.filter(entry=>entry.method==='thread/start').at(-1);
+    assert.match(fresh.params.baseInstructions,/Новая проверенная информация/);
   });
 
   await check("передача человеку: статус needs_human останавливает ответы AI", async () => {

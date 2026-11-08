@@ -1,0 +1,36 @@
+/* Presentation bridge. Client site.css follows this file and may define its own composition. */
+:root{--ink:var(--brand-text);--paper:var(--brand-page);--white:var(--brand-surface);--navy:var(--brand-surface-muted);--accent:var(--brand-accent);--accent-ink:var(--brand-accent);--muted:var(--brand-text-muted);--line:var(--brand-border);--danger:var(--brand-error);--ok:var(--brand-success);--danger-bg:var(--brand-surface-muted);--ok-bg:var(--brand-surface-muted);--warn-bg:var(--brand-accent-soft);--info-bg:var(--brand-surface-muted)}
+body{background:var(--brand-page);color:var(--brand-text);font-family:var(--brand-font)}
+.brand-theme-control{font:inherit;font-size:12px;min-height:44px;max-width:160px;padding:6px;border:1px solid var(--brand-border);border-radius:var(--brand-radius);color:var(--brand-text);background:var(--brand-surface)}
+:focus-visible{outline-color:var(--brand-focus)}
+.topbar,.site-header,.site-footer{background:var(--brand-surface);color:var(--brand-text)}
+.brand-logo rect{fill:var(--brand-accent)}.brand-logo path{stroke:var(--brand-on-accent)}
+.brand-logo{object-fit:contain}
+.tabs a,.sync,.brand-text small,.site-nav a,.brand-wordmark small{color:var(--brand-text-muted)}
+.tabs a[aria-current=page],.tabs a:hover,.sync-button,.drawer-links a:hover{color:var(--brand-text)}
+.button.primary,.header-button,.sync-button,.drawer-booking{background:var(--brand-accent);color:var(--brand-on-accent);border-color:var(--brand-accent)}
+.button.primary:hover,.header-button:hover{color:var(--brand-on-accent);filter:brightness(.95)}
+input,select,textarea{background-color:var(--brand-surface);color:var(--brand-text);border-color:var(--brand-border)}
+.notice-error{color:var(--brand-error)}
+th,.badge,.chat-assistant{background:var(--brand-surface-muted);color:var(--brand-text)}
+tbody tr:hover,a.row:hover{background:var(--brand-accent-soft)}
+.badge.s-in_progress,.badge.s-arrived,.badge.s-approved,.badge.s-confirmed,.badge.s-waiting_customer,.badge.s-ready,.badge.s-closed,.badge.s-cancelled,.badge.s-no_show,.badge.s-declined{background:var(--brand-surface-muted);color:var(--brand-text)}
+.error-state{color:var(--brand-error);border-color:var(--brand-error)}
+.primary-button{background:var(--brand-accent);color:var(--brand-on-accent)}
+.primary-button:hover{background:var(--brand-accent);color:var(--brand-on-accent);filter:brightness(.95)}
+.chart-count-line{stroke:var(--brand-text)}.chart-count-dot{fill:var(--brand-text)}
+.approach-section,.faq-section,.contact-section,.booking-section{background:var(--brand-surface-muted);color:var(--brand-text)}
+.approach-section p,.faq-section p,.booking-section p,.booking-steps p,.booking-steps>li>span,.booking-note,.section-lead,.footer-inner,.hero-aside p,.hero-bottom,.text-link.light{color:var(--brand-text-muted)}
+.site-nav.open{background:var(--brand-surface)}
+.nav-toggle{border-color:var(--brand-border)}.nav-toggle span{background:var(--brand-text)}.drawer-close{color:var(--brand-text)}
+.fs-booking{font-family:var(--brand-font)!important;color:var(--brand-text)!important}
+.fs-booking .fs-booking-card{background:var(--brand-surface);border-radius:var(--brand-radius)}
+.fs-booking p{color:var(--brand-text-muted)!important}
+.fs-booking .fs-slot,.fs-booking input,.fs-booking button{border-color:var(--brand-border)!important;border-radius:var(--brand-radius)!important;color:var(--brand-text)!important}
+.fs-booking .fs-slot:has(input:checked){background:var(--brand-accent-soft)!important;border-color:var(--brand-accent)!important}
+.fs-booking .fs-primary{background:var(--brand-accent)!important;color:var(--brand-on-accent)!important}
+.fs-booking .fs-error{color:var(--brand-error)!important}
+@media(max-width:760px){.brand-theme-control{max-width:120px}.site-header-inner{flex-wrap:wrap;gap:8px}.sync{flex-wrap:wrap}}
+@media(max-width:760px){.site-header-inner .header-button{display:none}}
+@media(max-width:760px){.topbar-inner{flex-wrap:wrap;padding-block:12px;gap:12px}.topbar-inner .brand{flex:1 1 100%}.topbar-inner .brand-text strong{white-space:normal;overflow:visible;text-overflow:clip}.topbar-inner .sync{margin-left:0;flex:1;justify-content:space-between}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
